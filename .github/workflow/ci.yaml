@@ -1,0 +1,29 @@
+name: CI
+
+on: [pull_request]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        project: [client, server]
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.project }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run tests
+        run: npm run test --if-present
