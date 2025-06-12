@@ -7,41 +7,74 @@ on:
     branches: [main]
 
 jobs:
-  build-and-test:
+  lint-client:
+    name: Lint Client
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        node-version: [18.x]
-
     steps:
       - uses: actions/checkout@v3
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 16
 
-      - name: Install dependencies (client)
+      - name: Install Dependencies
         working-directory: ./client
         run: npm ci
 
-      - name: Run ESLint (client)
+      - name: Run ESLint
         working-directory: ./client
         run: npm run lint
 
-      - name: Run tests (client)
+  test-client:
+    name: Test Client
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Dependencies
+        working-directory: ./client
+        run: npm ci
+
+      - name: Run Tests
         working-directory: ./client
         run: npm test -- --watchAll=false --coverage
 
-      - name: Install dependencies (server)
+  lint-server:
+    name: Lint Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Dependencies
         working-directory: ./server
         run: npm ci
 
-      - name: Run ESLint (server)
+      - name: Run ESLint
         working-directory: ./server
         run: npm run lint
 
-      - name: Run tests (server)
+  test-server:
+    name: Test Server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Install Dependencies
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run Tests
         working-directory: ./server
         run: npm test
