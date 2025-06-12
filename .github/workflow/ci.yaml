@@ -1,6 +1,10 @@
 name: CI
 
-on: [pull_request]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
 
 jobs:
   build-and-test:
@@ -8,22 +12,36 @@ jobs:
 
     strategy:
       matrix:
-        project: [client, server]
-
-    defaults:
-      run:
-        working-directory: ${{ matrix.project }}
+        node-version: [16.x]
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Node
+      - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
-          node-version: 20
+          node-version: ${{ matrix.node-version }}
 
-      - name: Install dependencies
-        run: npm install
+      - name: Install dependencies (client)
+        working-directory: ./client
+        run: npm ci
 
-      - name: Run tests
-        run: npm run test --if-present
+      - name: Run ESLint (client)
+        working-directory: ./client
+        run: npm run lint
+
+      - name: Run tests (client)
+        working-directory: ./client
+        run: npm test -- --watchAll=false --coverage
+
+      - name: Install dependencies (server)
+        working-directory: ./server
+        run: npm ci
+
+      - name: Run ESLint (server)
+        working-directory: ./server
+        run: npm run lint
+
+      - name: Run tests (server)
+        working-directory: ./server
+        run: npm test
