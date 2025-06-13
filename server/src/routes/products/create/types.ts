@@ -1,5 +1,3 @@
-import { SortOpts } from "../../../ts-common/types";
-
 export type Product = {
   category: string;
   description: string;
@@ -10,9 +8,3 @@ export type Product = {
   is_live: boolean;
   sale_percent: number;
 };
-
-interface SortParams {
-  id: string;
-  product_name: string;
-}
-export type SortOptions = SortOpts<SortParams>;

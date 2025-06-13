@@ -1,6 +1,10 @@
-import { conditionIn, generateSortSql } from "../../../ts-common/sql-utils";
+import {
+  conditionIn,
+  generateFilterSql,
+  generateSortSql
+} from "../../../ts-common/sql-utils";
 import { DefaultQueryParams } from "../../../ts-common/types";
-import { SortOptions } from "./types";
+import { SortOptions, FilterOptions } from "./types";
 
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: "fp" },
@@ -11,6 +15,12 @@ export const SORT_OPTIONS: SortOptions = {
   }
 };
 
+export const FILTER_OPTIONS: FilterOptions = {
+  is_live: { alias: "p" },
+  on_sale: { alias: "p" },
+  category: { alias: "p" }
+};
+
 export function GetAllProductsQuery(
   queryStringParams?: DefaultQueryParams,
   productName?: string
@@ -19,6 +29,10 @@ export function GetAllProductsQuery(
     ? conditionIn("p", "product_name", productName)
     : ``;
   const dynamicSortSql = generateSortSql(SORT_OPTIONS, queryStringParams ?? {});
+  const dynamicFilterSql = generateFilterSql(
+    FILTER_OPTIONS,
+    queryStringParams ?? {}
+  );
 
   const result = `
     WITH FilteredProducts AS (
@@ -33,7 +47,9 @@ export function GetAllProductsQuery(
             p.is_live,
             p.sale_percent
         FROM products p
-        ${dynamicProductNameFilter ? `WHERE ${dynamicProductNameFilter}` : ``}
+        WHERE p.is_live = TRUE
+        ${dynamicProductNameFilter ? `AND ${dynamicProductNameFilter}` : ``}
+        ${dynamicFilterSql ? `AND ${dynamicFilterSql}` : ``}
     ),
     ProductCount AS (
         SELECT COUNT(*) AS total_count

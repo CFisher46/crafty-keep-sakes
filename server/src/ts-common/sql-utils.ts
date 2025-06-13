@@ -33,3 +33,18 @@ export function generateSortSql<T>(
 
   return `ORDER BY ${alias}.${column} ${direction}`;
 }
+
+export function generateFilterSql<T>(
+  opts: { [Property in keyof T]: { alias: string } },
+  queryStringParams: DefaultQueryParams
+) {
+  const filters = Object.entries(queryStringParams)
+    .filter(([key]) => opts[key as keyof T])
+    .map(([key, value]) => {
+      const { alias } = opts[key as keyof T];
+      return conditionIn(alias, key, value);
+    })
+    .filter(Boolean);
+
+  return filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+}

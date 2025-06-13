@@ -14,6 +14,10 @@ export type SortOpts<T> = {
   };
 };
 
+export type FilterOpts<T> = {
+  [Property in keyof T]: { alias: string };
+};
+
 export type PageSizePrams = {
   page?: string;
   pageSize?: string;
