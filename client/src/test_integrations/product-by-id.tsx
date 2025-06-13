@@ -12,15 +12,15 @@ interface Product {
   sale_percent: string | null;
 }
 
-const TestIntegration = () => {
+const GetProductById = () => {
   const [products, setProducts] = useState<Product[]>([]);
-
+  const id = "CKS_020";
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/api/products`)
+    fetch(`${process.env.REACT_APP_API_URL}/api/products/${id}`)
       .then((res) => res.json())
-      .then((data) => {
-        const parsedResult = JSON.parse(data[0].result);
-        const parsedData = JSON.parse(parsedResult.data);
+      .then((response) => {
+        const parsedData = JSON.parse(response.data); // Parse the JSON string directly
+        console.log("Parsed Data:", parsedData); // Debugging
         setProducts(parsedData);
       })
       .catch((err) => console.error("Error fetching products:", err));
@@ -28,7 +28,7 @@ const TestIntegration = () => {
 
   return (
     <div>
-      <h2>Product List</h2>
+      <h2>A Specific Product</h2>
       <table border={1} style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>
@@ -63,4 +63,4 @@ const TestIntegration = () => {
   );
 };
 
-export default TestIntegration;
+export default GetProductById;

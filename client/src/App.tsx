@@ -1,7 +1,13 @@
-import TestIntegration from "./test_integration";
+import AllProducts from "./test_integrations/all-products";
+import GetProductById from "./test_integrations/product-by-id";
 
 function App() {
-  return <TestIntegration />;
+  return (
+    <>
+      <AllProducts />
+      <GetProductById />
+    </>
+  );
 }
 
 export default App;
