@@ -46,5 +46,5 @@ export function generateFilterSql<T>(
     })
     .filter(Boolean);
 
-  return filters.length > 0 ? `WHERE ${filters.join(" AND ")}` : "";
+  return filters.length > 0 ? `${filters.join(" AND ")}` : "";
 }
