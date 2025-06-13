@@ -10,17 +10,24 @@ interface Product {
   product_name: string;
   is_live: string;
   sale_percent: string | null;
-  images: string;
+  images: string[];
 }
 
 const GetProductById = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const id = "CKS_021";
+
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/api/products/${id}`)
       .then((res) => res.json())
       .then((response) => {
-        const parsedData = JSON.parse(response.data);
+        const parsedResult = JSON.parse(response[0].result);
+        const parsedData = JSON.parse(parsedResult.data).map(
+          (product: any) => ({
+            ...product,
+            images: JSON.parse(product.images)
+          })
+        );
         setProducts(parsedData);
       })
       .catch((err) => console.error("Error fetching products:", err));
@@ -57,19 +64,17 @@ const GetProductById = () => {
               <td>{product.is_live}</td>
               <td>{product.sale_percent ?? "N/A"}</td>
               <td>
-                {product.images ? (
+                {product.images.length > 0 ? (
                   <ul>
-                    {JSON.parse(product.images).map(
-                      (image: string, index: number) => (
-                        <li key={index}>
-                          <img
-                            src={image}
-                            alt={`Product ${product.id} Image ${index + 1}`}
-                            style={{ width: "100px" }}
-                          />
-                        </li>
-                      )
-                    )}
+                    {product.images.map((image, index) => (
+                      <li key={index}>
+                        <img
+                          src={image}
+                          alt={`Product ${product.id} Image ${index + 1}`}
+                          style={{ width: "100px" }}
+                        />
+                      </li>
+                    ))}
                   </ul>
                 ) : (
                   "No images"

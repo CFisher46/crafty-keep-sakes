@@ -4,10 +4,11 @@ export function createProductQuery(product: Product) {
   return {
     sql: `
       INSERT INTO products 
-        (category, description, price, quantity, on_sale, product_name, is_live, sale_percent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (id,category, description, price, quantity, on_sale, product_name, is_live, sale_percent)
+      VALUES (?,?, ?, ?, ?, ?, ?, ?, ?)
     `,
     values: [
+      product.id,
       product.category,
       product.description,
       product.price,
