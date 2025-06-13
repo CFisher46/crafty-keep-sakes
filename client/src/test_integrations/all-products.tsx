@@ -20,9 +20,12 @@ const GetAllProducts = () => {
     fetch(`${process.env.REACT_APP_API_URL}/api/products`)
       .then((res) => res.json())
       .then((data) => {
-        const parsedResult = JSON.parse(data[0].result);
-        const parsedData = JSON.parse(parsedResult.data);
-        setProducts(parsedData);
+        if (data && data.data) {
+          const parsedData = JSON.parse(data.data);
+          setProducts(parsedData);
+        } else {
+          console.error("Invalid API response structure");
+        }
       })
       .catch((err) => console.error("Error fetching products:", err));
   }, []);
