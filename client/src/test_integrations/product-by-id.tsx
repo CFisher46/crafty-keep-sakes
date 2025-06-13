@@ -10,11 +10,12 @@ interface Product {
   product_name: string;
   is_live: string;
   sale_percent: string | null;
+  images: string;
 }
 
 const GetProductById = () => {
   const [products, setProducts] = useState<Product[]>([]);
-  const id = "CKS_020";
+  const id = "CKS_021";
   useEffect(() => {
     fetch(`${process.env.REACT_APP_API_URL}/api/products/${id}`)
       .then((res) => res.json())
@@ -40,6 +41,7 @@ const GetProductById = () => {
             <th>Product Name</th>
             <th>Is Live</th>
             <th>Sale Percent</th>
+            <th>Images</th>
           </tr>
         </thead>
         <tbody>
@@ -54,6 +56,25 @@ const GetProductById = () => {
               <td>{product.product_name}</td>
               <td>{product.is_live}</td>
               <td>{product.sale_percent ?? "N/A"}</td>
+              <td>
+                {product.images ? (
+                  <ul>
+                    {JSON.parse(product.images).map(
+                      (image: string, index: number) => (
+                        <li key={index}>
+                          <img
+                            src={image}
+                            alt={`Product ${product.id} Image ${index + 1}`}
+                            style={{ width: "100px" }}
+                          />
+                        </li>
+                      )
+                    )}
+                  </ul>
+                ) : (
+                  "No images"
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

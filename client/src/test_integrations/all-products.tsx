@@ -10,6 +10,7 @@ interface Product {
   product_name: string;
   is_live: string;
   sale_percent: string | null;
+  images: string | null;
 }
 
 const GetAllProducts = () => {
@@ -41,6 +42,7 @@ const GetAllProducts = () => {
             <th>Product Name</th>
             <th>Is Live</th>
             <th>Sale Percent</th>
+            <th>Images</th>
           </tr>
         </thead>
         <tbody>
@@ -55,6 +57,25 @@ const GetAllProducts = () => {
               <td>{product.product_name}</td>
               <td>{product.is_live}</td>
               <td>{product.sale_percent ?? "N/A"}</td>
+              <td>
+                {product.images ? (
+                  <ul>
+                    {JSON.parse(product.images).map(
+                      (image: string, index: number) => (
+                        <li key={index}>
+                          <img
+                            src={image}
+                            alt={`Product ${product.id} Image ${index + 1}`}
+                            style={{ width: "100px" }}
+                          />
+                        </li>
+                      )
+                    )}
+                  </ul>
+                ) : (
+                  "No images"
+                )}
+              </td>
             </tr>
           ))}
         </tbody>

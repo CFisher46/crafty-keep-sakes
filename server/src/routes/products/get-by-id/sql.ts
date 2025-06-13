@@ -27,34 +27,44 @@ export function GetSpecificProductsQuery(id: string) {
     ),
     ProductCount AS (
         SELECT COUNT(*) AS total_count
-        FROM products p
+        FROM FilteredProducts
     ),
     OrderedProducts AS (
-        SELECT
-            *
+        SELECT *
         FROM FilteredProducts fp
+    ),
+    ProductsWithImages AS (
+        SELECT
+            op.*,
+            (
+              SELECT JSON_ARRAYAGG(pi.image_path)
+              FROM product_images pi
+              WHERE pi.product_id = op.id
+            ) AS images
+        FROM OrderedProducts op
     )
     SELECT JSON_OBJECT(
         'total_count', COALESCE(pc.total_count, 0),
         'data', IFNULL(
             JSON_ARRAYAGG(
                 JSON_OBJECT(
-                    'id', op.id,
-                    'category', op.category,
-                    'description', op.description,
-                    'price', op.price,
-                    'quantity', op.quantity,
-                    'on_sale', op.on_sale,
-                    'product_name', op.product_name,
-                    'is_live', op.is_live,
-                    'sale_percent', op.sale_percent
+                    'id', pwi.id,
+                    'category', pwi.category,
+                    'description', pwi.description,
+                    'price', pwi.price,
+                    'quantity', pwi.quantity,
+                    'on_sale', pwi.on_sale,
+                    'product_name', pwi.product_name,
+                    'is_live', pwi.is_live,
+                    'sale_percent', pwi.sale_percent,
+                    'images', pwi.images
                 )
             ),
             JSON_ARRAY()
         )
     ) AS result
     FROM ProductCount pc
-    LEFT JOIN OrderedProducts op ON TRUE;
+    LEFT JOIN ProductsWithImages pwi ON TRUE;
   `;
 
   return result;
