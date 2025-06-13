@@ -1,5 +1,5 @@
 import express from "express";
-import { db } from "../db/mysql";
+import { db } from "../ts-common/database";
 
 const router = express.Router();
 
