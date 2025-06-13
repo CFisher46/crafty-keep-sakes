@@ -1,8 +1,7 @@
-import "./App.css";
-import UserList from "./userList";
+import TestIntegration from "./test_integration";
 
 function App() {
-  return <UserList />;
+  return <TestIntegration />;
 }
 
 export default App;
