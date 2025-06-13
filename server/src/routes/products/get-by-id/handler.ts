@@ -4,12 +4,12 @@ import { GetSpecificProductsQuery } from "./sql";
 
 const router = express.Router();
 
-// eslint-disable-next-line  @typescript-eslint/no-explicit-any
-router.get("/:id", async (req: any, res: any) => {
+router.get("/:id", async (req, res) => {
   const id = req.params.id;
   console.log(`GET /api/products/${id} called`);
   try {
     const [rows] = await db.query(GetSpecificProductsQuery(id));
+    // eslint-disable-next-line  @typescript-eslint/no-explicit-any
     const result = JSON.parse((rows as any)[0]?.result || "{}");
 
     if (!result.data || result.data.length === 0) {
