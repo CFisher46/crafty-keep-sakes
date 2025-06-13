@@ -4,7 +4,8 @@ import { GetSpecificProductsQuery } from "./sql";
 
 const router = express.Router();
 
-router.get("/:id", async (req, res) => {
+// eslint-disable-next-line  @typescript-eslint/no-explicit-any
+router.get("/:id", async (req: any, res: any) => {
   const id = req.params.id;
   console.log(`GET /api/products/${id} called`);
   try {

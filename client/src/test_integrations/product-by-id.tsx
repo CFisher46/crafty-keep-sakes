@@ -19,8 +19,7 @@ const GetProductById = () => {
     fetch(`${process.env.REACT_APP_API_URL}/api/products/${id}`)
       .then((res) => res.json())
       .then((response) => {
-        const parsedData = JSON.parse(response.data); // Parse the JSON string directly
-        console.log("Parsed Data:", parsedData); // Debugging
+        const parsedData = JSON.parse(response.data);
         setProducts(parsedData);
       })
       .catch((err) => console.error("Error fetching products:", err));
