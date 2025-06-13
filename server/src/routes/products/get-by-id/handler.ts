@@ -15,7 +15,7 @@ router.get("/:id", async (req: any, res: any) => {
       return res.status(404).json({ error: "Product not found" });
     }
 
-    res.json(result); // Return a single product object
+    res.json(result);
   } catch (err) {
     console.error("DB Error:", err);
     res.status(500).json({ error: "Database error" });
