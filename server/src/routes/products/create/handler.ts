@@ -2,6 +2,7 @@ import express from "express";
 import { db } from "../../../ts-common/database";
 import { Product } from "./types";
 import { createProductQuery } from "./sql";
+import { ResultSetHeader } from "mysql2";
 
 const router = express.Router();
 
@@ -10,10 +11,11 @@ router.post("/", async (req, res) => {
 
   try {
     const { sql, values } = createProductQuery(product);
-    const [result] = await db.query(sql, values);
-    res
-      .status(201)
-      .json({ message: "Product created", insertId: (result as any).insertId });
+    const [result] = await db.query<ResultSetHeader>(sql, values);
+    res.status(201).json({
+      message: "Product created",
+      insertId: result.insertId
+    });
   } catch (err) {
     console.error("Create Product Error:", err);
     res.status(500).json({ error: "Database error" });
