@@ -1,11 +1,11 @@
-import AllProducts from "./test_integrations/features/products/all-products";
-import GetProductById from "./test_integrations/features/products/product-by-id";
+import AddProductPage from "./test_integrations/features/products/addProductPage";
+import GetAllProducts from "./test_integrations/features/products/all-products";
 
 function App() {
   return (
     <>
-      <AllProducts />
-      <GetProductById />
+      <GetAllProducts />
+      <AddProductPage />
     </>
   );
 }
