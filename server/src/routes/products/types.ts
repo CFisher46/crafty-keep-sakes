@@ -1,6 +1,7 @@
 import { SortOpts, FilterOpts } from "../../ts-common/types";
 
 export type Product = {
+  id: string;
   category: string;
   description: string;
   price: number;

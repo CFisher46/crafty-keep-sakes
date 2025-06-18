@@ -1,25 +1,21 @@
-import express, { Request, Response } from "express";
+import express from "express";
 import { db } from "../../../ts-common/database";
+import { User } from "../types";
+import { updateUserQuery } from "./sql";
+import { ResultSetHeader } from "mysql2";
 
 const router = express.Router();
 
-router.put("/:id", async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { email, first_name, last_name, account_type } = req.body;
+router.put("/:id", async (req, res) => {
+  const id = req.params.id;
+  const user = req.body as User;
 
   try {
-    const sql = `
-      UPDATE users
-      SET email = ?, first_name = ?, last_name = ?, account_type = ?
-      WHERE id = ? AND is_active = 1
-    `;
-    const values = [email, first_name, last_name, account_type, id];
-
-    const [result] = await db.query(sql, values);
-
+    const { sql, values } = updateUserQuery(user, id);
+    const [result] = await db.query<ResultSetHeader>(sql, values);
     res.status(200).json({
       message: "User updated",
-      affectedRows: (result as any).affectedRows
+      affectedRows: result.affectedRows
     });
   } catch (err) {
     console.error("Update User Error:", err);
