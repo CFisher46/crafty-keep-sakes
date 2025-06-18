@@ -10,3 +10,11 @@ export interface Product {
   sale_percent: string | null;
   images: string | null;
 }
+
+export interface ProductsState {
+  list: Product[];
+  selectedProduct: Product | null;
+  loading: boolean;
+  error: string | null;
+  createStatus: "idle" | "loading" | "succeeded" | "failed";
+}

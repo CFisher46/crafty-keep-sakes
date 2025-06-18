@@ -6,15 +6,7 @@ import {
   createProduct,
   updateProduct
 } from "../../store/products/productsThunks";
-import { Product } from "./types";
-
-interface ProductsState {
-  list: Product[];
-  selectedProduct: Product | null;
-  loading: boolean;
-  error: string | null;
-  createStatus: "idle" | "loading" | "succeeded" | "failed";
-}
+import { Product, ProductsState } from "./types";
 
 const initialState: ProductsState = {
   list: [],
