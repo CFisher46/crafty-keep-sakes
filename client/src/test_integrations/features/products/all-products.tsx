@@ -1,34 +1,24 @@
-import React, { useEffect, useState } from "react";
-
-interface Product {
-  id: string;
-  category: string;
-  description: string;
-  price: string;
-  quantity: string;
-  on_sale: string;
-  product_name: string;
-  is_live: string;
-  sale_percent: string | null;
-  images: string | null;
-}
+import React, { useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import {
+  selectAllProducts,
+  selectProductsLoading,
+  selectProductsError
+} from "../../../store/products/productsSlice";
+import { fetchAllProducts } from "../../../store/products/productsThunks";
 
 const GetAllProducts = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const dispatch = useAppDispatch();
+  const products = useAppSelector(selectAllProducts);
+  const loading = useAppSelector(selectProductsLoading);
+  const error = useAppSelector(selectProductsError);
 
   useEffect(() => {
-    fetch(`${process.env.REACT_APP_API_URL}/api/products`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data && data.data) {
-          const parsedData = JSON.parse(data.data);
-          setProducts(parsedData);
-        } else {
-          console.error("Invalid API response structure");
-        }
-      })
-      .catch((err) => console.error("Error fetching products:", err));
-  }, []);
+    dispatch(fetchAllProducts());
+  }, [dispatch]);
+
+  if (loading) return <p>Loading products...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <div>

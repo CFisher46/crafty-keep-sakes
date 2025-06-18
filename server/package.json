@@ -14,11 +14,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@reduxjs/toolkit": "^2.8.2",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "mysql2": "^3.14.1",
     "npm": "^11.4.2",
+    "react-redux": "^9.2.0",
     "slonik": "^48.1.2",
     "supertest": "^7.1.1"
   },
