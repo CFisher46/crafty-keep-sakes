@@ -1,4 +1,4 @@
-import { SortOptions } from "./types";
+import { SortOptions } from "../types";
 
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: "fp" },

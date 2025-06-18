@@ -1,6 +1,6 @@
 import express from "express";
 import { db } from "../../../ts-common/database";
-import { Product } from "./types";
+import { Product } from "../types";
 import { updateProductQuery } from "./sql";
 import { ResultSetHeader } from "mysql2";
 
