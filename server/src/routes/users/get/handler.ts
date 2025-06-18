@@ -1,12 +1,13 @@
 import express from "express";
 import { db } from "../../../ts-common/database";
+import { GetAllUsersQuery } from "./sql";
 
 const router = express.Router();
 
 router.get("/", async (_req, res) => {
-  console.log("GET /api/products called");
+  console.log("GET /api/users called");
   try {
-    const [rows] = await db.query("SELECT * FROM users WHERE is_active = 1");
+    const [rows] = await db.query(GetAllUsersQuery());
     const parsedResult = JSON.parse(
       (rows as { result: string }[])?.[0]?.result || "{}"
     );

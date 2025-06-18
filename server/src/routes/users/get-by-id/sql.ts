@@ -1,23 +1,24 @@
-export function GetAllUsersQuery() {
+export function GetSpecificUsersQuery(id: string) {
   const result = `
     WITH FilteredUsers AS (
       SELECT
-        id,
-        email_address,
-        first_name,
-        last_name,
-        address_line1,
-        address_line2,
-        address_line3,
-        town,
-        county,
-        postcode,
-        telephone_number,
-        type,
-        status,
-        invoice_id,
-        password
-      FROM users
+        u.id,
+        u.email_address,
+        u.first_name,
+        u.last_name,
+        u.address_line1,
+        u.address_line2,
+        u.address_line3,
+        u.town,
+        u.county,
+        u.postcode,
+        u.telephone_number,
+        u.type,
+        u.status,
+        u.invoice_id,
+        u.password
+      FROM users u
+      WHERE u.id IN ('${id}')
     ),
     UserCount AS (
       SELECT COUNT(*) AS total_count

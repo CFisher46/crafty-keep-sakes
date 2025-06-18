@@ -1,13 +1,13 @@
 import express from "express";
-import getAllUsers from "./get/handler";
-import getUserById from "./get-by-id/handler";
-import createUser from "./create/handler";
-import updateUser from "./update/handler";
-import deleteUser from "./delete/handler";
+import getAllUsers from "../users/get/handler";
+import getUserById from "../users/get-by-id/handler";
+import createUser from "../users/create/handler";
+import updateUser from "../users/update/handler";
+import deleteUser from "../users/delete/handler";
 
 const router = express.Router();
 
-router.get("/", getAllUsers);
+router.use("/", getAllUsers);
 router.get("/:id", getUserById);
 router.post("/", createUser);
 router.put("/:id", updateUser);
