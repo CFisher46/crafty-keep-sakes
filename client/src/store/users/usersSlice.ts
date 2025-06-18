@@ -1,4 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { RootState } from "..";
+
 import { User, UsersState } from "../../store/users/types";
 import {
   fetchAllUsers,
@@ -67,6 +69,9 @@ const userSlice = createSlice({
   }
 });
 
+export const selectAllUsers = (state: RootState) => state.users.list;
+export const selectUsersLoading = (state: RootState) => state.users.loading;
+export const selectUsersError = (state: RootState) => state.users.error;
 export const { clearSelectedUser } = userSlice.actions;
 
 export default userSlice.reducer;
