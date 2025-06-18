@@ -2,8 +2,8 @@ import express from "express";
 import getAllUsers from "./get/handler";
 import getUserById from "./get-by-id/handler";
 import createUser from "./create/handler";
-import { updateUser } from "./update/handler";
-import { deleteUser } from "./delete/handler";
+import updateUser from "./update/handler";
+import deleteUser from "./delete/handler";
 
 const router = express.Router();
 

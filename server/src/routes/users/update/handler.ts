@@ -1,7 +1,9 @@
-import { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { db } from "../../../ts-common/database";
 
-export const updateUser = async (req: Request, res: Response) => {
+const router = express.Router();
+
+router.put("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
   const { email, first_name, last_name, account_type } = req.body;
 
@@ -23,4 +25,6 @@ export const updateUser = async (req: Request, res: Response) => {
     console.error("Update User Error:", err);
     res.status(500).json({ error: "Database error" });
   }
-};
+});
+
+export default router;

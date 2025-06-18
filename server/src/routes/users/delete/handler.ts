@@ -1,7 +1,8 @@
-import { Request, Response } from "express";
+import express, { Request, Response } from "express";
 import { db } from "../../../ts-common/database";
+const router = express.Router();
 
-export const deleteUser = async (req: Request, res: Response) => {
+router.delete("/:id", async (req: Request, res: Response) => {
   const { id } = req.params;
   try {
     const sql = "UPDATE users SET is_active = 0 WHERE id = ?";
@@ -14,4 +15,5 @@ export const deleteUser = async (req: Request, res: Response) => {
     console.error("Delete User Error:", err);
     res.status(500).json({ error: "Database error" });
   }
-};
+});
+export default router;
