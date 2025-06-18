@@ -1,8 +1,13 @@
-import "./App.css";
-import UserList from "./userList";
+import AddProductPage from "./test_integrations/features/products/addProductPage";
+import GetAllProducts from "./test_integrations/features/products/all-products";
 
 function App() {
-  return <UserList />;
+  return (
+    <>
+      <GetAllProducts />
+      <AddProductPage />
+    </>
+  );
 }
 
 export default App;
