@@ -27,7 +27,7 @@ const GetAllUsers = () => {
 
   return (
     <div>
-      <h2>User List</h2>
+      <h2>List of ALL Users</h2>
       <table border={1} style={{ width: "100%", borderCollapse: "collapse" }}>
         <thead>
           <tr>

@@ -6,8 +6,6 @@ const API_URL = process.env.REACT_APP_API_URL;
 export const fetchAllUsers = createAsyncThunk("users/fetchAll", async () => {
   const res = await fetch(`${API_URL}/api/users`);
   const data = await res.json();
-
-  // Parse the `data` field if it's a JSON string
   const parsedData =
     typeof data.data === "string" ? JSON.parse(data.data) : data.data;
 
@@ -19,7 +17,10 @@ export const fetchUserById = createAsyncThunk(
   async (id: string) => {
     const res = await fetch(`${API_URL}/api/users/${id}`);
     const data = await res.json();
-    return data;
+    const parsedResult = JSON.parse(data[0].result);
+    const user = JSON.parse(parsedResult.data)[0];
+
+    return user as User;
   }
 );
 
