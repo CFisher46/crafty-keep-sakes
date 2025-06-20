@@ -4,7 +4,7 @@ import { Product } from "../products/types";
 
 export const fetchProductById = createAsyncThunk<Product, string>(
   "products/fetchById",
-  async (id) => {
+  async (id: string) => {
     const res = await fetch(
       `${process.env.REACT_APP_API_URL}/api/products/${id}`
     );

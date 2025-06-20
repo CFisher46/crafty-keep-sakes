@@ -21,10 +21,6 @@ const GetAllUsers = () => {
   if (loading) return <p>Loading users...</p>;
   if (error) return <p>Error: {error}</p>;
 
-  if (!Array.isArray(users)) {
-    return <p>No users found.</p>;
-  }
-
   return (
     <div>
       <h2>List of ALL Users</h2>
