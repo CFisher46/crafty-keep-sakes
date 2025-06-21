@@ -1,19 +1,19 @@
 import express from "express";
 import { db } from "../../../ts-common/database";
-import { Product } from "../types";
-import { createProductQuery } from "./sql";
+import { User } from "../types";
+import { createUserQuery } from "../create/sql";
 import { ResultSetHeader } from "mysql2";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
-  const product = req.body as Product;
+  const user = req.body as User;
 
   try {
-    const { sql, values } = createProductQuery(product);
+    const { sql, values } = createUserQuery(user);
     const [result] = await db.query<ResultSetHeader>(sql, values);
     res.status(201).json({
-      message: "Product created",
+      message: "User created",
       insertId: result.insertId
     });
   } catch (err) {

@@ -4,7 +4,7 @@ import {
   generateSortSql
 } from "../../../ts-common/sql-utils";
 import { DefaultQueryParams } from "../../../ts-common/types";
-import { SortOptions, FilterOptions } from "./types";
+import { SortOptions, FilterOptions } from "../types";
 
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: "fp" },
