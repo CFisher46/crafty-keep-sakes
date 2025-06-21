@@ -1,12 +1,11 @@
-import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
-// import { useSelector, useDispatch } from "react-redux";
+import { Text, Box, Grid, Card, CardBody, CardFooter, Button } from "grommet";
+//import { useSelector, useDispatch } from "react-redux";
 //import { RootState } from '../../redux/store';
 import React, { useEffect, useState, useRef } from "react";
 //import Login from '../login/login';
-//import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 //import { buttonStyles } from '../../helpers/styles';
 //import { logout } from '../../helpers/authHelpers';
-import { fetchAllProducts } from "../../store/products/productsThunks";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   selectAllProducts,
@@ -14,13 +13,16 @@ import {
   selectProductsLoading
 } from "../../store/products/productsSlice";
 import { Product } from "../../store/products/types";
+import { fetchAllProducts } from "../../store/products/productsThunks";
+import Login from "../../components/login/login";
 function Home() {
-  //const { isLoggedIn, user } = useSelector((state: RootState) => state.user);
-  //   const [showLogin, setShowLogin] = useState(false);
+  //const { isLoggedIn, user } = useState(false); //useSelector((state: RootState) => state.user);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); //temporary state for login status
+  const [showLogin, setShowLogin] = useState(false);
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
-  //const navigate = useNavigate();
+  const navigate = useNavigate();
   const carouselRef = useRef<HTMLDivElement>(null);
-  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+  //const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAllProducts);
@@ -95,9 +97,10 @@ function Home() {
           height={{ min: "250px" }}
           border={{ color: "light-4", size: "xsmall" }}
         >
-          {/* {isLoggedIn ? (
+          {isLoggedIn ? (
             <Box gap={"small"}>
-              <Text size="medium">Welcome, {user.first_name}!</Text>
+              {/* <Text size="medium">Welcome, {user.first_name}!</Text> */}
+              <Text size="medium">Welcome, Chris!</Text>
               <Text>Your profile is ready to explore.</Text>
               <Box direction="row" gap="small" margin={{ top: "small" }}>
                 <Button
@@ -134,9 +137,8 @@ function Home() {
                 />
               </Box>
             </Box>
-          )} */}
+          )}
         </Box>
-
         <Box
           gridArea="bottom"
           background="#dcece9"

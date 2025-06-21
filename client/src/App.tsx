@@ -1,7 +1,7 @@
 import { Box } from "grommet";
-import Header from "../src/common-components/header/header";
-import MainBody from "../src/common-components/mainContainer/mainBody";
-import Footer from "../src/common-components/footer/footer";
+import Header from "../src/components/header/header";
+import MainBody from "../src/components/mainContainer/mainBody";
+import Footer from "../src/components/footer/footer";
 
 function App() {
   return (
