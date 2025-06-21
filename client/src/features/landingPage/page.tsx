@@ -1,7 +1,7 @@
 import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
 // import { useSelector, useDispatch } from "react-redux";
 //import { RootState } from '../../redux/store';
-import { useEffect, useRef } from "react";
+import React, { useEffect, useState, useRef } from "react";
 //import Login from '../login/login';
 //import { useNavigate } from "react-router-dom";
 //import { buttonStyles } from '../../helpers/styles';
@@ -13,21 +13,14 @@ import {
   selectProductsError,
   selectProductsLoading
 } from "../../store/products/productsSlice";
+import { Product } from "../../store/products/types";
 function Home() {
   //const { isLoggedIn, user } = useSelector((state: RootState) => state.user);
   //   const [showLogin, setShowLogin] = useState(false);
-  //   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
+  const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   //const navigate = useNavigate();
   const carouselRef = useRef<HTMLDivElement>(null);
-  //const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-
-  interface Product {
-    id: number;
-    product_name: string;
-    description: string;
-    price: number;
-    on_sale: boolean;
-  }
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAllProducts);
@@ -38,40 +31,33 @@ function Home() {
     dispatch(fetchAllProducts());
   }, [dispatch]);
 
-  if (loading) return <p>Loading products...</p>;
-  if (error) return <p>Error: {error}</p>;
   //const handleLogout = () => logout(dispatch, navigate);
 
-  // useEffect(() => {
-  //   const loadOnSaleProducts = async () => {
-  //     try {
-  //       const products = await fetchAllProducts();
-  //       const filteredProducts = products.filter(
-  //         (product: Product) => product.on_sale,
-  //       );
-  //       setOnSaleProducts(filteredProducts);
-  //     } catch (error) {
-  //       console.error("Error fetching on-sale products:", error);
-  //     }
-  //   };
+  useEffect(() => {
+    const filteredProducts = products.filter(
+      (product: Product) => product.on_sale
+    );
+    console.log("Total Filtered Products:", filteredProducts.length);
+    setOnSaleProducts(filteredProducts);
+  }, [products]);
 
-  //   loadOnSaleProducts();
-  // }, []);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (carouselRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+        if (scrollLeft + clientWidth >= scrollWidth) {
+          carouselRef.current.scrollTo({ left: 0, behavior: "smooth" });
+        } else {
+          carouselRef.current.scrollBy({ left: 200, behavior: "smooth" });
+        }
+      }
+    }, 5000); // Slowed down the interval to 5 seconds
 
-  //   useEffect(() => {
-  //     const interval = setInterval(() => {
-  //       if (carouselRef.current) {
-  //         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-  //         if (scrollLeft + clientWidth >= scrollWidth) {
-  //           carouselRef.current.scrollTo({ left: 0, behavior: "smooth" });
-  //         } else {
-  //           carouselRef.current.scrollBy({ left: 200, behavior: "smooth" });
-  //         }
-  //       }
-  //     }, 5000); // Slowed down the interval to 5 seconds
+    return () => clearInterval(interval);
+  }, []);
 
-  //     return () => clearInterval(interval);
-  //   }, []);
+  if (loading) return <p>Loading products...</p>;
+  if (error) return <p>Error: {error}</p>;
 
   return (
     <Box pad="medium">
@@ -171,7 +157,7 @@ function Home() {
             }}
             ref={carouselRef}
           >
-            {products.map((product) => (
+            {onSaleProducts.map((product) => (
               <Card
                 key={product.id}
                 background="light-1"
