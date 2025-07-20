@@ -8,6 +8,7 @@ import { Form, Text, Box, Card, Grid, Button } from "grommet";
 import { useLocation } from "react-router-dom";
 import { fetchFilteredProducts } from "../../store/products/productsThunks";
 import CksButton from "../../components/buttons/cksButtons";
+import { addItemToBasket } from "../../store/basket/basketSlice";
 
 //TODO: change the products query to be dynamic based on the filters
 // and categories selected by the user rather than geting all products
@@ -23,7 +24,7 @@ interface Product {
   quantity: number;
   on_sale: boolean;
   is_live: boolean;
-  images: string[];
+  images: string[] | null;
 }
 
 function Shop() {
@@ -34,18 +35,18 @@ function Shop() {
   const dispatch = useDispatch();
   const location = useLocation();
 
-  //   const handleAddToCart = (product: Product) => {
-  //     dispatch(
-  //       addItemToBasket({
-  //         id: product.id,
-  //         image: product.images[0] || "/placeholder.png", // Ensure a valid image or placeholder is passed
-  //         product_name: product.product_name,
-  //         price: product.price,
-  //         quantity: 1
-  //       })
-  //     );
-  //     console.log(`Added ${product.product_name} to cart`);
-  //   };
+  const handleAddToCart = (product: Product) => {
+    dispatch(
+      addItemToBasket({
+        id: product.id,
+        image: product.images?.[0] || "", // Ensure a valid image or placeholder is passed
+        product_name: product.product_name,
+        price: product.price,
+        quantity: 1
+      })
+    );
+    console.log(`Added ${product.product_name} to cart`);
+  };
 
   const loadProducts = async () => {
     try {
@@ -141,7 +142,7 @@ function Shop() {
                     status="enabled"
                     //primary
                     //style={buttonStyles.default}
-                    //onClick={() => handleAddToCart(product)}
+                    onClick={() => handleAddToCart(product)}
                   />
                 </Box>
                 <CksButton
