@@ -1,4 +1,5 @@
-import { Text, Box, Grid, Card, CardBody, CardFooter, Button } from "grommet";
+import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
+import CksButton from "../../components/buttons/cksButtons";
 //import { useSelector, useDispatch } from "react-redux";
 //import { RootState } from '../../redux/store';
 import React, { useEffect, useState, useRef } from "react";
@@ -103,12 +104,8 @@ function Home() {
               <Text size="medium">Welcome, Chris!</Text>
               <Text>Your profile is ready to explore.</Text>
               <Box direction="row" gap="small" margin={{ top: "small" }}>
-                <Button
-                  label="Log Out"
-                  //onClick={handleLogout}
-                  //style={buttonStyles.default as React.CSSProperties}
-                />
-                <Button
+                <CksButton label="Log Out" />
+                <CksButton
                   label="Go to Profile"
                   onClick={() => navigate("/profile")}
                   //style={buttonStyles.default}
@@ -125,12 +122,12 @@ function Home() {
                 Login or Sign Up
               </Text>
               <Box direction="row" gap="small" margin={{ top: "small" }}>
-                <Button
+                <CksButton
                   onClick={() => setShowLogin(true)}
                   label="Login"
                   //style={buttonStyles.default}
                 />
-                <Button
+                <CksButton
                   onClick={() => navigate("/register")}
                   label="Sign Up"
                   //style={buttonStyles.default}

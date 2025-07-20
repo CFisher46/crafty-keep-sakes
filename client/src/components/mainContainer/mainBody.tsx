@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "../../features/landingPage/page";
+import Shop from "../../features/products/page";
 // import About from '../../pages/about/aboutUs';
 // import Shop from '../../pages/shop/shop';
 // import Blog from '../../pages/blog/blog';
@@ -19,6 +20,7 @@ function MainBody() {
         <Routes>
           <Route path="/" element={<Navigate to="/Home" />} />
           <Route path="/Home" element={<LandingPage />} />
+          <Route path="/Shop" element={<Shop />} />
           {/* <Route path="/About" element={<About />} />
           <Route path="/Blog" element={<Blog />} />
           <Route path="/Shop" element={<Shop />} />

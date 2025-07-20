@@ -4,16 +4,20 @@ import { GetAllProductsQuery } from "./sql";
 
 const router = express.Router();
 
-router.get("/", async (_req, res) => {
-  console.log("GET /api/products called");
+router.get("/", async (req, res) => {
+  console.log("GET /api/products/filter called");
   try {
-    const [rows] = await db.query(GetAllProductsQuery());
+    const queryParams = req.query;
+    const sqlQuery = GetAllProductsQuery(queryParams);
+
+    const [rows] = await db.query(sqlQuery);
     const parsedResult = JSON.parse(
       (rows as { result: string }[])?.[0]?.result || "{}"
     );
+
     res.json(parsedResult);
   } catch (err) {
-    console.error("DB Error:", err);
+    console.error("Filter DB Error:", err);
     res.status(500).json({ error: "Database error" });
   }
 });
