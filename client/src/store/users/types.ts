@@ -21,4 +21,5 @@ export interface UsersState {
   selectedUser: User | null;
   loading: boolean;
   error: string | null;
+  isLoggedIn: boolean;
 }

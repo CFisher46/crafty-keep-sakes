@@ -14,7 +14,8 @@ const initialState: UsersState = {
   list: [],
   selectedUser: null,
   loading: false,
-  error: null
+  error: null,
+  isLoggedIn: false
 };
 
 const userSlice = createSlice({

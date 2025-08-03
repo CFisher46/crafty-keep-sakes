@@ -86,3 +86,20 @@ export const updateProduct = createAsyncThunk<
     return rejectWithValue("Network error");
   }
 });
+
+export const fetchFilteredProducts = createAsyncThunk(
+  "products/fetchFilteredProducts",
+  async (filters: Record<string, string>, { rejectWithValue }) => {
+    try {
+      const queryParams = new URLSearchParams(filters).toString();
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/products/filter?${queryParams}`
+      );
+      if (!res.ok) throw new Error("Failed to fetch products");
+      const json = await res.json();
+      return json.data; // This is important: unwrap `.data`
+    } catch (err: any) {
+      return rejectWithValue(err.message);
+    }
+  }
+);
