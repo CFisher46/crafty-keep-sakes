@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 
 const router = express.Router();
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 router.get("/me", async (req: any, res: any) => {
   const token = req.cookies.auth_token; // or req.headers.authorization
 
@@ -12,6 +13,7 @@ router.get("/me", async (req: any, res: any) => {
     const user = jwt.verify(token, process.env.JWT_SECRET!);
     res.json({ user, authenticated: true });
   } catch (err) {
+    console.error("Token verification error:", err);
     res.status(401).json({ message: "Invalid token" });
   }
 });

@@ -22,12 +22,13 @@ router.get("/filter", async (req, res) => {
     );
 
     if (Array.isArray(parsedResult?.data)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       parsedResult.data = parsedResult.data.map((product: any) => {
         if (typeof product.images === "string") {
           try {
             product.images = JSON.parse(product.images);
           } catch (err) {
-            console.warn("Failed to parse product.images", product.images);
+            console.warn("Failed to parse product.images", err);
             product.images = [];
           }
         }
