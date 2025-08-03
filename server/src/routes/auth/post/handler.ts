@@ -18,6 +18,7 @@ router.post("/login", async (req: any, res: any) => {
 
   try {
     const [rows] = await db.query(getUserByEmail(), [email]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const user = (rows as any)[0];
 
     user.first_name = decrypt(user.first_name);
