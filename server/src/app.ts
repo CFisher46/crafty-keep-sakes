@@ -1,5 +1,6 @@
 // src/app.ts
 import express from "express";
+import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
@@ -12,6 +13,7 @@ dotenv.config();
 
 const app = express();
 
+app.use(cookieParser());
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -24,6 +26,7 @@ app.use(express.json());
 app.use("/api/products", productsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/auth", authRoutes);
+app.use("/api/auth/me", authRoutes);
 
 app.use(
   "/images",

@@ -14,10 +14,16 @@ import {
 } from "../../store/products/productsSlice";
 import { Product } from "../../store/products/types";
 import { fetchAllProducts } from "../../store/products/productsThunks";
+import { checkAuth, performLogout } from "../../store/auth/authThunks";
 import Login from "../../components/login/login";
 import { RootState } from "../../store";
 
 function Home() {
+  useEffect(() => {
+    const cookiePresent = dispatch(checkAuth());
+    console.log("Cookie Present:", cookiePresent);
+  }, []);
+
   const isLoggedIn = useAppSelector(
     (state: RootState) => state.auth.isLoggedIn
   );
@@ -40,7 +46,7 @@ function Home() {
     dispatch(fetchAllProducts());
   }, [dispatch]);
 
-  const handleLogout = () => dispatch(logout());
+  const handleLogout = () => dispatch(performLogout());
 
   useEffect(() => {
     const filteredProducts = products.filter(
