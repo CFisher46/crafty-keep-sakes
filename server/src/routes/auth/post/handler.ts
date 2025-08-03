@@ -6,9 +6,9 @@ import { getUserByEmail } from "./sql"; // Your SQL query for user lookup
 import { decrypt } from "../../../ts-common/helpers"; // Your decryption function
 
 const router = express.Router();
-
 const JWT_SECRET = process.env.JWT_SECRET || "your-dev-secret";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 router.post("/login", async (req: any, res: any) => {
   const { email, password, rememberMe } = req.body;
 
