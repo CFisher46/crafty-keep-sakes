@@ -1,12 +1,11 @@
 import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
 import CksButton from "../../components/buttons/cksButtons";
-//import { useSelector, useDispatch } from "react-redux";
-//import { RootState } from '../../redux/store';
-import React, { useEffect, useState, useRef } from "react";
-//import Login from '../login/login';
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { loginSuccess, logout } from "../../store/auth/authSlice";
+
 //import { buttonStyles } from '../../helpers/styles';
-//import { logout } from '../../helpers/authHelpers';
+
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   selectAllProducts,
@@ -16,9 +15,16 @@ import {
 import { Product } from "../../store/products/types";
 import { fetchAllProducts } from "../../store/products/productsThunks";
 import Login from "../../components/login/login";
+import { RootState } from "../../store";
+
 function Home() {
-  //const { isLoggedIn, user } = useState(false); //useSelector((state: RootState) => state.user);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); //temporary state for login status
+  const isLoggedIn = useAppSelector(
+    (state: RootState) => state.auth.isLoggedIn
+  );
+  console.log("Is Logged In:", isLoggedIn);
+
+  const userDetails = useAppSelector((state: RootState) => state.auth.user);
+  const user = useAppSelector((state: RootState) => state.users.selectedUser);
   const [showLogin, setShowLogin] = useState(false);
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   const navigate = useNavigate();
@@ -34,7 +40,7 @@ function Home() {
     dispatch(fetchAllProducts());
   }, [dispatch]);
 
-  //const handleLogout = () => logout(dispatch, navigate);
+  const handleLogout = () => dispatch(logout());
 
   useEffect(() => {
     const filteredProducts = products.filter(
@@ -62,6 +68,7 @@ function Home() {
   if (loading) return <p>Loading products...</p>;
   if (error) return <p>Error: {error}</p>;
 
+  console.log("Users Firstname:", userDetails?.first_name);
   return (
     <Box pad="medium">
       <Grid
@@ -100,11 +107,16 @@ function Home() {
         >
           {isLoggedIn ? (
             <Box gap={"small"}>
-              {/* <Text size="medium">Welcome, {user.first_name}!</Text> */}
-              <Text size="medium">Welcome, Chris!</Text>
+              <Text size="medium">
+                Welcome, {userDetails ? userDetails.first_name : ""}!
+              </Text>
               <Text>Your profile is ready to explore.</Text>
               <Box direction="row" gap="small" margin={{ top: "small" }}>
-                <CksButton label="Log Out" />
+                <CksButton
+                  label="Log Out"
+                  onClick={handleLogout}
+                  status="enabled"
+                />
                 <CksButton
                   label="Go to Profile"
                   onClick={() => navigate("/profile")}
@@ -125,6 +137,7 @@ function Home() {
                 <CksButton
                   onClick={() => setShowLogin(true)}
                   label="Login"
+                  status="enabled"
                   //style={buttonStyles.default}
                 />
                 <CksButton

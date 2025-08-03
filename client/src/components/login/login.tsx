@@ -1,7 +1,8 @@
 import { Form, Box, Text, TextInput, Button } from "grommet";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
-//import { setUser } from '../../redux/userSlice';
+import { loginSuccess } from "../../store/auth/authSlice";
+
 import { useNavigate } from "react-router-dom";
 //import { buttonStyles } from '../../helpers/styles';
 
@@ -34,7 +35,7 @@ function UserLogin() {
       }
 
       const result = await response.json();
-      //dispatch(setUser(result.user));
+      dispatch(loginSuccess(result.user));
 
       const consent = localStorage.getItem("cookieConsent");
       if (consent === "accepted") {
