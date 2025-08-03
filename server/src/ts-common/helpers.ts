@@ -1,17 +1,21 @@
-import bcrypt from "bcryptjs";
+import crypto from "crypto";
 
 const algorithm = "aes-256-cbc";
-const key = Buffer.from(process.env.ENCRYPTION_KEY, "hex");
+const encryptionKey = process.env.ENCRYPTION_KEY;
+if (!encryptionKey) {
+  throw new Error("ENCRYPTION_KEY environment variable is not set.");
+}
+const key = Buffer.from(encryptionKey, "hex");
 const iv = crypto.randomBytes(16);
 
-function encrypt(text) {
+export function encrypt(text: string) {
   let cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
   return `${iv.toString("hex")}:${encrypted}`;
 }
 
-export function decrypt(encryptedText) {
+export function decrypt(encryptedText: string) {
   const [ivHex, encrypted] = encryptedText.split(":");
   const iv = Buffer.from(ivHex, "hex");
   const decipher = crypto.createDecipheriv(algorithm, key, iv);

@@ -2,7 +2,7 @@ import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
 import CksButton from "../../components/buttons/cksButtons";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { loginSuccess, logout } from "../../store/auth/authSlice";
+import { logout } from "../../store/auth/authSlice";
 
 //import { buttonStyles } from '../../helpers/styles';
 
@@ -68,7 +68,6 @@ function Home() {
   if (loading) return <p>Loading products...</p>;
   if (error) return <p>Error: {error}</p>;
 
-  console.log("Users Firstname:", userDetails?.first_name);
   return (
     <Box pad="medium">
       <Grid

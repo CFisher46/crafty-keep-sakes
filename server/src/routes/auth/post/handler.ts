@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { db } from "../../../ts-common/database";
 import { getUserByEmail } from "./sql"; // Your SQL query for user lookup
+import { decrypt } from "../../../ts-common/helpers"; // Your decryption function
 
 const router = express.Router();
 
@@ -18,6 +19,8 @@ router.post("/login", async (req: any, res: any) => {
   try {
     const [rows] = await db.query(getUserByEmail(), [email]);
     const user = (rows as any)[0];
+
+    user.first_name = decrypt(user.first_name);
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
