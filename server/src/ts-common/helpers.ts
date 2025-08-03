@@ -9,7 +9,7 @@ const key = Buffer.from(encryptionKey, "hex");
 const iv = crypto.randomBytes(16);
 
 export function encrypt(text: string) {
-  let cipher = crypto.createCipheriv(algorithm, key, iv);
+  const cipher = crypto.createCipheriv(algorithm, key, iv);
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
   return `${iv.toString("hex")}:${encrypted}`;
