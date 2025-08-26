@@ -125,6 +125,7 @@ function Home() {
                 <CksButton
                   label="Go to Profile"
                   onClick={() => navigate("/profile")}
+                  status="enabled"
                   //style={buttonStyles.default}
                 />
               </Box>
