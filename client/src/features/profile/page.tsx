@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { fetchUserById } from "../../store/users/usersThunks";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
-import { useDispatch } from "react-redux";
+//import { useDispatch } from "react-redux";
 import { useAppDispatch } from "../../store/hooks";
 import { useParams } from "react-router-dom";
 
@@ -78,7 +78,8 @@ function UsersProfile() {
   });
 
   const [currentPassword, setCurrentPassword] = useState("");
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  //Removed setPasswordError for linting
+  const [passwordError] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -105,6 +106,7 @@ function UsersProfile() {
         ...selectedUser
       }); // Debugging log
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser]);
 
   const handleFieldChange = (field: string, value: string) => {

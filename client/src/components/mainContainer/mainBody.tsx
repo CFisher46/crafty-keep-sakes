@@ -1,3 +1,4 @@
+import { useLocation } from "react-router-dom";
 import { Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "../../features/landingPage/page";
 import Shop from "../../features/products/page";
@@ -14,10 +15,11 @@ import { Box } from "grommet";
 // import UserRegistration from '../../pages/registration/registration';
 
 function MainBody() {
+  const location = useLocation();
   return (
     <Box pad="xsmall">
       <Box pad="small" round="small" fill>
-        <Routes>
+        <Routes key={location.pathname}>
           <Route path="/" element={<Navigate to="/Home" />} />
           <Route path="/Home" element={<LandingPage />} />
           {/* <Route path="/About" element={<About />} />

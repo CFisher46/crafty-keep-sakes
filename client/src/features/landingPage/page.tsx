@@ -2,8 +2,8 @@ import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
 import CksButton from "../../components/buttons/cksButtons";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { logout } from "../../store/auth/authSlice";
 
+//import { logout } from "../../store/auth/authSlice";
 //import { buttonStyles } from '../../helpers/styles';
 
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
@@ -20,10 +20,12 @@ import { RootState } from "../../store";
 import { useSelector } from "react-redux";
 
 function Home() {
+  const dispatch = useAppDispatch();
+
   useEffect(() => {
     const cookiePresent = dispatch(checkAuth());
     console.log("Cookie Present:", cookiePresent);
-  }, []);
+  }, [dispatch]);
 
   const isLoggedIn = useAppSelector(
     (state: RootState) => state.auth.isLoggedIn
@@ -31,14 +33,13 @@ function Home() {
   console.log("Is Logged In:", isLoggedIn);
 
   const userDetails = useAppSelector((state: RootState) => state.auth.user);
-  const user = useAppSelector((state: RootState) => state.users.selectedUser);
+  //const user = useAppSelector((state: RootState) => state.users.selectedUser);
   const [showLogin, setShowLogin] = useState(false);
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   const navigate = useNavigate();
   const carouselRef = useRef<HTMLDivElement>(null);
   //const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
-  const dispatch = useAppDispatch();
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
   const error = useAppSelector(selectProductsError);

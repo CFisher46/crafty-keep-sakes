@@ -6,7 +6,8 @@ import SearchBar from "../header/searchBar";
 import NavigationBar from "../header/nav";
 import { NavigationBarProps } from "../header/types";
 import { checkAuth } from "../../store/auth/authThunks";
-import { useAppDispatch, useAppSelector } from "../../store/hooks";
+//removed useAppSelector import for linting
+import { useAppDispatch } from "../../store/hooks";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
 
@@ -15,7 +16,8 @@ function PageHeader() {
   const navigationRef = useRef<NavigationBarProps>(null);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const navigate = useNavigate();
-  const { items, totalItems } = useSelector((state: RootState) => state.basket);
+  // Removed items for linting
+  const { totalItems } = useSelector((state: RootState) => state.basket);
   const resetNavigationActive = () => {
     if (navigationRef.current) {
       navigationRef.current.resetActive?.();
@@ -25,11 +27,11 @@ function PageHeader() {
   useEffect(() => {
     const cookiePresent = dispatch(checkAuth());
     console.log("Cookie Present:", cookiePresent);
-  }, []);
+  }, [dispatch]);
 
-  const isLoggedIn = useAppSelector(
-    (state: RootState) => state.auth.isLoggedIn
-  );
+  // const isLoggedIn = useAppSelector(
+  //   (state: RootState) => state.auth.isLoggedIn
+  // );
 
   return (
     <Box
