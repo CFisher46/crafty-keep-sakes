@@ -29,9 +29,8 @@ export const fetchUserById = createAsyncThunk<User, string>(
       }
 
       const data = await res.json();
-
-      // If your response is { user: { ... } }
-      return data.user; // ✅ Must return a valid User object
+      console.log("API Response for fetchUserById:", data); // Debugging log
+      return data; // Return the root object directly
     } catch (error) {
       console.error("Thunk error:", error);
       return thunkAPI.rejectWithValue("Network or server error");

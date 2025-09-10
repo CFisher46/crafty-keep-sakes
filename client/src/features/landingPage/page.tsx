@@ -17,6 +17,7 @@ import { fetchAllProducts } from "../../store/products/productsThunks";
 import { checkAuth, performLogout } from "../../store/auth/authThunks";
 import Login from "../../components/login/login";
 import { RootState } from "../../store";
+import { useSelector } from "react-redux";
 
 function Home() {
   useEffect(() => {
@@ -41,6 +42,7 @@ function Home() {
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
   const error = useAppSelector(selectProductsError);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
 
   useEffect(() => {
     dispatch(fetchAllProducts());
@@ -124,7 +126,7 @@ function Home() {
                 />
                 <CksButton
                   label="Go to Profile"
-                  onClick={() => navigate("/profile")}
+                  onClick={() => navigate(`/profile/${userId}`)}
                   status="enabled"
                   //style={buttonStyles.default}
                 />

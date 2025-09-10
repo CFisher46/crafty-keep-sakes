@@ -6,6 +6,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../store";
 import { useDispatch } from "react-redux";
 import { useAppDispatch } from "../../store/hooks";
+import { useParams } from "react-router-dom";
 
 //import { buttonStyles } from '../../helpers/styles';
 
@@ -53,17 +54,30 @@ const InputField = ({
 );
 
 function UsersProfile() {
+  const { id: userId } = useParams<{ id: string }>(); // Extract userId from URL
   const dispatch = useAppDispatch();
-  const initialUserState = useSelector(
+  const selectedUser = useSelector(
     (state: RootState) => state.users.selectedUser
   );
+
   const [userData, setUserData] = useState({
-    ...initialUserState,
+    id: "",
+    email_address: "",
+    first_name: "",
+    last_name: "",
+    address_line1: "",
+    address_line2: "",
+    address_line3: "",
+    town: "",
+    county: "",
+    postcode: "",
+    telephone_number: "",
+    type: "",
     new_password: "",
     confirm_new_password: ""
   });
+
   const [currentPassword, setCurrentPassword] = useState("");
-  const [isCurrentPasswordValid, setIsCurrentPasswordValid] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -72,65 +86,35 @@ function UsersProfile() {
   const labelStyle = { width: "100%", textAlign: "left" as "left" };
 
   useEffect(() => {
-    const loadUserData = async () => {
-      if (!userData.id) {
-        console.error("User ID is undefined");
-        return;
-      }
+    if (userId) {
+      dispatch(fetchUserById(userId));
+    } else {
+      console.error("User ID is undefined");
+    }
+  }, [userId, dispatch]);
 
-      try {
-        // Use .unwrap() to get the resolved value of the thunk
-        const data = await dispatch(fetchUserById(userData.id)).unwrap();
-        setUserData({
-          id: data.id || "",
-          email_address: data.email_address || "",
-          first_name: data.first_name || "",
-          last_name: data.last_name || "",
-          address_line1: data.address_line1 || "",
-          address_line2: data.address_line2 || "",
-          address_line3: data.address_line3 || "",
-          town: data.town || "",
-          county: data.county || "",
-          postcode: data.postcode || "",
-          telephone_number: data.telephone_number || "",
-          type: data.type || "",
-          new_password: "",
-          confirm_new_password: ""
-        });
-      } catch (error) {
-        console.error("Error fetching user data:", error);
-      }
-    };
-
-    loadUserData();
-  }, [dispatch, userData.id]);
+  useEffect(() => {
+    console.log("Selected User from Redux Store:", selectedUser); // Debugging log
+    if (selectedUser) {
+      setUserData((prev) => ({
+        ...prev,
+        ...selectedUser
+      }));
+      console.log("Updated userData state:", {
+        ...userData,
+        ...selectedUser
+      }); // Debugging log
+    }
+  }, [selectedUser]);
 
   const handleFieldChange = (field: string, value: string) => {
     setUserData((prev) => ({ ...prev, [field]: value }));
   };
 
-  //   const handleVerifyPassword = async () => {
-  //     try {
-  //       const isValid = await verifyCurrentPassword(
-  //         userData.id || "",
-  //         currentPassword
-  //       );
-  //       setIsCurrentPasswordValid(isValid);
-  //       if (!isValid) {
-  //         setPasswordError("Current password is incorrect");
-  //       } else {
-  //         setPasswordError(null);
-  //       }
-  //     } catch (error) {
-  //       console.error("Error verifying current password:", error);
-  //       setPasswordError("Error verifying password");
-  //     }
-  //   };
-
   return (
     <Form>
       <Grid columns={["450px", "400px", "420px"]} gap="small">
-        <Box border round="small" pad="medium" gap="small" background={"white"}>
+        <Box border round="small" pad="medium" gap="small" background="white">
           {[
             { label: "UserName", field: "email_address" },
             { label: "FirstName", field: "first_name" },
@@ -145,19 +129,11 @@ function UsersProfile() {
             <InputField
               key={label}
               label={label}
-              placeholder={
-                userData[field as keyof typeof userData] !== undefined
-                  ? String(userData[field as keyof typeof userData])
-                  : ""
-              }
+              placeholder={userData[field as keyof typeof userData] || ""}
               inputStyle={inputStyle}
               labelStyle={labelStyle}
               onChange={(value) => handleFieldChange(field, value)}
-              value={
-                userData[field as keyof typeof userData] !== undefined
-                  ? String(userData[field as keyof typeof userData])
-                  : ""
-              }
+              value={userData[field as keyof typeof userData] || ""}
             />
           ))}
         </Box>
@@ -179,44 +155,37 @@ function UsersProfile() {
             />
             <Button
               label="Verify Password"
-              //   onClick={handleVerifyPassword}
-              //   style={buttonStyles.default}
+              // Add password verification logic here
             />
             {passwordError && (
               <Text color="status-critical">{passwordError}</Text>
             )}
-            {isCurrentPasswordValid && (
-              <>
-                <InputField
-                  label="New Password"
-                  value={userData.new_password || ""}
-                  placeholder="Enter new password"
-                  inputStyle={inputStyle}
-                  labelStyle={labelStyle}
-                  onChange={(value) => handleFieldChange("new_password", value)}
-                  type={showNewPassword ? "text" : "password"}
-                  isPassword
-                  toggleVisibility={() => setShowNewPassword((prev) => !prev)}
-                  isVisible={showNewPassword}
-                />
-                <InputField
-                  label="Confirm Password"
-                  value={userData.confirm_new_password || ""}
-                  placeholder="Confirm new password"
-                  inputStyle={inputStyle}
-                  labelStyle={labelStyle}
-                  onChange={(value) =>
-                    handleFieldChange("confirm_new_password", value)
-                  }
-                  type={showConfirmPassword ? "text" : "password"}
-                  isPassword
-                  toggleVisibility={() =>
-                    setShowConfirmPassword((prev) => !prev)
-                  }
-                  isVisible={showConfirmPassword}
-                />
-              </>
-            )}
+            <InputField
+              label="New Password"
+              value={userData.new_password || ""}
+              placeholder="Enter new password"
+              inputStyle={inputStyle}
+              labelStyle={labelStyle}
+              onChange={(value) => handleFieldChange("new_password", value)}
+              type={showNewPassword ? "text" : "password"}
+              isPassword
+              toggleVisibility={() => setShowNewPassword((prev) => !prev)}
+              isVisible={showNewPassword}
+            />
+            <InputField
+              label="Confirm Password"
+              value={userData.confirm_new_password || ""}
+              placeholder="Confirm new password"
+              inputStyle={inputStyle}
+              labelStyle={labelStyle}
+              onChange={(value) =>
+                handleFieldChange("confirm_new_password", value)
+              }
+              type={showConfirmPassword ? "text" : "password"}
+              isPassword
+              toggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
+              isVisible={showConfirmPassword}
+            />
           </Box>
           <Box border round="small" pad="medium" gap="small" background="white">
             <Text style={labelStyle}>Action buttons?</Text>

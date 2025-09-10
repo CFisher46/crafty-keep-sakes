@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { loginSuccess, logout } from "./authSlice";
+import { fetchUserById } from "../users/usersThunks";
 
 export const checkAuth = createAsyncThunk("auth/check", async (_, thunkAPI) => {
   try {
@@ -15,6 +16,10 @@ export const checkAuth = createAsyncThunk("auth/check", async (_, thunkAPI) => {
     const { user } = await response.json();
 
     thunkAPI.dispatch(loginSuccess(user)); // ✅ Sets both isLoggedIn + user
+
+    if (user.id) {
+      await thunkAPI.dispatch(fetchUserById(user.id));
+    }
     return user;
   } catch (err) {
     thunkAPI.dispatch(logout()); // clears state

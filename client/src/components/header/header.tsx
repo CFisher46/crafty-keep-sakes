@@ -13,6 +13,7 @@ import { useSelector } from "react-redux";
 function PageHeader() {
   const dispatch = useAppDispatch();
   const navigationRef = useRef<NavigationBarProps>(null);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
   const navigate = useNavigate();
   const { items, totalItems } = useSelector((state: RootState) => state.basket);
   const resetNavigationActive = () => {
@@ -88,7 +89,7 @@ function PageHeader() {
             )}
           </Box>
           <Button
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate(`/profile/${userId}`)}
             icon={<User />}
             plain
             //disabled={!isLoggedIn}

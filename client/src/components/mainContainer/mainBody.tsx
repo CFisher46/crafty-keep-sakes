@@ -25,7 +25,7 @@ function MainBody() {
           <Route path="/Shop" element={<Shop />} />
           <Route path="/Basket" element={<ShoppingBasket />} />
           <Route
-            path="/profile"
+            path="/profile/:id"
             element={
               <ProtectedRoute
                 element={<Profile />}
