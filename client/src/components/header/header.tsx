@@ -2,25 +2,36 @@ import { Header, Box, Button, Image, Text } from "grommet";
 import { Basket, User } from "grommet-icons";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
-import { useDispatch, useSelector } from "react-redux";
 import SearchBar from "../header/searchBar";
 import NavigationBar from "../header/nav";
 import { NavigationBarProps } from "../header/types";
+import { checkAuth } from "../../store/auth/authThunks";
+//removed useAppSelector import for linting
+import { useAppDispatch } from "../../store/hooks";
+import { RootState } from "../../store";
+import { useSelector } from "react-redux";
 
 function PageHeader() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const navigationRef = useRef<NavigationBarProps>(null);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
   const navigate = useNavigate();
-
+  // Removed items for linting
+  const { totalItems } = useSelector((state: RootState) => state.basket);
   const resetNavigationActive = () => {
     if (navigationRef.current) {
       navigationRef.current.resetActive?.();
     }
   };
 
-  //   useEffect(() => {
-  //     checkLogin(dispatch);
-  //   }, [isLoggedIn, dispatch]);
+  useEffect(() => {
+    const cookiePresent = dispatch(checkAuth());
+    console.log("Cookie Present:", cookiePresent);
+  }, [dispatch]);
+
+  // const isLoggedIn = useAppSelector(
+  //   (state: RootState) => state.auth.isLoggedIn
+  // );
 
   return (
     <Box
@@ -61,7 +72,7 @@ function PageHeader() {
               icon={<Basket />}
               onClick={() => navigate("/Basket")}
             />
-            {/* {totalItems > 0 && (
+            {totalItems > 0 && (
               <Box
                 background="status-critical"
                 pad={{ horizontal: "xsmall" }}
@@ -77,10 +88,10 @@ function PageHeader() {
                   {totalItems}
                 </Text>
               </Box>
-            )} */}
+            )}
           </Box>
           <Button
-            onClick={() => navigate("/profile")}
+            onClick={() => navigate(`/profile/${userId}`)}
             icon={<User />}
             plain
             //disabled={!isLoggedIn}

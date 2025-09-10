@@ -28,6 +28,7 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+
       .addCase(fetchAllUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -47,7 +48,9 @@ const userSlice = createSlice({
       .addCase(
         fetchUserById.fulfilled,
         (state, action: PayloadAction<User>) => {
+          state.loading = false;
           state.selectedUser = action.payload;
+          console.log("Selected user set in state:", action.payload);
         }
       )
 

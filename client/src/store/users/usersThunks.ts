@@ -12,15 +12,29 @@ export const fetchAllUsers = createAsyncThunk("users/fetchAll", async () => {
   return parsedData || [];
 });
 
-export const fetchUserById = createAsyncThunk(
-  "users/fetchById",
-  async (id: string) => {
-    const res = await fetch(`${API_URL}/api/users/${id}`);
-    const data = await res.json();
-    const parsedResult = JSON.parse(data[0].result);
-    const user = JSON.parse(parsedResult.data)[0];
+export const fetchUserById = createAsyncThunk<User, string>(
+  "users/fetchUserById",
+  async (id, thunkAPI) => {
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/api/users/${id}`,
+        {
+          credentials: "include"
+        }
+      );
 
-    return user as User;
+      if (!res.ok) {
+        const message = await res.text();
+        return thunkAPI.rejectWithValue(`Error: ${res.status} - ${message}`);
+      }
+
+      const data = await res.json();
+      console.log("API Response for fetchUserById:", data); // Debugging log
+      return data; // Return the root object directly
+    } catch (error) {
+      console.error("Thunk error:", error);
+      return thunkAPI.rejectWithValue("Network or server error");
+    }
   }
 );
 
@@ -59,3 +73,21 @@ export const deleteUser = createAsyncThunk(
     return id;
   }
 );
+
+export const verifyCurrentPassword = async (
+  userId: string,
+  currentPassword: string
+) => {
+  const response = await fetch(`${API_URL}/api/auth/verify-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, currentPassword })
+  });
+  console.log("User ID provided for verification:", userId);
+  if (!response.ok) {
+    throw new Error("Failed to verify password");
+  }
+
+  const data = await response.json();
+  return data.valid;
+};

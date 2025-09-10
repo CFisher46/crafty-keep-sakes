@@ -40,7 +40,15 @@ router.post("/login", async (req: any, res: any) => {
       id: user.id,
       first_name: user.first_name,
       email_address: user.email_address,
-      type: user.type
+      type: user.type,
+      last_name: user.last_name,
+      address_line1: user.address_line1,
+      address_line2: user.address_line2,
+      address_line3: user.address_line3,
+      town: user.town,
+      county: user.county,
+      postcode: user.postcode,
+      telephone_number: user.telephone_number
     };
 
     const token = jwt.sign(payload, JWT_SECRET, {
@@ -60,5 +68,9 @@ router.post("/login", async (req: any, res: any) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
+// router.post("/verify-password", async (req, res) => {
+//   const { userId, currentPassword } = req.body;
+// });
 
 export default router;

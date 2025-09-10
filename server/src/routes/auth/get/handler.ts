@@ -10,8 +10,15 @@ router.get("/me", async (req: any, res: any) => {
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
-    const user = jwt.verify(token, process.env.JWT_SECRET!);
-    res.json({ user, authenticated: true });
+    const user = jwt.verify(token, process.env.JWT_SECRET!) as jwt.JwtPayload;
+    res.json({
+      user: {
+        ...(user as object),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        type: (user as any).accountType // 👈 add alias for frontend consistency
+      },
+      authenticated: true
+    });
   } catch (err) {
     console.error("Token verification error:", err);
     res.status(401).json({ message: "Invalid token" });
