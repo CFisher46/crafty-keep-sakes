@@ -69,8 +69,8 @@ router.post("/login", async (req: any, res: any) => {
   }
 });
 
-router.post("/verify-password", async (req, res) => {
-  const { userId, currentPassword } = req.body;
-});
+// router.post("/verify-password", async (req, res) => {
+//   const { userId, currentPassword } = req.body;
+// });
 
 export default router;

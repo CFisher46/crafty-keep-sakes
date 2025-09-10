@@ -9,6 +9,7 @@ router.get("/:id", async (req: Request, res: Response) => {
   console.log("GET /api/users/{user_id} called");
   const { id } = req.params;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [rows]: any[] = await db.query(GetSpecificUsersQuery(id));
     const queryResult = rows[0]?.result;
 
