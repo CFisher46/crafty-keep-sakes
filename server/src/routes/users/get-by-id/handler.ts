@@ -27,16 +27,19 @@ router.get("/:id", async (req: Request, res: Response) => {
         user.telephone_number = decrypt(user.telephone_number);
 
         console.log("Decrypted user:", user);
-        return user;
+        return res.json(user); // Send the decrypted user as the response
       } else {
         console.error("No user data found in the query result.");
+        return res.status(404).json({ error: "User not found" });
       }
     } else {
       console.error("Query result is empty or undefined.");
+      return res.status(404).json({ error: "User not found" });
     }
   } catch (error) {
     console.error("Error fetching user:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
+
 export default router;
