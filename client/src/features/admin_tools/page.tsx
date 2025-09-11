@@ -36,7 +36,7 @@ function AdminTools() {
         <Button label="User Management" onClick={handleUserManagement} />
         {showUserManagementModal && (
           <CommonModal
-            title="User Management"
+            title="Create / Update / Delete Users."
             onClose={handleClose}
             type="user"
           />
