@@ -19,7 +19,6 @@ function Basket() {
   );
 
   const handleCheckout = () => {
-    console.log("Checkout completed");
     dispatch(clearBasket());
     localStorage.removeItem("basket");
   };

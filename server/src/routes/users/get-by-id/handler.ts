@@ -27,7 +27,6 @@ router.get("/:id", async (req: Request, res: Response) => {
         user.address_line3 = decrypt(user.address_line3);
         user.telephone_number = decrypt(user.telephone_number);
 
-        console.log("Decrypted user:", user);
         return res.json(user); // Send the decrypted user as the response
       } else {
         console.error("No user data found in the query result.");

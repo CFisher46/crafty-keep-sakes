@@ -29,7 +29,6 @@ export const fetchUserById = createAsyncThunk<User, string>(
       }
 
       const data = await res.json();
-      console.log("API Response for fetchUserById:", data); // Debugging log
       return data; // Return the root object directly
     } catch (error) {
       console.error("Thunk error:", error);
@@ -83,7 +82,6 @@ export const verifyCurrentPassword = async (
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, currentPassword })
   });
-  console.log("User ID provided for verification:", userId);
   if (!response.ok) {
     throw new Error("Failed to verify password");
   }

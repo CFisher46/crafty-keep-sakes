@@ -36,7 +36,6 @@ function UserLogin() {
 
       const result = await response.json();
       dispatch(loginSuccess(result.user));
-      console.log("Login successful:", result.user);
 
       const consent = localStorage.getItem("cookieConsent");
       if (consent === "accepted") {

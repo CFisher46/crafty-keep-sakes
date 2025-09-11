@@ -45,7 +45,6 @@ function Shop() {
         quantity: 1
       })
     );
-    console.log(`Added ${product.product_name} to cart`);
   };
 
   const loadProducts = async () => {

@@ -24,11 +24,6 @@ function PageHeader() {
     }
   };
 
-  useEffect(() => {
-    const cookiePresent = dispatch(checkAuth());
-    console.log("Cookie Present:", cookiePresent);
-  }, [dispatch]);
-
   // const isLoggedIn = useAppSelector(
   //   (state: RootState) => state.auth.isLoggedIn
   // );

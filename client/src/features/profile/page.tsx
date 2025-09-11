@@ -95,16 +95,11 @@ function UsersProfile() {
   }, [userId, dispatch]);
 
   useEffect(() => {
-    console.log("Selected User from Redux Store:", selectedUser); // Debugging log
     if (selectedUser) {
       setUserData((prev) => ({
         ...prev,
         ...selectedUser
       }));
-      console.log("Updated userData state:", {
-        ...userData,
-        ...selectedUser
-      }); // Debugging log
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser]);
