@@ -1,16 +1,39 @@
 import { Box, Nav, Button } from "grommet";
 import { Book, Shop, Inbox, ShieldSecurity, Edit } from "grommet-icons";
-import { useState, useRef, useEffect, JSX } from "react";
+import { useState, useRef, JSX, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { NavigationBarProps } from "../header/types";
+import { useSelector } from "react-redux";
+import { RootState } from "../../store";
+import { useAppDispatch } from "../../store/hooks";
+import { fetchUserById } from "../../store/users/usersThunks";
+// import { buttonStyles } from '../../../helpers/styles';
 
-function NavigationBar({ onNavigate, resetActive }: NavigationBarProps) {
+function NavigationBar({
+  onNavigate,
+  resetActive
+}: {
+  onNavigate: (route: string) => void;
+  resetActive: () => void;
+}) {
   const [hovered, setHovered] = useState<string | undefined>();
   const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const dispatch = useAppDispatch();
   const location = useLocation();
+  const isLoggedIn = useSelector((state: RootState) => state.users.isLoggedIn);
 
   const activeRoute = location.pathname;
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+
+  useEffect(() => {
+    if (isLoggedIn && userId) {
+      dispatch(fetchUserById(userId));
+    }
+  }, [isLoggedIn, userId, dispatch]);
+
+  const userType = useSelector(
+    (state: RootState) => state.users.selectedUser?.type
+  );
 
   const SidebarButton = ({
     label,
@@ -32,7 +55,7 @@ function NavigationBar({ onNavigate, resetActive }: NavigationBarProps) {
       style={{
         padding: "8px 15px",
         textAlign: "center",
-
+        backgroundColor: route === activeRoute ? "#D3D3D3" : "",
         borderRadius: "4px"
       }}
       onClick={() => {
@@ -68,6 +91,11 @@ function NavigationBar({ onNavigate, resetActive }: NavigationBarProps) {
             label: "Blog",
             route: "/Blog",
             icon: <Book />
+          },
+          userType === "admin" && {
+            label: "Admin Tools",
+            route: "/Admin",
+            icon: <ShieldSecurity />
           },
           {
             label: "Contact Us",

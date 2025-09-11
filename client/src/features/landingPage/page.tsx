@@ -18,9 +18,11 @@ import { checkAuth, performLogout } from "../../store/auth/authThunks";
 import Login from "../../components/login/login";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
+import { clearSelectedUser } from "../../store/users/usersSlice";
 
 function Home() {
   const dispatch = useAppDispatch();
+  const userDetails = useAppSelector((state: RootState) => state.auth.user);
 
   useEffect(() => {
     const cookiePresent = dispatch(checkAuth());
@@ -32,8 +34,12 @@ function Home() {
   );
   console.log("Is Logged In:", isLoggedIn);
 
-  const userDetails = useAppSelector((state: RootState) => state.auth.user);
-  //const user = useAppSelector((state: RootState) => state.users.selectedUser);
+  useEffect(() => {
+    dispatch(clearSelectedUser());
+    console.log("Logged Out:", userDetails);
+  }, [dispatch, isLoggedIn, userDetails]);
+
+  // const user = useAppSelector((state: RootState) => state.users.selectedUser);
   const [showLogin, setShowLogin] = useState(false);
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   const navigate = useNavigate();

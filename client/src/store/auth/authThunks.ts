@@ -1,6 +1,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { loginSuccess, logout } from "./authSlice";
+import { loginSuccess, logout, resetState } from "./authSlice";
 import { fetchUserById } from "../users/usersThunks";
+import { clearSelectedUser } from "../users/usersSlice";
 
 export const checkAuth = createAsyncThunk("auth/check", async (_, thunkAPI) => {
   try {
@@ -37,6 +38,7 @@ export const performLogout = createAsyncThunk(
       });
 
       thunkAPI.dispatch(logout());
+      thunkAPI.dispatch(resetState());
     } catch (error) {
       console.error("Logout failed", error);
       thunkAPI.dispatch(logout()); // fallback
