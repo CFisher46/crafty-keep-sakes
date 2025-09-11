@@ -54,6 +54,7 @@ const InputField = ({
 );
 
 function UsersProfile() {
+  console.log(" Navigated to /Profile");
   const { id: userId } = useParams<{ id: string }>(); // Extract userId from URL
   const dispatch = useAppDispatch();
   const selectedUser = useSelector(
