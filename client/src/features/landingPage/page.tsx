@@ -2,66 +2,46 @@ import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
 import CksButton from "../../components/buttons/cksButtons";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-
-//import { logout } from "../../store/auth/authSlice";
-//import { buttonStyles } from '../../helpers/styles';
-
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import {
-  selectAllProducts,
-  selectProductsError,
-  selectProductsLoading
-} from "../../store/products/productsSlice";
-import { Product } from "../../store/products/types";
 import { fetchAllProducts } from "../../store/products/productsThunks";
 import { checkAuth, performLogout } from "../../store/auth/authThunks";
-import Login from "../../components/login/login";
-import { RootState } from "../../store";
-import { useSelector } from "react-redux";
 import { clearSelectedUser } from "../../store/users/usersSlice";
+import { Product } from "../../store/products/types";
+import Login from "../../components/login/login";
+import {
+  selectAllProducts,
+  selectProductsLoading,
+  selectProductsError
+} from "../../store/products/productsSlice";
+import { fetchUserById } from "../../store/users/usersThunks";
 
 function Home() {
   const dispatch = useAppDispatch();
-  const userDetails = useAppSelector((state: RootState) => state.auth.user);
-
-  useEffect(() => {
-    const cookiePresent = dispatch(checkAuth());
-    console.log("Cookie Present:", cookiePresent);
-  }, [dispatch]);
-
-  const isLoggedIn = useAppSelector(
-    (state: RootState) => state.auth.isLoggedIn
-  );
-  console.log("Is Logged In:", isLoggedIn);
-
-  useEffect(() => {
-    dispatch(clearSelectedUser());
-    console.log("Logged Out:", userDetails);
-  }, [dispatch, isLoggedIn, userDetails]);
-
-  // const user = useAppSelector((state: RootState) => state.users.selectedUser);
-  const [showLogin, setShowLogin] = useState(false);
-  const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   const navigate = useNavigate();
-  const carouselRef = useRef<HTMLDivElement>(null);
-  //const [hoveredCard, setHoveredCard] = useState<number | null>(null);
 
+  const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
+  const userDetails = useAppSelector((state) => state.auth.user);
+  const userType = useAppSelector((state) => state.users.selectedUser?.type);
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
   const error = useAppSelector(selectProductsError);
-  const userId = useSelector((state: RootState) => state.auth.user?.id);
+
+  const [showLogin, setShowLogin] = useState(false);
+  const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    dispatch(checkAuth());
+  }, [dispatch]);
 
   useEffect(() => {
     dispatch(fetchAllProducts());
   }, [dispatch]);
 
-  const handleLogout = () => dispatch(performLogout());
-
   useEffect(() => {
     const filteredProducts = products.filter(
       (product: Product) => product.on_sale
     );
-    console.log("Total Filtered Products:", filteredProducts.length);
     setOnSaleProducts(filteredProducts);
   }, [products]);
 
@@ -75,10 +55,21 @@ function Home() {
           carouselRef.current.scrollBy({ left: 200, behavior: "smooth" });
         }
       }
-    }, 5000); // Slowed down the interval to 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn && userDetails?.id) {
+      dispatch(fetchUserById(userDetails.id)); // Fetch user details to update userType
+    }
+  }, [isLoggedIn, userDetails?.id, dispatch]);
+
+  const handleLogout = () => {
+    dispatch(performLogout());
+    dispatch(clearSelectedUser());
+  };
 
   if (loading) return <p>Loading products...</p>;
   if (error) return <p>Error: {error}</p>;
@@ -125,6 +116,11 @@ function Home() {
                 Welcome, {userDetails ? userDetails.first_name : ""}!
               </Text>
               <Text>Your profile is ready to explore.</Text>
+              {userType === "admin" && (
+                <Text size="small" color="status-critical">
+                  Admin Access Granted
+                </Text>
+              )}
               <Box direction="row" gap="small" margin={{ top: "small" }}>
                 <CksButton
                   label="Log Out"
@@ -133,9 +129,8 @@ function Home() {
                 />
                 <CksButton
                   label="Go to Profile"
-                  onClick={() => navigate(`/profile/${userId}`)}
+                  onClick={() => navigate(`/profile/${userDetails?.id}`)}
                   status="enabled"
-                  //style={buttonStyles.default}
                 />
               </Box>
             </Box>
@@ -153,17 +148,16 @@ function Home() {
                   onClick={() => setShowLogin(true)}
                   label="Login"
                   status="enabled"
-                  //style={buttonStyles.default}
                 />
                 <CksButton
                   onClick={() => navigate("/register")}
                   label="Sign Up"
-                  //style={buttonStyles.default}
                 />
               </Box>
             </Box>
           )}
         </Box>
+
         <Box
           gridArea="bottom"
           background="#dcece9"
@@ -176,11 +170,11 @@ function Home() {
           </Text>
           <Box
             direction="row"
-            overflow="hidden" // Hides the scrollbar
+            overflow="hidden"
             style={{
               whiteSpace: "nowrap",
               scrollBehavior: "smooth",
-              scrollbarWidth: "none" // Hides scrollbar for Firefox
+              scrollbarWidth: "none"
             }}
             ref={carouselRef}
           >
