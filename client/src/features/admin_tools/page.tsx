@@ -18,6 +18,12 @@ function AdminTools() {
   const handleUserManagement = () => {
     setUserManagementModal(true);
   };
+  const handleClose = () => {
+    setUserManagementModal(false);
+    setProductShowModal(false);
+    setReportsShowModal(false);
+  };
+
   return (
     <Box pad={{ horizontal: "1px" }}>
       <Box
@@ -28,16 +34,31 @@ function AdminTools() {
         round="small"
       >
         <Button label="User Management" onClick={handleUserManagement} />
-        {showUserManagementModal &&
-          CommonModal("User Management", () => setUserManagementModal(false))}
+        {showUserManagementModal && (
+          <CommonModal
+            title="User Management"
+            onClose={handleClose}
+            type="user"
+          />
+        )}
         <Button label="Product Management" onClick={handleProductManagement} />
-        {showProductModal &&
-          CommonModal("Product Management", () => setProductShowModal(false))}
-        <Button label="Generate Reports" onClick={handleGenerateReports} />
-        {showReportsModal &&
-          CommonModal("Reports Management", () => setReportsShowModal(false))}
+        {showProductModal && (
+          <CommonModal
+            title="Product Management"
+            onClose={handleClose}
+            type="product"
+          />
+        )}
+        <Button label="Reports" onClick={handleGenerateReports} />
+        {showReportsModal && (
+          <CommonModal
+            title="Custom Reports"
+            onClose={handleClose}
+            type="reports"
+          />
+        )}
       </Box>
-      <Box margin={{ top: "medium" }} />
+      <Box height="20px" />
       <Box background={"white"} pad="medium" round="small">
         <Text>Reports Section</Text>
       </Box>
