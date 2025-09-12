@@ -2,18 +2,15 @@ import { Header, Box, Button, Image, Text } from "grommet";
 import { buttonStyles } from "../../helpers/formatting";
 import { Basket, User } from "grommet-icons";
 import { useNavigate } from "react-router-dom";
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import SearchBar from "../header/searchBar";
 import NavigationBar from "../header/nav";
 import { NavigationBarProps } from "../header/types";
-import { checkAuth } from "../../store/auth/authThunks";
 //removed useAppSelector import for linting
-import { useAppDispatch } from "../../store/hooks";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
 
 function PageHeader() {
-  const dispatch = useAppDispatch();
   const navigationRef = useRef<NavigationBarProps>(null);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const navigate = useNavigate();

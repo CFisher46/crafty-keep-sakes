@@ -1,4 +1,4 @@
-import { Box, Button, Text, Tab, Tabs } from "grommet";
+import { Box, Button, Tab, Tabs } from "grommet";
 import { Notes, SettingsOption } from "grommet-icons";
 import CommonModal from "../../components/modals/common-modal";
 import { AuditLogs } from "./audits/page";

@@ -4,7 +4,6 @@ import { useState, useRef, JSX } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
-import { buttonStyles } from "../../helpers/formatting";
 
 function NavigationBar({
   onNavigate,

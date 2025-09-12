@@ -1,7 +1,6 @@
 import React, { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { fetchAuditLogs } from "../../../store/audits/auditThunks";
-import { RootState } from "../../../store";
 import { Audit } from "./types";
 import {
   Table,

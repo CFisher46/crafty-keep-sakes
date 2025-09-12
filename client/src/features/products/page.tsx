@@ -1,36 +1,24 @@
 import { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-//import { addItemToBasket } from '../../redux/basketSlice';
 import { Form, Text, Box, Card, Grid, Button } from "grommet";
 // import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
-// import ProductModal from '../../components/shop/productModal';
-// import { buttonStyles } from '../../helpers/styles';
 import { useLocation } from "react-router-dom";
 import { fetchFilteredProducts } from "../../store/products/productsThunks";
-import CksButton from "../../components/buttons/cksButtons";
 import { addItemToBasket } from "../../store/basket/basketSlice";
+import {buttonStyles} from "../../helpers/formatting";
+import CommonModal from "../../components/modals/common-modal";
+import { Product } from "../../types";
+
 
 //TODO: change the products query to be dynamic based on the filters
 // and categories selected by the user rather than geting all products
 // including non-live.
 
-interface Product {
-  id: string;
-  name: string;
-  product_name: string;
-  category: string;
-  description: string;
-  price: number;
-  quantity: number;
-  on_sale: boolean;
-  is_live: boolean;
-  images: string[] | null;
-}
 
 function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
-  //   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  //   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const dispatch = useDispatch();
   const location = useLocation();
@@ -73,15 +61,15 @@ function Shop() {
     loadProducts();
   }, [location.search]);
 
-  //   const openModal = (product: Product) => {
-  //     setSelectedProduct(product);
-  //     setIsModalOpen(true);
-  //   };
+    const openModal = (product: Product) => {
+      setSelectedProduct(product);
+      setIsModalOpen(true);
+    };
 
-  //   const closeModal = () => {
-  //     setSelectedProduct(null);
-  //     setIsModalOpen(false);
-  //   };
+    const closeModal = () => {
+      setSelectedProduct(null);
+      setIsModalOpen(false);
+    };
 
   return (
     <Box>
@@ -136,19 +124,19 @@ function Shop() {
                   <Text>£{product.price}</Text>
                 </Box>
                 <Box pad={{ vertical: "small" }}>
-                  <CksButton
+                  <Button
                     label="Add to Basket"
-                    status="enabled"
+                    //status="enabled"
                     //primary
-                    //style={buttonStyles.default}
+                    style={buttonStyles.default}
                     onClick={() => handleAddToCart(product)}
                   />
                 </Box>
-                <CksButton
+                <Button
                   label="View Details"
-                  status="enabled"
-                  //onClick={() => openModal(product)}
-                  //style={buttonStyles.default}
+                  //status="enabled"
+                  onClick={() => openModal(product)}
+                  style={buttonStyles.default}
                 />
               </Card>
             ))
@@ -156,14 +144,15 @@ function Shop() {
         </Grid>
       </Form>
 
-      {/* {isModalOpen && selectedProduct && (
-        // <ProductModal
-        //   product={selectedProduct}
-        //   onClose={closeModal}
-        //   isOpen={isModalOpen}
-        // />
+      {isModalOpen && selectedProduct && (
+        <CommonModal
+          title="Product Details"
+          type="viewProducts"
+          values={selectedProduct}
+          onClose={closeModal}
+        />
       )
-      } */}
+      }
     </Box>
   );
 }
