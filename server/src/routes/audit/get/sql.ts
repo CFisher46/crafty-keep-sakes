@@ -1,6 +1,4 @@
-import { Audit } from "./types";
-
-export const getAudits = (audit: Audit) => {
+export const getAudits = () => {
   return `
     WITH filteredAudit AS (
     SELECT
