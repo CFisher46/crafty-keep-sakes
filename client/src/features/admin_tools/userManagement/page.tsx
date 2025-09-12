@@ -7,7 +7,8 @@ import { User } from "../../../store/users/types";
 const UserManagement = ({ title }: { title: string }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
-  const [chosenUser, setChosenUser] = useState<User | null>(null);
+  const [updateUser, setUpdateUser] = useState<User | null>(null);
+  const [createUser, setCreateUser] = useState(false);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
@@ -21,7 +22,7 @@ const UserManagement = ({ title }: { title: string }) => {
   const handleFetchUser = async () => {
     if (!selectedUser) return;
     const result = await dispatch(fetchUserById(selectedUser.id));
-    setChosenUser(result.payload as User);
+    setUpdateUser(result.payload as User);
   };
 
   return (
@@ -40,15 +41,31 @@ const UserManagement = ({ title }: { title: string }) => {
           onChange={({ option }) => setSelectedUser(option)}
           size="small"
         />
-        <Button size="small" label="Fetch User" onClick={handleFetchUser} />
+        <Button
+          size="small"
+          label="Find User"
+          onClick={() => {
+            handleFetchUser();
+            setCreateUser(false);
+          }}
+        />
+        <Button
+          size="small"
+          label="Create User"
+          onClick={() => {
+            setCreateUser(true);
+            setUpdateUser(null);
+            setSelectedUser(undefined);
+          }}
+        />
       </Box>
 
-      {chosenUser && (
+      {updateUser && (
         <Card
           pad="small"
           background="light-2"
           elevation="small"
-          // overflow="auto"
+          overflow="auto"
         >
           <Grid
             columns={["1/2", "1/2"]}
@@ -56,7 +73,7 @@ const UserManagement = ({ title }: { title: string }) => {
             pad="small"
             style={{ maxHeight: "850px", overflowY: "auto" }}
           >
-            {Object.entries(chosenUser)
+            {Object.entries(updateUser)
               .filter(
                 ([key]) =>
                   key !== "password" && key !== "invoice_id" && key !== "id"
@@ -83,6 +100,7 @@ const UserManagement = ({ title }: { title: string }) => {
           </Grid>
         </Card>
       )}
+      {createUser && <Box>Create User Form Placeholder</Box>}
     </Box>
   );
 };
