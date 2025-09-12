@@ -1,6 +1,6 @@
 // src/store/products/productsThunks.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { Product } from "../products/types";
+import { Product } from "../../types";
 
 export const fetchProductById = createAsyncThunk<Product, string>(
   "products/fetchById",

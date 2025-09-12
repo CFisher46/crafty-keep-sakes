@@ -2,7 +2,8 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "..";
 import { logout } from "../auth/authSlice"; // Import the logout action
 
-import { User, UsersState } from "../../store/users/types";
+import { UsersState } from "../../store/users/types";
+import { User } from "../../types";
 import {
   fetchAllUsers,
   fetchUserById,

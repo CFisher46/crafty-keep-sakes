@@ -6,7 +6,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchAllProducts } from "../../store/products/productsThunks";
 import { checkAuth, performLogout } from "../../store/auth/authThunks";
 import { clearSelectedUser } from "../../store/users/usersSlice";
-import { Product } from "../../store/products/types";
+import { Product } from "../../types";
 import Login from "../../components/login/login";
 import {
   selectAllProducts,

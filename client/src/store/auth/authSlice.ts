@@ -1,7 +1,7 @@
 // client/src/store/auth/authSlice.ts
 
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
-import { User } from "../users/types";
+import { User } from "../../types";
 
 interface AuthState {
   isLoggedIn: boolean;

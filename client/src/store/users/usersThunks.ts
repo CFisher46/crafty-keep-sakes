@@ -1,5 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
-import { User } from "../../store/users/types";
+import { User } from "../../types";
 
 const API_URL = process.env.REACT_APP_API_URL;
 

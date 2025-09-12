@@ -2,7 +2,7 @@ import { Box, Text, Button, Select, TextInput, Card, Grid } from "grommet";
 import { fetchAllUsers, fetchUserById } from "../../../store/users/usersThunks";
 import { useEffect, useState } from "react";
 import { useAppDispatch } from "../../../store/hooks";
-import { User } from "../../../store/users/types";
+import { User } from "../../../types";
 
 const UserManagement = ({ title }: { title: string }) => {
   const [users, setUsers] = useState<User[]>([]);

@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { RootState } from "../store";
 import { loginSuccess, logout } from "../store/auth/authSlice";
-import { User } from "../store/users/types";
+import { User } from "../types";
 
 const useAuth = () => {
   const dispatch = useAppDispatch();
