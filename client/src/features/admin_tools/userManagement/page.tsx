@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { useAppDispatch } from "../../../store/hooks";
 import { User } from "../../../types";
 import { buttonStyles } from "../../../helpers/formatting";
+import UpdateUser from "./updateUser"
 
 const UserManagement = ({ title }: { title: string }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
-  const [updateUser, setUpdateUser] = useState<User | null>(null);
+  const [userToUpdate, setUserToUpdate] = useState<User | null>(null);
   const [createUser, setCreateUser] = useState(false);
   const dispatch = useAppDispatch();
 
@@ -23,7 +24,7 @@ const UserManagement = ({ title }: { title: string }) => {
   const handleFetchUser = async () => {
     if (!selectedUser) return;
     const result = await dispatch(fetchUserById(selectedUser.id));
-    setUpdateUser(result.payload as User);
+    setUserToUpdate(result.payload as User);
   };
 
   return (
@@ -58,52 +59,15 @@ const UserManagement = ({ title }: { title: string }) => {
           label="Create User"
           onClick={() => {
             setCreateUser(true);
-            setUpdateUser(null);
+            setUserToUpdate(null);
             setSelectedUser(undefined);
           }}
           style={buttonStyles.default}
         />
       </Box>
 
-      {updateUser && (
-        <Card
-          pad="small"
-          background="light-2"
-          elevation="small"
-          overflow="auto"
-        >
-          <Grid
-            columns={["1/2", "1/2"]}
-            gap="small"
-            pad="small"
-            style={{ maxHeight: "850px", overflowY: "auto" }}
-          >
-            {Object.entries(updateUser)
-              .filter(
-                ([key]) =>
-                  key !== "password" && key !== "invoice_id" && key !== "id"
-              )
-              .map(([key, value], index) => (
-                <Box key={index} direction="column" gap="xsmall">
-                  <Text
-                    size="small"
-                    weight="bold"
-                    style={{ textTransform: "capitalize" }}
-                  >
-                    {key
-                      .replace(/_/g, " ")
-                      .replace(/\b\w/g, (char) => char.toUpperCase())}
-                    :
-                  </Text>
-                  <TextInput
-                    placeholder={String(value)}
-                    size="small"
-                    style={{ fontSize: "12px" }}
-                  />
-                </Box>
-              ))}
-          </Grid>
-        </Card>
+      {userToUpdate && (
+        <UpdateUser {...userToUpdate} />
       )}
       {createUser && <Box>Create User Form Placeholder</Box>}
     </Box>
