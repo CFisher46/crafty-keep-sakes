@@ -4,6 +4,7 @@ import { useState, useRef, JSX } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { RootState } from "../../store";
+import { buttonStyles } from "../../helpers/formatting";
 
 function NavigationBar({
   onNavigate,
@@ -44,7 +45,7 @@ function NavigationBar({
       style={{
         padding: "8px 15px",
         textAlign: "center",
-        backgroundColor: route === activeRoute ? "#D3D3D3" : "",
+        backgroundColor: route === activeRoute ? "#fce5f5" : "",
         borderRadius: "4px"
       }}
       onClick={() => {

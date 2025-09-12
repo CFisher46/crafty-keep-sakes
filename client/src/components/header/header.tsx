@@ -1,4 +1,5 @@
 import { Header, Box, Button, Image, Text } from "grommet";
+import { buttonStyles } from "../../helpers/formatting";
 import { Basket, User } from "grommet-icons";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useRef } from "react";
@@ -33,6 +34,8 @@ function PageHeader() {
       pad="xsmall"
       //style={headerStyles.container as React.CSSProperties}
       background={"white"}
+      elevation="small"
+      round="small"
     >
       <Header pad="xsmall">
         <Box pad={{ left: "small" }} align="center" justify="center">
@@ -55,7 +58,7 @@ function PageHeader() {
           <Button
             label="Search"
             onClick={() => console.log("Search clicked")}
-            //style={buttonStyles.default as React.CSSProperties}
+            style={buttonStyles.default}
             size="small"
           />
         </Box>

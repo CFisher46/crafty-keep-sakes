@@ -1,6 +1,9 @@
 import { Box, Button, Text, Tab, Tabs } from "grommet";
+import { Notes, SettingsOption } from "grommet-icons";
 import CommonModal from "../../components/modals/common-modal";
 import { AuditLogs } from "./audits/page";
+import { Reports } from "./reports/page";
+import { buttonStyles } from "../../helpers/formatting";
 import React from "react";
 
 function AdminTools() {
@@ -26,9 +29,15 @@ function AdminTools() {
   };
 
   return (
-    <Box pad={{ horizontal: "1px" }}>
+    <Box
+      pad={{ horizontal: "1px" }}
+      round="small"
+      gap="small"
+      background="white"
+      elevation="small"
+    >
       <Tabs>
-        <Tab title="Admin Tools">
+        <Tab title="Admin Tools" icon={<SettingsOption />}>
           <Box
             direction="row"
             justify="evenly"
@@ -36,7 +45,11 @@ function AdminTools() {
             pad="medium"
             round="small"
           >
-            <Button label="User Management" onClick={handleUserManagement} />
+            <Button
+              label="User Management"
+              onClick={handleUserManagement}
+              style={buttonStyles.default}
+            />
             {showUserManagementModal && (
               <CommonModal
                 title="Create / Update / Delete Users."
@@ -47,6 +60,7 @@ function AdminTools() {
             <Button
               label="Product Management"
               onClick={handleProductManagement}
+              style={buttonStyles.default}
             />
             {showProductModal && (
               <CommonModal
@@ -55,7 +69,11 @@ function AdminTools() {
                 type="product"
               />
             )}
-            <Button label="Reports" onClick={handleGenerateReports} />
+            <Button
+              label="Reports"
+              onClick={handleGenerateReports}
+              style={buttonStyles.default}
+            />
             {showReportsModal && (
               <CommonModal
                 title="Custom Reports"
@@ -65,11 +83,9 @@ function AdminTools() {
             )}
           </Box>
           <Box height="20px" />
-          <Box background={"white"} pad="medium" round="small">
-            <Text>Reports Section</Text>
-          </Box>
+          <Reports />
         </Tab>
-        <Tab title="Audit Logs">
+        <Tab title="Audit Logs" icon={<Notes />}>
           <AuditLogs />
         </Tab>
       </Tabs>

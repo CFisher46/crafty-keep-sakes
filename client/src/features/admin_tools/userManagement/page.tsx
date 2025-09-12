@@ -3,6 +3,7 @@ import { fetchAllUsers, fetchUserById } from "../../../store/users/usersThunks";
 import { useEffect, useState } from "react";
 import { useAppDispatch } from "../../../store/hooks";
 import { User } from "../../../types";
+import { buttonStyles } from "../../../helpers/formatting";
 
 const UserManagement = ({ title }: { title: string }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -41,6 +42,7 @@ const UserManagement = ({ title }: { title: string }) => {
           onChange={({ option }) => setSelectedUser(option)}
           size="small"
         />
+
         <Button
           size="small"
           label="Find User"
@@ -48,6 +50,8 @@ const UserManagement = ({ title }: { title: string }) => {
             handleFetchUser();
             setCreateUser(false);
           }}
+          style={buttonStyles.default}
+          disabled={!selectedUser}
         />
         <Button
           size="small"
@@ -57,6 +61,7 @@ const UserManagement = ({ title }: { title: string }) => {
             setUpdateUser(null);
             setSelectedUser(undefined);
           }}
+          style={buttonStyles.default}
         />
       </Box>
 
