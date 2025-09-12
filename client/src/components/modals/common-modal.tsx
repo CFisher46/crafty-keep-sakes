@@ -28,7 +28,7 @@ function CommonModal({
           {type === "user" && <UserManagement title={title} />}
           {type === "product" && <ProductManagement title={title} />}
           {type === "reports" && <CustomReports title={title} />}
-          {type === "viewProducts" && <ProductModal values={values} />}
+          {type === "viewProducts" && <ProductModal title={title} values={values} />}
         </Box>
       </Box>
     </Layer>

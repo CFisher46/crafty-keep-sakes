@@ -136,7 +136,7 @@ function Shop() {
                   label="View Details"
                   //status="enabled"
                   onClick={() => openModal(product)}
-                  style={buttonStyles.default}
+                  style={buttonStyles.default}  
                 />
               </Card>
             ))
@@ -146,7 +146,7 @@ function Shop() {
 
       {isModalOpen && selectedProduct && (
         <CommonModal
-          title="Product Details"
+          title={selectedProduct?.product_name || "Product Details"}
           type="viewProducts"
           values={selectedProduct}
           onClose={closeModal}

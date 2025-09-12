@@ -19,13 +19,13 @@ const customStyles = {
   },
 };
 
-function ProductModal(values: { values?: Product }) {
-    const product = values.values;
-
+function ProductModal({ title, values }: { title: string; values?: Product }) {
+  const product = values;
 
   if (!product) {
     return null;
   }
+
   // Parse images if they are a string
   const images: string[] = product.images
     ? typeof product.images === "string"
@@ -35,6 +35,8 @@ function ProductModal(values: { values?: Product }) {
 
   return (
     <Box pad="medium" gap="medium">
+          <Text>{title}</Text>
+
       {/* Gallery Section */}
       {images.length > 0 && (
         <Box height="medium" width="100%">
@@ -58,7 +60,7 @@ function ProductModal(values: { values?: Product }) {
         </Text>
         <Text>Description: {product.description}</Text>
         <Text>
-          Price: $
+          Price: £
           {typeof product.price === "number"
             ? product.price.toFixed(2)
             : "N/A"}
@@ -68,5 +70,4 @@ function ProductModal(values: { values?: Product }) {
     </Box>
   );
 }
-
 export default ProductModal;
