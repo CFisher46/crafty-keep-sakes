@@ -6,7 +6,7 @@ import { decrypt } from "../../../ts-common/helpers";
 const router = express.Router();
 
 router.get("/:id", async (req: Request, res: Response) => {
-  console.log("GET /api/users/{user_id} called");
+  console.log("GET /api/users/:id called");
   const { id } = req.params;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

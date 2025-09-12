@@ -35,7 +35,7 @@ const UserManagement = ({ title }: { title: string }) => {
           options={users}
           labelKey="id"
           valueKey={{ key: "id", reduce: true }}
-          value={selectedUser}
+          value={selectedUser?.id || "Select a User"}
           placeholder="Select a User"
           onChange={({ option }) => setSelectedUser(option)}
           size="small"
@@ -46,22 +46,24 @@ const UserManagement = ({ title }: { title: string }) => {
       {chosenUser && (
         <Card
           pad="small"
-          background="light-1"
+          background="light-2"
           elevation="small"
-          overflow="auto"
+          // overflow="auto"
         >
           <Grid
-            columns={["1/4", "3/4"]}
-            gap="xsmall"
-            pad={{ vertical: "xsmall" }}
-            style={{ maxHeight: "300px", overflowY: "auto" }}
+            columns={["1/2", "1/2"]}
+            gap="small"
+            pad="small"
+            style={{ maxHeight: "850px", overflowY: "auto" }}
           >
             {Object.entries(chosenUser)
-              .filter(([key]) => key !== "password" && key !== "invoice_id")
-              .map(([key, value]) => (
-                <>
+              .filter(
+                ([key]) =>
+                  key !== "password" && key !== "invoice_id" && key !== "id"
+              )
+              .map(([key, value], index) => (
+                <Box key={index} direction="column" gap="xsmall">
                   <Text
-                    key={`${key}-label`}
                     size="small"
                     weight="bold"
                     style={{ textTransform: "capitalize" }}
@@ -72,12 +74,11 @@ const UserManagement = ({ title }: { title: string }) => {
                     :
                   </Text>
                   <TextInput
-                    key={`${key}-input`}
                     placeholder={String(value)}
                     size="small"
                     style={{ fontSize: "12px" }}
                   />
-                </>
+                </Box>
               ))}
           </Grid>
         </Card>
