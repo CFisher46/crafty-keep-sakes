@@ -1,13 +1,13 @@
-import { Box, Nav, Button } from "grommet";
-import { Book, Shop, Inbox, ShieldSecurity, Edit } from "grommet-icons";
-import { useState, useRef, JSX } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store";
+import { Box, Nav, Button } from 'grommet';
+import { Book, Shop, Inbox, ShieldSecurity, Edit } from 'grommet-icons';
+import { useState, useRef, JSX } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
 
 function NavigationBar({
   onNavigate,
-  resetActive
+  resetActive,
 }: {
   onNavigate: (route: string) => void;
   resetActive: () => void;
@@ -42,10 +42,16 @@ function NavigationBar({
       size="small"
       plain
       style={{
-        padding: "8px 15px",
-        textAlign: "center",
-        backgroundColor: route === activeRoute ? "#fce5f5" : "",
-        borderRadius: "4px"
+        padding: '8px 15px',
+        textAlign: 'center',
+        backgroundColor:
+          route === activeRoute
+            ? '#fce5f5'
+            : hovered === label
+              ? '#a5effeff'
+              : '',
+        borderRadius: '4px',
+        transition: 'background-color 0.3s ease',
       }}
       onClick={() => {
         onNavigate(route);
@@ -63,36 +69,36 @@ function NavigationBar({
       width="60%"
       pad="small"
       alignSelf="center"
-      margin={{ horizontal: "auto" }}
+      margin={{ horizontal: 'auto' }}
     >
       <Nav direction="row" justify="evenly">
         {[
           {
-            label: "Shop",
-            route: "/Shop",
-            icon: <Shop />
+            label: 'Shop',
+            route: '/Shop',
+            icon: <Shop />,
           },
           {
-            label: "About",
-            route: "/About",
-            icon: <Edit />
+            label: 'About',
+            route: '/About',
+            icon: <Edit />,
           },
           {
-            label: "Blog",
-            route: "/Blog",
-            icon: <Book />
+            label: 'Blog',
+            route: '/Blog',
+            icon: <Book />,
           },
           isLoggedIn &&
-            userType === "admin" && {
-              label: "Admin Tools",
-              route: "/Admin",
-              icon: <ShieldSecurity />
+            userType === 'admin' && {
+              label: 'Admin Tools',
+              route: '/Admin',
+              icon: <ShieldSecurity />,
             },
           {
-            label: "Contact Us",
-            route: "/Contact",
-            icon: <Inbox />
-          }
+            label: 'Contact Us',
+            route: '/Contact',
+            icon: <Inbox />,
+          },
         ]
           .filter(
             (

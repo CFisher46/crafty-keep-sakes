@@ -1,10 +1,10 @@
-import { Box, Text, Button, Select, TextInput, Card, Grid } from "grommet";
-import { fetchAllUsers, fetchUserById } from "../../../store/users/usersThunks";
-import { useEffect, useState } from "react";
-import { useAppDispatch } from "../../../store/hooks";
-import { User } from "../../../types";
-import { buttonStyles } from "../../../helpers/formatting";
-import UpdateUser from "./updateUser"
+import { Box, Text, Button, Select } from 'grommet';
+import { fetchAllUsers, fetchUserById } from '../../../store/users/usersThunks';
+import { useEffect, useState } from 'react';
+import { useAppDispatch } from '../../../store/hooks';
+import { User } from '../../../types';
+import { buttonStyles } from '../../../helpers/formatting';
+import UpdateUser from './updateUser';
 
 const UserManagement = ({ title }: { title: string }) => {
   const [users, setUsers] = useState<User[]>([]);
@@ -37,8 +37,8 @@ const UserManagement = ({ title }: { title: string }) => {
         <Select
           options={users}
           labelKey="id"
-          valueKey={{ key: "id", reduce: true }}
-          value={selectedUser?.id || "Select a User"}
+          valueKey={{ key: 'id', reduce: true }}
+          value={selectedUser?.id || 'Select a User'}
           placeholder="Select a User"
           onChange={({ option }) => setSelectedUser(option)}
           size="small"
@@ -66,9 +66,7 @@ const UserManagement = ({ title }: { title: string }) => {
         />
       </Box>
 
-      {userToUpdate && (
-        <UpdateUser {...userToUpdate} />
-      )}
+      {userToUpdate && <UpdateUser {...userToUpdate} />}
       {createUser && <Box>Create User Form Placeholder</Box>}
     </Box>
   );

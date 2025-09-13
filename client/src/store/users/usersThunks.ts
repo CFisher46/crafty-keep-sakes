@@ -1,25 +1,25 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
-import { User } from "../../types";
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { User } from '../../types';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
-export const fetchAllUsers = createAsyncThunk("users/fetchAll", async () => {
+export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
   const res = await fetch(`${API_URL}/api/users`);
   const data = await res.json();
   const parsedData =
-    typeof data.data === "string" ? JSON.parse(data.data) : data.data;
+    typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
 
   return parsedData || [];
 });
 
 export const fetchUserById = createAsyncThunk<User, string>(
-  "users/fetchUserById",
+  'users/fetchUserById',
   async (id, thunkAPI) => {
     try {
       const res = await fetch(
         `${process.env.REACT_APP_API_URL}/api/users/${id}`,
         {
-          credentials: "include"
+          credentials: 'include',
         }
       );
 
@@ -31,19 +31,19 @@ export const fetchUserById = createAsyncThunk<User, string>(
       const data = await res.json();
       return data; // Return the root object directly
     } catch (error) {
-      console.error("Thunk error:", error);
-      return thunkAPI.rejectWithValue("Network or server error");
+      console.error('Thunk error:', error);
+      return thunkAPI.rejectWithValue('Network or server error');
     }
   }
 );
 
 export const createUser = createAsyncThunk(
-  "users/create",
+  'users/create',
   async (newUser: Partial<User>) => {
     const res = await fetch(`${API_URL}/api/users`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(newUser)
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newUser),
     });
     const data = await res.json();
     return data;
@@ -51,23 +51,24 @@ export const createUser = createAsyncThunk(
 );
 
 export const updateUser = createAsyncThunk(
-  "users/update",
+  'users/update',
   async ({ id, user }: { id: string; user: Partial<User> }) => {
     const res = await fetch(`${API_URL}/api/users/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(user)
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(user),
     });
     const data = await res.json();
+    console.log('Is Data useful?', data);
     return { ...user, id }; // optionally, merge response if backend returns full object
   }
 );
 
 export const deleteUser = createAsyncThunk(
-  "users/delete",
+  'users/delete',
   async (id: string) => {
     await fetch(`${API_URL}/api/users/${id}`, {
-      method: "DELETE"
+      method: 'DELETE',
     });
     return id;
   }
@@ -78,12 +79,12 @@ export const verifyCurrentPassword = async (
   currentPassword: string
 ) => {
   const response = await fetch(`${API_URL}/api/auth/verify-password`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ userId, currentPassword })
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId, currentPassword }),
   });
   if (!response.ok) {
-    throw new Error("Failed to verify password");
+    throw new Error('Failed to verify password');
   }
 
   const data = await response.json();

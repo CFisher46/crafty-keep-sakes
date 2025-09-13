@@ -1,19 +1,17 @@
-import { useEffect, useState } from "react";
-import { useDispatch } from "react-redux";
-import { Form, Text, Box, Card, Grid, Button } from "grommet";
+import { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
+import { Form, Text, Box, Card, Grid, Button } from 'grommet';
 // import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
-import { useLocation } from "react-router-dom";
-import { fetchFilteredProducts } from "../../store/products/productsThunks";
-import { addItemToBasket } from "../../store/basket/basketSlice";
-import {buttonStyles} from "../../helpers/formatting";
-import CommonModal from "../../components/modals/common-modal";
-import { Product } from "../../types";
-
+import { useLocation } from 'react-router-dom';
+import { fetchFilteredProducts } from '../../store/products/productsThunks';
+import { addItemToBasket } from '../../store/basket/basketSlice';
+import { buttonStyles } from '../../helpers/formatting';
+import CommonModal from '../../components/modals/common-modal';
+import { Product } from '../../types';
 
 //TODO: change the products query to be dynamic based on the filters
 // and categories selected by the user rather than geting all products
 // including non-live.
-
 
 function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -27,54 +25,54 @@ function Shop() {
     dispatch(
       addItemToBasket({
         id: product.id,
-        image: product.images?.[0] || "", // Ensure a valid image or placeholder is passed
+        image: product.images?.[0] || '', // Ensure a valid image or placeholder is passed
         product_name: product.product_name,
         price: product.price,
-        quantity: 1
+        quantity: 1,
       })
     );
   };
 
-  const loadProducts = async () => {
-    try {
-      const queryParams = new URLSearchParams(location.search);
-      const filtersFromURL = Object.fromEntries(queryParams.entries());
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const queryParams = new URLSearchParams(location.search);
+        const filtersFromURL = Object.fromEntries(queryParams.entries());
 
-      // Dispatch the thunk and unwrap the result to get the data
-      const data = await dispatch<any>(
-        fetchFilteredProducts(filtersFromURL)
-      ).unwrap();
+        const data = await dispatch<any>(
+          fetchFilteredProducts(filtersFromURL)
+        ).unwrap();
 
-      setProducts(
-        JSON.parse(data).map((p: Product) => ({
-          ...p,
-          name: p.product_name,
-          images: typeof p.images === "string" ? JSON.parse(p.images) : p.images
-        }))
-      );
-    } catch (error) {
-      console.error("Error fetching filtered products:", error);
-    }
+        setProducts(
+          JSON.parse(data).map((p: Product) => ({
+            ...p,
+            name: p.product_name,
+            images:
+              typeof p.images === 'string' ? JSON.parse(p.images) : p.images,
+          }))
+        );
+      } catch (error) {
+        console.error('Error fetching filtered products:', error);
+      }
+    };
+
+    loadProducts();
+  }, [location.search, dispatch]);
+
+  const openModal = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
   };
 
-  useEffect(() => {
-    loadProducts();
-  }, [location.search]);
-
-    const openModal = (product: Product) => {
-      setSelectedProduct(product);
-      setIsModalOpen(true);
-    };
-
-    const closeModal = () => {
-      setSelectedProduct(null);
-      setIsModalOpen(false);
-    };
+  const closeModal = () => {
+    setSelectedProduct(null);
+    setIsModalOpen(false);
+  };
 
   return (
     <Box>
       <Form value={{}} onChange={() => {}}>
-        <Grid columns={{ count: 5, size: "small" }} gap="small">
+        <Grid columns={{ count: 5, size: 'small' }} gap="small">
           {products.length === 0 ? (
             <Text>Loading... </Text>
           ) : (
@@ -86,11 +84,11 @@ function Shop() {
                 key={i}
                 margin="small"
                 pad="small"
-                border={{ color: "light-4", size: "xsmall" }}
+                border={{ color: 'light-4', size: 'xsmall' }}
                 style={{
                   boxShadow:
-                    hoveredCard === i ? "0px 0px 20px rgb(45, 44, 45)" : "none",
-                  transition: "box-shadow 0.3s ease"
+                    hoveredCard === i ? '0px 0px 20px rgb(45, 44, 45)' : 'none',
+                  transition: 'box-shadow 0.3s ease',
                 }}
                 onMouseEnter={() => setHoveredCard(i)}
                 onMouseLeave={() => setHoveredCard(null)}
@@ -101,9 +99,9 @@ function Shop() {
                       src={product.images[0]}
                       alt={product.product_name}
                       style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "cover"
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
                       }}
                     />
                   ) : (
@@ -119,11 +117,11 @@ function Shop() {
                     </Box>
                   )}
                 </Box>
-                <Box pad={{ vertical: "small" }}>
+                <Box pad={{ vertical: 'small' }}>
                   <Text>{product.product_name}</Text>
                   <Text>£{product.price}</Text>
                 </Box>
-                <Box pad={{ vertical: "small" }}>
+                <Box pad={{ vertical: 'small' }}>
                   <Button
                     label="Add to Basket"
                     //status="enabled"
@@ -136,7 +134,7 @@ function Shop() {
                   label="View Details"
                   //status="enabled"
                   onClick={() => openModal(product)}
-                  style={buttonStyles.default}  
+                  style={buttonStyles.default}
                 />
               </Card>
             ))
@@ -146,13 +144,12 @@ function Shop() {
 
       {isModalOpen && selectedProduct && (
         <CommonModal
-          title={selectedProduct?.product_name || "Product Details"}
+          title={selectedProduct?.product_name || 'Product Details'}
           type="viewProducts"
           values={selectedProduct}
           onClose={closeModal}
         />
-      )
-      }
+      )}
     </Box>
   );
 }

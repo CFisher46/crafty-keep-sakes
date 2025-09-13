@@ -1,7 +1,7 @@
-import React, { useEffect } from "react";
-import { useAppDispatch, useAppSelector } from "../../../store/hooks";
-import { fetchAuditLogs } from "../../../store/audits/auditThunks";
-import { Audit } from "./types";
+import { useEffect } from 'react';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { fetchAuditLogs } from '../../../store/audits/auditThunks';
+import { Audit } from './types';
 import {
   Table,
   TableBody,
@@ -9,8 +9,8 @@ import {
   TableHeader,
   TableRow,
   Box,
-  Text
-} from "grommet";
+  Text,
+} from 'grommet';
 
 export const AuditLogs = () => {
   const dispatch = useAppDispatch();
@@ -39,7 +39,7 @@ export const AuditLogs = () => {
                 border="bottom"
                 align="center"
               >
-                <Text weight="bold">{header.replace(/_/g, " ")}</Text>
+                <Text weight="bold">{header.replace(/_/g, ' ')}</Text>
               </TableCell>
             ))}
           </TableRow>
@@ -49,7 +49,7 @@ export const AuditLogs = () => {
             <TableRow key={index}>
               {columnHeaders.map((header) => (
                 <TableCell key={header} align="center">
-                  {log[header as keyof Audit]?.toString() || ""}
+                  {log[header as keyof Audit]?.toString() || ''}
                 </TableCell>
               ))}
             </TableRow>

@@ -1,18 +1,17 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
-import { loginSuccess, logout, resetState } from "./authSlice";
-import { fetchUserById } from "../users/usersThunks";
-import { clearSelectedUser } from "../users/usersSlice";
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { loginSuccess, logout, resetState } from './authSlice';
+import { fetchUserById } from '../users/usersThunks';
 
-export const checkAuth = createAsyncThunk("auth/check", async (_, thunkAPI) => {
+export const checkAuth = createAsyncThunk('auth/check', async (_, thunkAPI) => {
   try {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/api/auth/me`,
       {
-        credentials: "include"
+        credentials: 'include',
       }
     );
 
-    if (!response.ok) throw new Error("Not authenticated");
+    if (!response.ok) throw new Error('Not authenticated');
 
     const { user } = await response.json();
 
@@ -29,18 +28,18 @@ export const checkAuth = createAsyncThunk("auth/check", async (_, thunkAPI) => {
 });
 
 export const performLogout = createAsyncThunk(
-  "auth/logout",
+  'auth/logout',
   async (_, thunkAPI) => {
     try {
       await fetch(`${process.env.REACT_APP_API_URL}/api/auth/logout`, {
-        method: "POST",
-        credentials: "include" // needed to send the auth cookie
+        method: 'POST',
+        credentials: 'include', // needed to send the auth cookie
       });
 
       thunkAPI.dispatch(logout());
       thunkAPI.dispatch(resetState());
     } catch (error) {
-      console.error("Logout failed", error);
+      console.error('Logout failed', error);
       thunkAPI.dispatch(logout()); // fallback
     }
   }

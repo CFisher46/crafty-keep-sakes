@@ -1,23 +1,5 @@
-import { Box, Text, Button, Image, Carousel } from 'grommet';
-import { Product} from '../../../types';
-import {useState} from "react";
-import React from "react";
-
-
-const customStyles = {
-  content: {
-    top: '50%',
-    left: '50%',
-    right: 'auto',
-    bottom: 'auto',
-    marginRight: '-50%',
-    transform: 'translate(-50%, -50%)',
-    width: '80%',
-    maxWidth: '800px',
-    padding: '0',
-    boxShadow: '0px 0px 20px rgb(45, 44, 45)',
-  },
-};
+import { Box, Text, Image, Carousel } from 'grommet';
+import { Product } from '../../../types';
 
 function ProductModal({ title, values }: { title: string; values?: Product }) {
   const product = values;
@@ -28,14 +10,14 @@ function ProductModal({ title, values }: { title: string; values?: Product }) {
 
   // Parse images if they are a string
   const images: string[] = product.images
-    ? typeof product.images === "string"
+    ? typeof product.images === 'string'
       ? JSON.parse(product.images)
       : product.images
     : [];
 
   return (
     <Box pad="medium" gap="medium">
-          <Text>{title}</Text>
+      <Text>{title}</Text>
 
       {/* Gallery Section */}
       {images.length > 0 && (
@@ -61,9 +43,7 @@ function ProductModal({ title, values }: { title: string; values?: Product }) {
         <Text>Description: {product.description}</Text>
         <Text>
           Price: £
-          {typeof product.price === "number"
-            ? product.price.toFixed(2)
-            : "N/A"}
+          {typeof product.price === 'number' ? product.price.toFixed(2) : 'N/A'}
         </Text>
         <Text>Category: {product.category}</Text>
       </Box>
