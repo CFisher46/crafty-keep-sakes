@@ -6,9 +6,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
   const res = await fetch(`${API_URL}/api/users`);
   const data = await res.json();
-  const parsedData =
-    typeof data.data === 'string' ? JSON.parse(data.data) : data.data;
-
+  const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
   return parsedData || [];
 });
 

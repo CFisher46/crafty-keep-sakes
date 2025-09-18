@@ -36,9 +36,13 @@ const UserManagement = ({ title }: { title: string }) => {
       <Box direction="row" gap="small" align="center" justify="center">
         <Select
           options={users}
-          labelKey="id"
-          valueKey={{ key: 'id', reduce: true }}
-          value={selectedUser?.id || 'Select a User'}
+          labelKey={(option) =>
+            `${option.last_name}, ${option.first_name} (${option.email_address})`
+          }
+          value={
+            `${selectedUser?.last_name}, ${selectedUser?.first_name} (${selectedUser?.email_address})` ||
+            'Select a User'
+          }
           placeholder="Select a User"
           onChange={({ option }) => setSelectedUser(option)}
           size="small"
@@ -46,7 +50,7 @@ const UserManagement = ({ title }: { title: string }) => {
 
         <Button
           size="small"
-          label="Find User"
+          label="Edit User"
           onClick={() => {
             handleFetchUser();
             setCreateUser(false);
