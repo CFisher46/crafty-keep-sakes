@@ -2,6 +2,7 @@ import express from 'express';
 import { db } from '../../../ts-common/database';
 import { GetAllUsersQuery } from './sql';
 import { decrypt } from '../../../ts-common/helpers';
+import { User } from '../types';
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.get('/', async (_req, res) => {
 
     // Ensure userData is an array
     const users = Array.isArray(userData)
-      ? userData.map((user: any) => {
+      ? userData.map((user: User) => {
           try {
             return {
               ...user,
