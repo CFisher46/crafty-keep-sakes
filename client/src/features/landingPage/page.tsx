@@ -1,19 +1,19 @@
-import { Text, Box, Grid, Card, CardBody, CardFooter } from "grommet";
-import CksButton from "../../components/buttons/cksButtons";
-import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { fetchAllProducts } from "../../store/products/productsThunks";
-import { checkAuth, performLogout } from "../../store/auth/authThunks";
-import { clearSelectedUser } from "../../store/users/usersSlice";
-import { Product } from "../../types";
-import Login from "../../components/login/login";
+import { Text, Box, Grid, Card, CardBody, CardFooter } from 'grommet';
+import CksButton from '../../components/buttons/cksButtons';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { fetchAllProducts } from '../../store/products/productsThunks';
+import { checkAuth, performLogout } from '../../store/auth/authThunks';
+import { clearSelectedUser } from '../../store/users/usersSlice';
+import { Product } from '../../types';
+import Login from '../../components/login/login';
 import {
   selectAllProducts,
   selectProductsLoading,
-  selectProductsError
-} from "../../store/products/productsSlice";
-import { fetchUserById } from "../../store/users/usersThunks";
+  selectProductsError,
+} from '../../store/products/productsSlice';
+import { fetchUserById } from '../../store/users/usersThunks';
 
 function Home() {
   const dispatch = useAppDispatch();
@@ -50,9 +50,9 @@ function Home() {
       if (carouselRef.current) {
         const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
         if (scrollLeft + clientWidth >= scrollWidth) {
-          carouselRef.current.scrollTo({ left: 0, behavior: "smooth" });
+          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
         } else {
-          carouselRef.current.scrollBy({ left: 200, behavior: "smooth" });
+          carouselRef.current.scrollBy({ left: 200, behavior: 'smooth' });
         }
       }
     }, 5000);
@@ -72,18 +72,18 @@ function Home() {
   };
 
   if (loading) return <p>Loading products...</p>;
-  if (error) return <p>Error: {error}</p>;
+  //if (error) return <p>Error: {error}</p>;
 
   return (
     <Box pad="medium">
       <Grid
-        rows={["auto", "auto"]}
-        columns={["flex", "auto"]}
+        rows={['auto', 'auto']}
+        columns={['flex', 'auto']}
         gap="small"
         areas={[
-          { name: "left", start: [0, 0], end: [0, 1] },
-          { name: "right", start: [1, 0], end: [1, 0] },
-          { name: "bottom", start: [0, 1], end: [1, 1] }
+          { name: 'left', start: [0, 0], end: [0, 1] },
+          { name: 'right', start: [1, 0], end: [1, 0] },
+          { name: 'bottom', start: [0, 1], end: [1, 1] },
         ]}
       >
         <Box
@@ -91,7 +91,7 @@ function Home() {
           background="#f7e5e1"
           pad="medium"
           round="small"
-          border={{ color: "light-4", size: "xsmall" }}
+          border={{ color: 'light-4', size: 'xsmall' }}
         >
           <Text size="large" weight="bold">
             Welcome to Crafty Keepsakes!
@@ -107,21 +107,21 @@ function Home() {
           pad="medium"
           align="stretch"
           round="small"
-          height={{ min: "250px" }}
-          border={{ color: "light-4", size: "xsmall" }}
+          height={{ min: '250px' }}
+          border={{ color: 'light-4', size: 'xsmall' }}
         >
           {isLoggedIn ? (
-            <Box gap={"small"}>
+            <Box gap={'small'}>
               <Text size="medium">
-                Welcome, {userDetails ? userDetails.first_name : ""}!
+                Welcome, {userDetails ? userDetails.first_name : ''}!
               </Text>
               <Text>Your profile is ready to explore.</Text>
-              {userType === "admin" && (
+              {userType === 'admin' && (
                 <Text size="small" color="status-critical">
                   Admin Access Granted
                 </Text>
               )}
-              <Box direction="row" gap="small" margin={{ top: "small" }}>
+              <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <CksButton
                   label="Log Out"
                   onClick={handleLogout}
@@ -143,14 +143,14 @@ function Home() {
               <Text size="medium" weight="bold">
                 Login or Sign Up
               </Text>
-              <Box direction="row" gap="small" margin={{ top: "small" }}>
+              <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <CksButton
                   onClick={() => setShowLogin(true)}
                   label="Login"
                   status="enabled"
                 />
                 <CksButton
-                  onClick={() => navigate("/register")}
+                  onClick={() => navigate('/register')}
                   label="Sign Up"
                 />
               </Box>
@@ -163,18 +163,18 @@ function Home() {
           background="#dcece9"
           pad="medium"
           round="small"
-          border={{ color: "light-4", size: "xsmall" }}
+          border={{ color: 'light-4', size: 'xsmall' }}
         >
-          <Text size="medium" weight="bold" margin={{ bottom: "small" }}>
+          <Text size="medium" weight="bold" margin={{ bottom: 'small' }}>
             Discover our latest products and offers!
           </Text>
           <Box
             direction="row"
             overflow="hidden"
             style={{
-              whiteSpace: "nowrap",
-              scrollBehavior: "smooth",
-              scrollbarWidth: "none"
+              whiteSpace: 'nowrap',
+              scrollBehavior: 'smooth',
+              scrollbarWidth: 'none',
             }}
             ref={carouselRef}
           >
@@ -183,11 +183,11 @@ function Home() {
                 key={product.id}
                 background="light-1"
                 pad="small"
-                border={{ color: "light-4", size: "xsmall" }}
-                margin={{ right: "small" }}
+                border={{ color: 'light-4', size: 'xsmall' }}
+                margin={{ right: 'small' }}
                 style={{
-                  display: "inline-block",
-                  minWidth: "200px"
+                  display: 'inline-block',
+                  minWidth: '200px',
                 }}
               >
                 <CardBody>
@@ -197,7 +197,7 @@ function Home() {
                     £{product.price}
                   </Text>
                 </CardBody>
-                <CardFooter pad={{ vertical: "small" }}></CardFooter>
+                <CardFooter pad={{ vertical: 'small' }}></CardFooter>
               </Card>
             ))}
           </Box>

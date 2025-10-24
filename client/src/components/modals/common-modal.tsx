@@ -1,8 +1,5 @@
-import { Layer, Box } from "grommet";
-import UserManagement from "../../features/admin_tools/userManagement/page";
-import ProductManagement from "../../features/admin_tools/productManagement/page";
-import CustomReports from "../../features/admin_tools/customReports/page";
-import ProductModal from "../../features/products/view-details/page";
+import { Layer, Box } from 'grommet';
+import ProductModal from '../../features/products/view-details/page';
 
 function CommonModal({
   title,
@@ -21,14 +18,13 @@ function CommonModal({
         pad="medium"
         gap="medium"
         width="large"
-        height={{ min: "medium", max: "large" }}
+        height={{ min: 'medium', max: 'large' }}
         overflow="auto"
       >
         <Box>
-          {type === "user" && <UserManagement title={title} />}
-          {type === "product" && <ProductManagement title={title} />}
-          {type === "reports" && <CustomReports title={title} />}
-          {type === "viewProducts" && <ProductModal title={title} values={values} />}
+          {type === 'viewProducts' && (
+            <ProductModal title={title} values={values} />
+          )}
         </Box>
       </Box>
     </Layer>
