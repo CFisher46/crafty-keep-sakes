@@ -25,12 +25,20 @@ function AdminTools() {
     fetchUsers();
   }, [dispatch]);
 
+  const resetAll = () => {
+    setRequestedAction('');
+    setRequestedTool('');
+    setSelectedUser(undefined);
+    setActiveComponent(null);
+  };
+
   const handleRequest = async (
     requestedAction: string,
     requestedTool: string
   ) => {
     if (requestedTool === 'User' && requestedAction === 'Add') {
       setActiveComponent(() => CreateNewUser);
+      setSelectedUser(undefined);
     }
     if (requestedTool === 'User' && requestedAction === 'Update') {
       if (selectedUser) {
@@ -116,10 +124,7 @@ function AdminTools() {
             <Button
               label="Reset"
               onClick={() => {
-                setRequestedAction('');
-                setRequestedTool('');
-                setSelectedUser(undefined);
-                setActiveComponent(null);
+                resetAll();
               }}
               style={buttonStyles.default}
             />

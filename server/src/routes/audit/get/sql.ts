@@ -2,12 +2,13 @@ export const getAudits = () => {
   return `
     WITH filteredAudit AS (
     SELECT
-        user, 
-        field_changed, 
-        action_type, 
-        log_dttm, 
+        log_ref,
+        user,
+        field_changed,
+        action_type,
+        log_dttm,
         api_source
-    FROM audit_log
+    FROM audit_logs
     ),
     auditCount AS (
         SELECT COUNT(*) AS total_count
@@ -18,6 +19,7 @@ export const getAudits = () => {
         'data',IFNULL(
             JSON_ARRAYAGG(
                 JSON_OBJECT(
+                    'log_ref',fa.log_ref,
                     'user',fa.user,
                     'field_changed', fa.field_changed,
                     'action_type', fa.action_type,

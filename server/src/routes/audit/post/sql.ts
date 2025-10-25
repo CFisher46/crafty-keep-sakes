@@ -1,18 +1,16 @@
-import { Audit } from "../types";
+import { Audit } from '../types';
 
-export function addNewLog(audit: Audit) {
+export function createAuditLogQuery(audit: AuditLog) {
   return {
     sql: `
-      INSERT INTO audit_log 
-        ( user, field_changed, action_type, log_dttm, api_source)
-      VALUES (?,?,?,?,?)
+      INSERT INTO audit_logs (user, field_changed, action_type, api_source)
+      VALUES (?, ?, ?, ?)
     `,
     values: [
       audit.user,
       audit.field_changed,
       audit.action_type,
-      audit.log_dttm,
-      audit.api_source
-    ]
+      audit.api_source,
+    ],
   };
 }

@@ -1,12 +1,12 @@
-import express, { Request, Response } from "express";
-import { db } from "../../../ts-common/database";
-import { GetSpecificUsersQuery } from "./sql";
-import { decrypt } from "../../../ts-common/helpers";
+import { Router, Request, Response } from 'express';
+import { db } from '../../../ts-common/database';
+import { GetSpecificUsersQuery } from './sql';
+import { decrypt } from '../../../ts-common/helpers';
 
-const router = express.Router();
+const router = Router();
 
-router.get("/:id", async (req: Request, res: Response) => {
-  console.log("GET /api/users/:id called");
+router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+  console.log('GET /api/users/:id called');
   const { id } = req.params;
   try {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -27,18 +27,18 @@ router.get("/:id", async (req: Request, res: Response) => {
         user.address_line3 = decrypt(user.address_line3);
         user.telephone_number = decrypt(user.telephone_number);
 
-        return res.json(user); // Send the decrypted user as the response
+        res.json(user); // Send the decrypted user as the response
       } else {
-        console.error("No user data found in the query result.");
-        return res.status(404).json({ error: "User not found" });
+        console.error('No user data found in the query result.');
+        res.status(404).json({ error: 'User not found' });
       }
     } else {
-      console.error("Query result is empty or undefined.");
-      return res.status(404).json({ error: "User not found" });
+      console.error('Query result is empty or undefined.');
+      res.status(404).json({ error: 'User not found' });
     }
   } catch (error) {
-    console.error("Error fetching user:", error);
-    res.status(500).json({ error: "Internal server error" });
+    console.error('Error fetching user:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 

@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { User } from '../../types';
+import { createAuditEntry } from '../audits/auditThunks';
 
 const API_URL = process.env.REACT_APP_API_URL;
 
@@ -27,7 +28,7 @@ export const fetchUserById = createAsyncThunk<User, string>(
       }
 
       const data = await res.json();
-      return data; // Return the root object directly
+      return data;
     } catch (error) {
       console.error('Thunk error:', error);
       return thunkAPI.rejectWithValue('Network or server error');
@@ -35,39 +36,110 @@ export const fetchUserById = createAsyncThunk<User, string>(
   }
 );
 
-export const createUser = createAsyncThunk(
-  'users/create',
-  async (newUser: Partial<User>) => {
-    const res = await fetch(`${API_URL}/api/users`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newUser),
-    });
-    const data = await res.json();
-    return data;
+export const updateUser = createAsyncThunk(
+  'users/update',
+  async (
+    {
+      id,
+      user,
+      previousUser,
+    }: { id: string; user: Partial<User>; previousUser?: User },
+    { dispatch, rejectWithValue }
+  ) => {
+    try {
+      const res = await fetch(`${API_URL}/api/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(user),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        return rejectWithValue(errorData.error || 'Failed to update user');
+      }
+
+      const data = await res.json();
+
+      // Create audit entries for each changed field
+      if (previousUser) {
+        Object.keys(user).forEach((key) => {
+          const oldValue = previousUser[key as keyof User];
+          const newValue = user[key as keyof User];
+
+          if (oldValue !== newValue && key !== 'password') {
+            dispatch(
+              createAuditEntry({
+                user: id,
+                field_changed: key,
+                action_type: 'UPDATE',
+                api_source: '/user/{id}',
+              })
+            );
+          }
+        });
+      }
+
+      return { ...user, id };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Network error');
+    }
   }
 );
 
-export const updateUser = createAsyncThunk(
-  'users/update',
-  async ({ id, user }: { id: string; user: Partial<User> }) => {
-    const res = await fetch(`${API_URL}/api/users/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(user),
-    });
-    const data = await res.json();
-    console.log('Is Data useful?', data);
-    return { ...user, id }; // optionally, merge response if backend returns full object
+export const createUser = createAsyncThunk(
+  'users/create',
+  async (newUser: Partial<User>, { dispatch, rejectWithValue }) => {
+    try {
+      const res = await fetch(`${API_URL}/api/users`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(newUser),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        return rejectWithValue(errorData.error || 'Failed to create user');
+      }
+
+      const data = await res.json();
+
+      // Log user creation
+      dispatch(
+        createAuditEntry({
+          user: data.insertId.toString(),
+          field_changed: 'user_created',
+          action_type: 'CREATE',
+          api_source: '/admin',
+        })
+      );
+
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Network error');
+    }
   }
 );
 
 export const deleteUser = createAsyncThunk(
   'users/delete',
-  async (id: string) => {
+  async (id: string, { dispatch }) => {
     await fetch(`${API_URL}/api/users/${id}`, {
       method: 'DELETE',
+      credentials: 'include',
     });
+
+    // Log user deletion
+    dispatch(
+      createAuditEntry({
+        user: id,
+        field_changed: 'user_deleted',
+        action_type: 'DELETE',
+        api_source: '/admin',
+      })
+    );
+
     return id;
   }
 );
