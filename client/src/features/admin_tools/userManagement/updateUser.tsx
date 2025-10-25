@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { User } from '../../../types';
 import { updateUser } from '../../../store/users/usersThunks';
 import { useAppDispatch } from '../../../store/hooks';
+import { buttonStyles } from '../../../helpers/formatting';
 
 const UpdateUser = (updateUserData: Partial<User>) => {
   const [changedFields, setChangedFields] = useState<Partial<User>>({});
@@ -85,7 +86,7 @@ const UpdateUser = (updateUserData: Partial<User>) => {
         <Button
           label="Update User"
           onClick={handleUserUpdate}
-          style={{ marginTop: '10px' }}
+          style={buttonStyles.default}
         />
       </Grid>
     </Card>

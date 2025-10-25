@@ -3,6 +3,13 @@ import { User } from '../../types';
 import { createAuditEntry } from '../audits/auditThunks';
 
 const API_URL = process.env.REACT_APP_API_URL;
+// Helper to get changedBy from state
+const getChangedBy = (state: any) => {
+  const loggedInUser = state.auth?.user;
+  return loggedInUser
+    ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
+    : 'Unknown';
+};
 
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
   const res = await fetch(`${API_URL}/api/users`);
@@ -35,7 +42,6 @@ export const fetchUserById = createAsyncThunk<User, string>(
     }
   }
 );
-
 export const updateUser = createAsyncThunk(
   'users/update',
   async (
@@ -61,15 +67,9 @@ export const updateUser = createAsyncThunk(
 
       const data = await res.json();
 
-      // Get the logged-in user from auth state
-      const state = getState() as any; // or import RootState and type it properly
-      const loggedInUser = state.auth.user;
-      const changedBy = loggedInUser
-        ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
-        : 'Unknown';
-
       // Create audit entries for each changed field
       if (previousUser) {
+        const changedBy = getChangedBy(getState());
         Object.keys(user).forEach((key) => {
           const oldValue = previousUser[key as keyof User];
           const newValue = user[key as keyof User];
@@ -94,10 +94,9 @@ export const updateUser = createAsyncThunk(
     }
   }
 );
-
 export const createUser = createAsyncThunk(
   'users/create',
-  async (newUser: Partial<User>, { dispatch, rejectWithValue }) => {
+  async (newUser: Partial<User>, { dispatch, rejectWithValue, getState }) => {
     try {
       const res = await fetch(`${API_URL}/api/users`, {
         method: 'POST',
@@ -114,13 +113,14 @@ export const createUser = createAsyncThunk(
       const data = await res.json();
 
       // Log user creation
+      const changedBy = getChangedBy(getState());
       dispatch(
         createAuditEntry({
           user: data.insertId.toString(),
           field_changed: 'user_created',
           action_type: 'CREATE',
           api_source: '/admin',
-          changed_by: 'System', //Temporary until this has been thought about more
+          changed_by: changedBy, //Temporary until this has been thought about more
         })
       );
 

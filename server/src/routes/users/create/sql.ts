@@ -3,7 +3,7 @@ export function createUserQuery(user: User) {
   return {
     sql: `
   INSERT INTO users ( email_address, first_name, last_name, address_line1, address_line2, address_line3, town, county, postcode, telephone_number, type, status, invoice_id, password)
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
     values: [
       user.email_address,
@@ -18,7 +18,7 @@ export function createUserQuery(user: User) {
       user.telephone_number,
       user.type,
       user.status,
-      user.invoice_id,
+      user.invoice_id || null,
       user.password,
     ],
   };
