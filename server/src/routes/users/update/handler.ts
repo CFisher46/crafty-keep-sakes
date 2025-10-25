@@ -14,7 +14,7 @@ router.put('/:id', async (req, res) => {
   try {
     // Build dynamic SQL query based on provided fields
     const fields = Object.keys(updates);
-    const values: any[] = [];
+    const values: string[] = [];
 
     if (fields.length === 0) {
       return res.status(400).json({ error: 'No fields to update' });
