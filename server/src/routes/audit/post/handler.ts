@@ -1,13 +1,13 @@
 import express from 'express';
 import { db } from '../../../ts-common/database';
 import { createAuditLogQuery } from './sql';
-import { AuditLog } from '../types';
+import { Audit } from '../types';
 import { ResultSetHeader } from 'mysql2';
 
 const router = express.Router();
 
 router.post('/', async (req, res) => {
-  const audit: AuditLog = req.body;
+  const audit: Audit = req.body;
 
   try {
     const { sql, values } = createAuditLogQuery(audit);

@@ -5,6 +5,7 @@ export const getAudits = () => {
         log_ref,
         user,
         field_changed,
+        changed_by,
         action_type,
         log_dttm,
         api_source
@@ -22,6 +23,7 @@ export const getAudits = () => {
                     'log_ref',fa.log_ref,
                     'user',fa.user,
                     'field_changed', fa.field_changed,
+                    'changed_by', fa.changed_by,
                     'action_type', fa.action_type,
                     'log_dttm', fa.log_dttm,
                     'api_source', fa.api_source

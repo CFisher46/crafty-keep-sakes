@@ -30,6 +30,7 @@ export const createAuditEntry = createAsyncThunk<
     field_changed: string;
     action_type: string;
     api_source: string;
+    changed_by: string;
   },
   { rejectValue: string }
 >('audits/create', async (auditData, { rejectWithValue }) => {

@@ -11,16 +11,21 @@ router.get('/', async (req, res) => {
     let query;
     let values: any[] = [];
 
-    if (user) {
-      const { sql, values: queryValues } = getAudits(user as string);
-      query = sql;
-      values = queryValues;
-    } else {
-      query = getAllAudits();
-    }
+    query = getAudits();
 
     const [rows] = await db.query(query, values);
-    res.json({ data: rows });
+
+    // Parse the JSON result similar to your products/users endpoints
+    const parsedResult = JSON.parse(
+      (rows as { result: string }[])?.[0]?.result || '{}'
+    );
+
+    // Parse the stringified data array if it exists
+    if (parsedResult.data && typeof parsedResult.data === 'string') {
+      parsedResult.data = JSON.parse(parsedResult.data);
+    }
+
+    res.json(parsedResult);
   } catch (error) {
     console.error('Fetch audit logs error:', error);
     res.status(500).json({ error: 'Failed to fetch audit logs' });

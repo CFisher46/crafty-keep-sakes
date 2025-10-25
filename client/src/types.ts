@@ -36,4 +36,5 @@ export type Audit = {
   action_type: string;
   log_dttm: Date;
   api_source: string;
+  changed_by?: string;
 };

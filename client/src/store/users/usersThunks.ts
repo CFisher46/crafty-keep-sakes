@@ -44,7 +44,7 @@ export const updateUser = createAsyncThunk(
       user,
       previousUser,
     }: { id: string; user: Partial<User>; previousUser?: User },
-    { dispatch, rejectWithValue }
+    { dispatch, rejectWithValue, getState }
   ) => {
     try {
       const res = await fetch(`${API_URL}/api/users/${id}`, {
@@ -61,6 +61,13 @@ export const updateUser = createAsyncThunk(
 
       const data = await res.json();
 
+      // Get the logged-in user from auth state
+      const state = getState() as any; // or import RootState and type it properly
+      const loggedInUser = state.auth.user;
+      const changedBy = loggedInUser
+        ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
+        : 'Unknown';
+
       // Create audit entries for each changed field
       if (previousUser) {
         Object.keys(user).forEach((key) => {
@@ -74,6 +81,7 @@ export const updateUser = createAsyncThunk(
                 field_changed: key,
                 action_type: 'UPDATE',
                 api_source: '/user/{id}',
+                changed_by: changedBy,
               })
             );
           }
@@ -112,6 +120,7 @@ export const createUser = createAsyncThunk(
           field_changed: 'user_created',
           action_type: 'CREATE',
           api_source: '/admin',
+          changed_by: 'System', //Temporary until this has been thought about more
         })
       );
 
@@ -137,6 +146,7 @@ export const deleteUser = createAsyncThunk(
         field_changed: 'user_deleted',
         action_type: 'DELETE',
         api_source: '/admin',
+        changed_by: 'System', //Temporary until this has been thought about more
       })
     );
 
