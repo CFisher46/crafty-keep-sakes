@@ -7,6 +7,8 @@ import { buttonStyles } from '../../../helpers/formatting';
 
 const UpdateUser = (updateUserData: Partial<User>) => {
   const [changedFields, setChangedFields] = useState<Partial<User>>({});
+  const [passwordUpdate, setPasswordUpdate] = useState<boolean>(false);
+  const [newPassword, setNewPassword] = useState<string>('');
   const dispatch = useAppDispatch();
 
   const handleFieldChange = (key: string, value: string) => {
@@ -14,6 +16,10 @@ const UpdateUser = (updateUserData: Partial<User>) => {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const handlePasswordReset = (e: string) => {
+    handleFieldChange('password', e);
   };
 
   const handleUserUpdate = async () => {
@@ -83,6 +89,21 @@ const UpdateUser = (updateUserData: Partial<User>) => {
               />
             </Box>
           ))}
+        <Box direction="column" gap="xsmall">
+          <TextInput
+            placeholder="New Password"
+            type="password"
+            onChange={() => setPasswordUpdate(true)}
+          />
+          <TextInput
+            placeholder="Confirm Password"
+            disabled={!passwordUpdate}
+            type="password"
+            onChange={(event) => {
+              handlePasswordReset(event.target.value);
+            }}
+          />
+        </Box>
         <Button
           label="Update User"
           onClick={handleUserUpdate}

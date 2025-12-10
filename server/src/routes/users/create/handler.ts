@@ -1,14 +1,14 @@
-import express from "express";
-import bcrypt from "bcryptjs";
-import { db } from "../../../ts-common/database";
-import { User } from "../types";
-import { createUserQuery } from "../create/sql";
-import { ResultSetHeader } from "mysql2";
-import { encrypt } from "../../../ts-common/helpers";
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import { db } from '../../../ts-common/database';
+import { User } from '../types';
+import { createUserQuery } from '../create/sql';
+import { ResultSetHeader } from 'mysql2';
+import { encrypt } from '../../../ts-common/helpers';
 
 const router = express.Router();
 
-router.post("/", async (req, res) => {
+router.post('/', async (req, res) => {
   const user = req.body as User;
 
   try {
@@ -28,18 +28,18 @@ router.post("/", async (req, res) => {
       address_line2: encryptedAddressLine2,
       address_line3: encryptedAddressLine3,
       telephone_number: encryptedTelephoneNumber,
-      password: hashedPassword
+      password: hashedPassword,
     };
 
     const { sql, values } = createUserQuery(newUser);
     const [result] = await db.query<ResultSetHeader>(sql, values);
     res.status(201).json({
-      message: "User created",
-      insertId: result.insertId
+      message: 'User created',
+      insertId: result.insertId,
     });
   } catch (err) {
-    console.error("Create Product Error:", err);
-    res.status(500).json({ error: "Database error" });
+    console.error('Create User Error:', err);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 

@@ -20,19 +20,33 @@ function CreateNewUser() {
     postcode: '',
     type: '',
     status: '',
-    password: '#default%Cks@Password/1%',
+    password: '',
     id: '',
     invoice_id: 0,
   };
   const [newUser, setNewUser] = useState<Partial<User>>(requiredDetails);
+  const [passwordMatch, setPasswordMatch] = useState<boolean>(false);
+  const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
 
   const handleCreateUser = async () => {
     console.log(`Creating user with data:`, newUser);
     try {
       await dispatch(createUser(newUser as User)).unwrap();
+      //TODO: Add a success popup window with an OK button and reset rerender admin page
       console.log('User created successfully');
     } catch (error) {
+      //TODO: Add error popup window with error message with the error provided by the backend
       console.error('Failed to create user:', error);
+    }
+  };
+
+  const validatePassword = (e: string) => {
+    if (password === e) {
+      setPasswordMatch(true);
+      setNewUser({ ...newUser, password: e });
+    } else {
+      setPasswordMatch(false);
     }
   };
 
@@ -133,11 +147,40 @@ function CreateNewUser() {
               setNewUser({ ...newUser, status: event.target.value });
             }}
           />
+
+          <TextInput
+            placeholder="Password"
+            type="password"
+            onChange={(event) => {
+              setPassword(event.target.value);
+            }}
+          />
+
+          <TextInput
+            placeholder="Confirm Password"
+            type="password"
+            onChange={(event) => {
+              validatePassword(event.target.value);
+            }}
+            disabled={!password}
+          />
         </Box>
+
         <Button
           label="Create User"
           style={buttonStyles.default}
           onClick={handleCreateUser}
+          disabled={!passwordMatch}
+        />
+        <Button
+          label="Reset"
+          style={buttonStyles.default}
+          onClick={() => {
+            setNewUser(requiredDetails);
+            setPassword('');
+            setConfirmPassword('');
+            setPasswordMatch(false);
+          }}
         />
       </Grid>
     </Card>
