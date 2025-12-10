@@ -133,12 +133,12 @@ export const createUser = createAsyncThunk(
 
 export const deleteUser = createAsyncThunk(
   'users/delete',
-  async (id: string, { dispatch }) => {
+  async (id: string, { dispatch, getState }) => {
     await fetch(`${API_URL}/api/users/${id}`, {
       method: 'DELETE',
       credentials: 'include',
     });
-
+    const changedBy = getChangedBy(getState());
     // Log user deletion
     dispatch(
       createAuditEntry({
@@ -146,7 +146,7 @@ export const deleteUser = createAsyncThunk(
         field_changed: 'user_deleted',
         action_type: 'DELETE',
         api_source: '/admin',
-        changed_by: 'System', //Temporary until this has been thought about more
+        changed_by: changedBy,
       })
     );
 
