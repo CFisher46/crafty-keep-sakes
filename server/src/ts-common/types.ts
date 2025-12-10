@@ -2,7 +2,7 @@ export type Primative = string | number | boolean | string[];
 
 export type SortParams = {
   sort?: string;
-  sortDir?: "asc" | "desc";
+  sortDir?: 'asc' | 'desc';
 };
 
 export type SortOpts<T> = {

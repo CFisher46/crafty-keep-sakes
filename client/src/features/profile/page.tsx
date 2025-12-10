@@ -1,12 +1,11 @@
-import { Text, Form, Box, TextInput, Grid, Button } from "grommet";
-import { View, Hide } from "grommet-icons";
-import { useEffect, useState } from "react";
-import { fetchUserById } from "../../store/users/usersThunks";
-import { useSelector } from "react-redux";
-import { RootState } from "../../store";
-//import { useDispatch } from "react-redux";
-import { useAppDispatch } from "../../store/hooks";
-import { useParams } from "react-router-dom";
+import { Text, Form, Box, TextInput, Grid, Button } from 'grommet';
+import { View, Hide } from 'grommet-icons';
+import { useEffect, useState } from 'react';
+import { fetchUserById } from '../../store/users/usersThunks';
+import { useSelector } from 'react-redux';
+import { RootState } from '../../store';
+import { useAppDispatch } from '../../store/hooks';
+import { useParams } from 'react-router-dom';
 
 //import { buttonStyles } from '../../helpers/styles';
 
@@ -30,10 +29,10 @@ const InputField = ({
   inputStyle,
   labelStyle,
   onChange,
-  type = "text",
+  type = 'text',
   toggleVisibility,
   isPassword = false,
-  isVisible = false
+  isVisible = false,
 }: InputFieldProps) => (
   <Box direction="row" gap="small" align="center">
     <Text style={labelStyle}>{label}</Text>
@@ -54,6 +53,7 @@ const InputField = ({
 );
 
 function UsersProfile() {
+  console.log(' Navigated to /Profile');
   const { id: userId } = useParams<{ id: string }>(); // Extract userId from URL
   const dispatch = useAppDispatch();
   const selectedUser = useSelector(
@@ -61,50 +61,45 @@ function UsersProfile() {
   );
 
   const [userData, setUserData] = useState({
-    id: "",
-    email_address: "",
-    first_name: "",
-    last_name: "",
-    address_line1: "",
-    address_line2: "",
-    address_line3: "",
-    town: "",
-    county: "",
-    postcode: "",
-    telephone_number: "",
-    type: "",
-    new_password: "",
-    confirm_new_password: ""
+    id: '',
+    email_address: '',
+    first_name: '',
+    last_name: '',
+    address_line1: '',
+    address_line2: '',
+    address_line3: '',
+    town: '',
+    county: '',
+    postcode: '',
+    telephone_number: '',
+    type: '',
+    new_password: '',
+    confirm_new_password: '',
   });
 
-  const [currentPassword, setCurrentPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState('');
   //Removed setPasswordError for linting
   const [passwordError] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const inputStyle = { width: "100%" };
-  const labelStyle = { width: "100%", textAlign: "left" as "left" };
+  const inputStyle = { width: '100%' };
+  const labelStyle = { width: '100%', textAlign: 'left' as 'left' };
 
   useEffect(() => {
     if (userId) {
       dispatch(fetchUserById(userId));
     } else {
-      console.error("User ID is undefined");
+      console.error('User ID is undefined');
     }
   }, [userId, dispatch]);
 
   useEffect(() => {
-    console.log("Selected User from Redux Store:", selectedUser); // Debugging log
     if (selectedUser) {
       setUserData((prev) => ({
         ...prev,
-        ...selectedUser
+        ...selectedUser,
       }));
-      console.log("Updated userData state:", {
-        ...userData,
-        ...selectedUser
-      }); // Debugging log
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser]);
@@ -115,27 +110,27 @@ function UsersProfile() {
 
   return (
     <Form>
-      <Grid columns={["450px", "400px", "420px"]} gap="small">
+      <Grid columns={['450px', '400px', '420px']} gap="small">
         <Box border round="small" pad="medium" gap="small" background="white">
           {[
-            { label: "UserName", field: "email_address" },
-            { label: "FirstName", field: "first_name" },
-            { label: "LastName", field: "last_name" },
-            { label: "Address Line1", field: "address_line1" },
-            { label: "Address Line2", field: "address_line2" },
-            { label: "Address Line3", field: "address_line3" },
-            { label: "Town", field: "town" },
-            { label: "County", field: "county" },
-            { label: "PostCode", field: "postcode" }
+            { label: 'UserName', field: 'email_address' },
+            { label: 'FirstName', field: 'first_name' },
+            { label: 'LastName', field: 'last_name' },
+            { label: 'Address Line1', field: 'address_line1' },
+            { label: 'Address Line2', field: 'address_line2' },
+            { label: 'Address Line3', field: 'address_line3' },
+            { label: 'Town', field: 'town' },
+            { label: 'County', field: 'county' },
+            { label: 'PostCode', field: 'postcode' },
           ].map(({ label, field }) => (
             <InputField
               key={label}
               label={label}
-              placeholder={userData[field as keyof typeof userData] || ""}
+              placeholder={userData[field as keyof typeof userData] || ''}
               inputStyle={inputStyle}
               labelStyle={labelStyle}
               onChange={(value) => handleFieldChange(field, value)}
-              value={userData[field as keyof typeof userData] || ""}
+              value={userData[field as keyof typeof userData] || ''}
             />
           ))}
         </Box>
@@ -164,26 +159,26 @@ function UsersProfile() {
             )}
             <InputField
               label="New Password"
-              value={userData.new_password || ""}
+              value={userData.new_password || ''}
               placeholder="Enter new password"
               inputStyle={inputStyle}
               labelStyle={labelStyle}
-              onChange={(value) => handleFieldChange("new_password", value)}
-              type={showNewPassword ? "text" : "password"}
+              onChange={(value) => handleFieldChange('new_password', value)}
+              type={showNewPassword ? 'text' : 'password'}
               isPassword
               toggleVisibility={() => setShowNewPassword((prev) => !prev)}
               isVisible={showNewPassword}
             />
             <InputField
               label="Confirm Password"
-              value={userData.confirm_new_password || ""}
+              value={userData.confirm_new_password || ''}
               placeholder="Confirm new password"
               inputStyle={inputStyle}
               labelStyle={labelStyle}
               onChange={(value) =>
-                handleFieldChange("confirm_new_password", value)
+                handleFieldChange('confirm_new_password', value)
               }
-              type={showConfirmPassword ? "text" : "password"}
+              type={showConfirmPassword ? 'text' : 'password'}
               isPassword
               toggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
               isVisible={showConfirmPassword}

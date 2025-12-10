@@ -1,6 +1,5 @@
 // src/features/products/validation.ts
-
-import { Product } from "../../../store/products/types";
+import { Product } from "../../../types";
 
 export function validateProduct(product: Partial<Product>) {
   const errors: Record<string, string> = {};

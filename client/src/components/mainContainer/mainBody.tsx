@@ -7,7 +7,7 @@ import ShoppingBasket from "../../features/basket/page";
 // import Shop from '../../pages/shop/shop';
 // import Blog from '../../pages/blog/blog';
 import Profile from "../../features/profile/page";
-// import Admin from '../../pages/adminFeatures/adminFeatures';
+import Admin from "../../features/admin_tools/page";
 import Login from "../../components/login/login";
 import ProtectedRoute from "../../helpers/protectedRoutes";
 // import ContactUs from '../../pages/contactUs/contactUs';
@@ -35,16 +35,15 @@ function MainBody() {
               />
             }
           />{" "}
-          {/* <Route
+          <Route
             path="/Admin"
             element={
               <ProtectedRoute
                 element={<Admin />}
                 requiredTypes={["Admin", "admin"]}
-                path={""}
               />
             }
-          />{" "} */}
+          />
           {/* <Route path="/Contact" element={<ContactUs />} /> */}
           <Route path="/Login" element={<Login />} />
           {/* <Route path="/Register" element={<UserRegistration />} /> */}

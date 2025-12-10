@@ -6,7 +6,8 @@ import {
   createProduct,
   updateProduct
 } from "../../store/products/productsThunks";
-import { Product, ProductsState } from "./types";
+import { ProductsState } from "./types";
+import { Product } from "../../types";
 
 const initialState: ProductsState = {
   list: [],

@@ -1,7 +1,9 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "..";
+import { logout } from "../auth/authSlice"; // Import the logout action
 
-import { User, UsersState } from "../../store/users/types";
+import { UsersState } from "../../store/users/types";
+import { User } from "../../types";
 import {
   fetchAllUsers,
   fetchUserById,
@@ -28,7 +30,6 @@ const userSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-
       .addCase(fetchAllUsers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -44,20 +45,16 @@ const userSlice = createSlice({
         state.loading = false;
         state.error = action.error.message ?? "Failed to fetch users";
       })
-
       .addCase(
         fetchUserById.fulfilled,
         (state, action: PayloadAction<User>) => {
           state.loading = false;
           state.selectedUser = action.payload;
-          console.log("Selected user set in state:", action.payload);
         }
       )
-
       .addCase(createUser.fulfilled, (state, action: PayloadAction<User>) => {
         state.list.push(action.payload);
       })
-
       .addCase(updateUser.fulfilled, (state, action) => {
         const index = state.list.findIndex((u) => u.id === action.payload.id);
         if (index !== -1)
@@ -66,9 +63,12 @@ const userSlice = createSlice({
             ...action.payload
           };
       })
-
       .addCase(deleteUser.fulfilled, (state, action: PayloadAction<string>) => {
         state.list = state.list.filter((user) => user.id !== action.payload);
+      })
+      // Handle the logout action to reset the selectedUser
+      .addCase(logout, (state) => {
+        state.selectedUser = null;
       });
   }
 });

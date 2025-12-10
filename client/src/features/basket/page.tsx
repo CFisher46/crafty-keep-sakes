@@ -6,7 +6,7 @@ import {
   removeItemFromBasket,
   addItemToBasket
 } from "../../store/basket/basketSlice";
-//import { buttonStyles } from "../../helpers/styles";
+import { buttonStyles } from "../../helpers/formatting";
 
 function Basket() {
   const dispatch = useDispatch();
@@ -19,13 +19,12 @@ function Basket() {
   );
 
   const handleCheckout = () => {
-    console.log("Checkout completed");
     dispatch(clearBasket());
     localStorage.removeItem("basket");
   };
 
   return (
-    <Box pad="medium">
+    <Box pad="medium" background="white" round="small" elevation="small">
       <Text size="large" weight="bold" margin={{ bottom: "medium" }}>
         Shopping Basket
       </Text>
@@ -108,7 +107,7 @@ function Basket() {
                       })
                     )
                   }
-                  //style={buttonStyles.default}
+                  style={buttonStyles.default}
                 />
                 <Text margin={{ horizontal: "small" }}>{item.quantity}</Text>
                 <Button
@@ -124,7 +123,7 @@ function Basket() {
                       })
                     )
                   }
-                  //style={buttonStyles.default}
+                  style={buttonStyles.default}
                 />
               </Box>
 
@@ -144,7 +143,7 @@ function Basket() {
               <Button
                 label="Remove"
                 onClick={() => dispatch(removeItemFromBasket(item.id))}
-                //style={buttonStyles.default}
+                style={buttonStyles.default}
               />
             </Box>
           ))}
@@ -158,7 +157,7 @@ function Basket() {
               label="Checkout"
               onClick={handleCheckout}
               disabled={totalItems === 0}
-              //style={buttonStyles.default}
+              style={buttonStyles.default}
             />
           </Box>
         </Box>

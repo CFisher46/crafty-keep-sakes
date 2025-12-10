@@ -2,9 +2,8 @@ import { Form, Box, Text, TextInput, Button } from "grommet";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../store/auth/authSlice";
-
 import { useNavigate } from "react-router-dom";
-//import { buttonStyles } from '../../helpers/styles';
+import { buttonStyles } from "../../helpers/formatting";
 
 function UserLogin() {
   const [formValues, setFormValues] = useState({ email: "", password: "" });
@@ -92,7 +91,7 @@ function UserLogin() {
             name="login"
             type="submit"
             label="Login"
-            //style={buttonStyles.default as React.CSSProperties}
+            style={buttonStyles.default}
           />
         </Box>
       </Box>
