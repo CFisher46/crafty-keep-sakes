@@ -3,7 +3,7 @@ import { User } from '../../../types';
 import { buttonStyles } from '../../../helpers/formatting';
 import { createUser } from '../../../store/users/usersThunks';
 import { useAppDispatch } from '../../../store/hooks';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 function CreateNewUser() {
   const dispatch = useAppDispatch();
@@ -24,10 +24,10 @@ function CreateNewUser() {
     id: '',
     invoice_id: 0,
   };
+
   const [newUser, setNewUser] = useState<Partial<User>>(requiredDetails);
   const [passwordMatch, setPasswordMatch] = useState<boolean>(false);
   const [password, setPassword] = useState<string>('');
-  const [confirmPassword, setConfirmPassword] = useState<string>('');
 
   const handleCreateUser = async () => {
     console.log(`Creating user with data:`, newUser);
@@ -178,7 +178,6 @@ function CreateNewUser() {
           onClick={() => {
             setNewUser(requiredDetails);
             setPassword('');
-            setConfirmPassword('');
             setPasswordMatch(false);
           }}
         />

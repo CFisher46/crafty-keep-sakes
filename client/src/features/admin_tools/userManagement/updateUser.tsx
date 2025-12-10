@@ -8,7 +8,6 @@ import { buttonStyles } from '../../../helpers/formatting';
 const UpdateUser = (updateUserData: Partial<User>) => {
   const [changedFields, setChangedFields] = useState<Partial<User>>({});
   const [passwordUpdate, setPasswordUpdate] = useState<boolean>(false);
-  const [newPassword, setNewPassword] = useState<string>('');
   const dispatch = useAppDispatch();
 
   const handleFieldChange = (key: string, value: string) => {

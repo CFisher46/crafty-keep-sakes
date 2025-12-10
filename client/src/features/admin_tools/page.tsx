@@ -7,6 +7,7 @@ import { User } from '../../types';
 import { useAppDispatch } from '../../store/hooks';
 import { fetchAllUsers, fetchUserById } from '../../store/users/usersThunks';
 import { buttonStyles } from '../../helpers/formatting';
+import DeleteExisitingUser from './userManagement/deleteUser';
 
 function AdminTools() {
   const [requestedAction, setRequestedAction] = React.useState('');
@@ -47,8 +48,11 @@ function AdminTools() {
         setActiveComponent(() => () => UpdateUser(fetchedUser)); // Use fetchedUser directly
       }
     } else if (requestedTool === 'User' && requestedAction === 'Delete') {
-      console.log('User Delete selected');
-      setActiveComponent(null); // or set to DeleteUser component when available
+      if (selectedUser) {
+        const result = await dispatch(fetchUserById(selectedUser.id));
+        const fetchedUser = result.payload as User;
+        setActiveComponent(() => () => DeleteExisitingUser(fetchedUser)); // Use fetchedUser directly
+      }
     } else if (requestedTool === 'Product' && requestedAction === 'Add') {
       console.log('Product Add selected');
       setActiveComponent(null); // or set to AddProduct component when available
@@ -100,21 +104,22 @@ function AdminTools() {
             />
           </Text>
           <Box pad="xsmall" />
-          {requestedTool === 'User' && requestedAction === 'Update' && (
-            <Text>
-              {'Select a User to Update: '}
-              <Select
-                options={users}
-                labelKey={(option) =>
-                  `${option.last_name}, ${option.first_name} (${option.email_address})`
-                }
-                value={selectedUser}
-                placeholder="Select a User"
-                onChange={({ option }) => setSelectedUser(option)}
-                size="small"
-              />
-            </Text>
-          )}
+          {requestedTool === 'User' &&
+            (requestedAction === 'Update' || requestedAction === 'Delete') && (
+              <Text>
+                {'Select a User to Update: '}
+                <Select
+                  options={users}
+                  labelKey={(option) =>
+                    `${option.last_name}, ${option.first_name} (${option.email_address})`
+                  }
+                  value={selectedUser}
+                  placeholder="Select a User"
+                  onChange={({ option }) => setSelectedUser(option)}
+                  size="small"
+                />
+              </Text>
+            )}
           <Box pad="xsmall" direction="row" gap="small">
             <Button
               label="Submit"
