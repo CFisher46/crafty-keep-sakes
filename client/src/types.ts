@@ -26,7 +26,7 @@ export type Product = {
   product_name: string;
   is_live: string;
   sale_percent: string | null;
-  images: string | null;
+  images: string;
 };
 
 export type Audit = {

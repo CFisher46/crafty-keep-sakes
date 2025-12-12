@@ -8,6 +8,7 @@ import { useAppDispatch } from '../../store/hooks';
 import { fetchAllUsers, fetchUserById } from '../../store/users/usersThunks';
 import { buttonStyles } from '../../helpers/formatting';
 import DeleteExisitingUser from './userManagement/deleteUser';
+import CreateNewProduct from './productManagement/createProduct';
 
 function AdminTools() {
   const [requestedAction, setRequestedAction] = React.useState('');
@@ -45,17 +46,16 @@ function AdminTools() {
       if (selectedUser) {
         const result = await dispatch(fetchUserById(selectedUser.id));
         const fetchedUser = result.payload as User;
-        setActiveComponent(() => () => UpdateUser(fetchedUser)); // Use fetchedUser directly
+        setActiveComponent(() => () => UpdateUser(fetchedUser));
       }
     } else if (requestedTool === 'User' && requestedAction === 'Delete') {
       if (selectedUser) {
         const result = await dispatch(fetchUserById(selectedUser.id));
         const fetchedUser = result.payload as User;
-        setActiveComponent(() => () => DeleteExisitingUser(fetchedUser)); // Use fetchedUser directly
+        setActiveComponent(() => () => DeleteExisitingUser(fetchedUser));
       }
     } else if (requestedTool === 'Product' && requestedAction === 'Add') {
-      console.log('Product Add selected');
-      setActiveComponent(null); // or set to AddProduct component when available
+      setActiveComponent(() => CreateNewProduct);
     } else if (requestedTool === 'Product' && requestedAction === 'Update') {
       console.log('Product Update selected');
       setActiveComponent(null);
