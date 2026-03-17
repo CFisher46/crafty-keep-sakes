@@ -1,13 +1,4 @@
-import {
-  Box,
-  Card,
-  Grid,
-  TextInput,
-  Text,
-  Button,
-  FileInput,
-  FormField,
-} from 'grommet';
+import { Box, Card, Grid, TextInput, Text, Button, FileInput } from 'grommet';
 import { Product } from '../../../types';
 import { useAppDispatch } from '../../../store/hooks';
 import { useState } from 'react';
