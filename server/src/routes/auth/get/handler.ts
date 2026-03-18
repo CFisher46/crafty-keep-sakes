@@ -2,6 +2,7 @@ import express from "express";
 import jwt from "jsonwebtoken";
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "your-dev-secret";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 router.get("/me", async (req: any, res: any) => {
@@ -10,12 +11,12 @@ router.get("/me", async (req: any, res: any) => {
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
-    const user = jwt.verify(token, process.env.JWT_SECRET!) as jwt.JwtPayload;
+    const user = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
     res.json({
       user: {
         ...(user as object),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: (user as any).accountType // 👈 add alias for frontend consistency
+        type: (user as any).type
       },
       authenticated: true
     });

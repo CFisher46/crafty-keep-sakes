@@ -36,13 +36,6 @@ function UserLogin() {
       const result = await response.json();
       dispatch(loginSuccess(result.user));
 
-      const consent = localStorage.getItem("cookieConsent");
-      if (consent === "accepted") {
-        document.cookie = `token=${result.token}; path=/;`;
-      } else {
-        localStorage.setItem("authToken", result.token);
-      }
-
       navigate("/Home");
     } catch (error) {
       setError("Failed to login. Please try again.");
