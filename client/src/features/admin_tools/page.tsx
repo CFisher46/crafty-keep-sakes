@@ -9,6 +9,7 @@ import { fetchAllUsers, fetchUserById } from '../../store/users/usersThunks';
 import { buttonStyles } from '../../helpers/formatting';
 import DeleteExisitingUser from './userManagement/deleteUser';
 import CreateNewProduct from './productManagement/createProduct';
+import UpdateProduct from './productManagement/updateProdct';
 
 function AdminTools() {
   const [requestedAction, setRequestedAction] = React.useState('');
@@ -58,7 +59,7 @@ function AdminTools() {
       setActiveComponent(() => CreateNewProduct);
     } else if (requestedTool === 'Product' && requestedAction === 'Update') {
       console.log('Product Update selected');
-      setActiveComponent(null);
+      setActiveComponent(()=> UpdateProduct);
     } else if (requestedTool === 'Product' && requestedAction === 'Delete') {
       console.log('Product Delete selected');
       setActiveComponent(null);
