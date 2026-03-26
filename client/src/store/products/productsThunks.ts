@@ -60,6 +60,34 @@ export const createProduct = createAsyncThunk(
   }
 );
 
+export const uploadProductImages = createAsyncThunk<
+  { message: string; images: string[] },
+  { productId: string; files: File[] },
+  { rejectValue: string }
+>("products/uploadProductImages", async ({ productId, files }, { rejectWithValue }) => {
+  try {
+    const formData = new FormData();
+    files.forEach((file) => formData.append("images", file));
+
+    const res = await fetch(
+      `${process.env.REACT_APP_API_URL}/api/products/${productId}/images/upload`,
+      {
+        method: "POST",
+        body: formData
+      }
+    );
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      return rejectWithValue(errorData.error || "Failed to upload product images");
+    }
+
+    return (await res.json()) as { message: string; images: string[] };
+  } catch (err: any) {
+    return rejectWithValue(err.message || "Unexpected error uploading images");
+  }
+});
+
 export const updateProduct = createAsyncThunk<
   Product, // Return type on success
   { id: string; product: Partial<Product> }, // Payload: id + partial product data
