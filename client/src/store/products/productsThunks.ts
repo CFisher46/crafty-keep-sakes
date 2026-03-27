@@ -30,6 +30,23 @@ export const fetchAllProducts = createAsyncThunk<Product[]>(
   "products/fetchAll",
   async (_, thunkAPI) => {
     try {
+      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/products?is_live=true`);
+      const data = await res.json();
+      if (data && data.data) {
+        return JSON.parse(data.data);
+      } else {
+        throw new Error("Invalid API response structure");
+      }
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.message);
+    }
+  }
+);
+
+export const fetchAllProductsForAdmin = createAsyncThunk<Product[]>(
+  "products/fetchAllForAdmin",
+  async (_, thunkAPI) => {
+    try {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/products`);
       const data = await res.json();
       if (data && data.data) {

@@ -1,10 +1,8 @@
 import {
-  conditionIn,
-  generateFilterSql,
   generateSortSql
 } from "../../../ts-common/sql-utils";
 import { DefaultQueryParams } from "../../../ts-common/types";
-import { SortOptions, FilterOptions } from "../types";
+import { SortOptions } from "../types";
 
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: "fp" },
@@ -15,24 +13,67 @@ export const SORT_OPTIONS: SortOptions = {
   }
 };
 
-export const FILTER_OPTIONS: FilterOptions = {
-  is_live: { alias: "p" },
-  on_sale: { alias: "p" },
-  category: { alias: "p" }
+const splitCsv = (value?: string) =>
+  String(value ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+const escapeSqlLiteral = (value: string) => value.replace(/'/g, "''");
+
+const toBooleanSqlValue = (value: string): "TRUE" | "FALSE" | null => {
+  const normalized = value.trim().toLowerCase();
+
+  if (["true", "1", "yes", "y"].includes(normalized)) return "TRUE";
+  if (["false", "0", "no", "n"].includes(normalized)) return "FALSE";
+
+  return null;
+};
+
+const buildTextInClause = (alias: string, column: string, value?: string) => {
+  const values = splitCsv(value).map((item) => `'${escapeSqlLiteral(item)}'`);
+  if (!values.length) return "";
+
+  return `${alias}.${column} IN (${values.join(", ")})`;
+};
+
+const buildBooleanInClause = (
+  alias: string,
+  column: string,
+  value?: string
+) => {
+  const values = splitCsv(value)
+    .map(toBooleanSqlValue)
+    .filter((item): item is "TRUE" | "FALSE" => item !== null);
+
+  if (!values.length) return "";
+
+  return `${alias}.${column} IN (${values.join(", ")})`;
 };
 
 export function GetAllProductsQuery(
   queryStringParams?: DefaultQueryParams,
   productName?: string
 ) {
-  const dynamicProductNameFilter = productName
-    ? conditionIn("p", "product_name", productName)
-    : ``;
+  const whereClauses: string[] = [];
+  const liveOnly = queryStringParams?.is_live === "true";
+
+  if (liveOnly) {
+    whereClauses.push("p.is_live = TRUE");
+  }
+
+  const productNameClause = buildTextInClause("p", "product_name", productName);
+  if (productNameClause) whereClauses.push(productNameClause);
+
+  const categoryClause = buildTextInClause("p", "category", queryStringParams?.category);
+  if (categoryClause) whereClauses.push(categoryClause);
+
+  const onSaleClause = buildBooleanInClause("p", "on_sale", queryStringParams?.on_sale);
+  if (onSaleClause) whereClauses.push(onSaleClause);
+
+  const whereSql = `WHERE ${whereClauses.length ? whereClauses.join(" AND ") : "p.id IS NOT NULL"}`;
+
   const dynamicSortSql = generateSortSql(SORT_OPTIONS, queryStringParams ?? {});
-  const dynamicFilterSql = generateFilterSql(
-    FILTER_OPTIONS,
-    queryStringParams ?? {}
-  );
 
   const result = `
     WITH FilteredProducts AS (
@@ -47,9 +88,7 @@ export function GetAllProductsQuery(
             p.is_live,
             p.sale_percent
         FROM products p
-        WHERE p.is_live = TRUE
-        ${dynamicProductNameFilter ? `AND ${dynamicProductNameFilter}` : ``}
-        ${dynamicFilterSql ? `AND ${dynamicFilterSql}` : ``}
+          ${whereSql}
     ),
     ProductCount AS (
         SELECT COUNT(*) AS total_count

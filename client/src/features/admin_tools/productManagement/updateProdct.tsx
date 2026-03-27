@@ -2,7 +2,7 @@ import { Box, Text, Select, Button, TextInput, Grid } from 'grommet';
 import { Product } from '../../../types';
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../store/hooks';
-import { fetchAllProducts, updateProduct } from '../../../store/products/productsThunks';
+import { fetchAllProductsForAdmin, updateProduct } from '../../../store/products/productsThunks';
 import { buttonStyles } from '../../../helpers/formatting';
 
 const UpdateProduct = () => {
@@ -12,10 +12,21 @@ const UpdateProduct = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editedProduct, setEditedProduct] = useState<Product | null>(null);
 
+  const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
+  const numericFields = new Set<keyof Product>(['price', 'quantity', 'sale_percent']);
+
+  const parseBooleanValue = (value: Product[keyof Product] | string): boolean => {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'number') return value === 1;
+
+    const normalized = String(value).trim().toLowerCase();
+    return ['true', '1', 'yes', 'y'].includes(normalized);
+  };
+
   useEffect(() => {
     const loadProducts = async () => {
       try {
-        const products = await dispatch(fetchAllProducts()).unwrap();
+        const products = await dispatch(fetchAllProductsForAdmin()).unwrap();
         setProductList(products);
       } catch (err) {
         console.error('Failed to load products:', err);
@@ -35,7 +46,20 @@ const UpdateProduct = () => {
   };
 
   const handleFieldChange = (key: keyof Product, value: string) => {
-    setEditedProduct((prev) => prev ? { ...prev, [key]: value } : prev);
+    setEditedProduct((prev) => {
+      if (!prev) return prev;
+
+      let parsedValue: Product[keyof Product] = value;
+
+      if (booleanFields.has(key)) {
+        parsedValue = parseBooleanValue(value);
+      } else if (numericFields.has(key)) {
+        const numericValue = Number(value);
+        parsedValue = Number.isFinite(numericValue) ? numericValue : 0;
+      }
+
+      return { ...prev, [key]: parsedValue };
+    });
   };
 
   const handleSave = async () => {
@@ -58,12 +82,9 @@ const UpdateProduct = () => {
 
   return (
     <Box pad="medium">
-      <Text weight="bold" size="large" margin={{ bottom: 'medium' }}>
-        Update Product
-      </Text>
 
       {!selectedProduct ? (
-        <Box gap="medium">
+        <Box pad="medium" direction="row" gap="small" align="center">
           <Select
             options={productList.map((p) => ({ label: p.id, value: p.id }))}
             labelKey="label"
@@ -91,12 +112,29 @@ const UpdateProduct = () => {
                     <Text size="small" weight="bold" style={{ textTransform: 'capitalize' }}>
                       {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}:
                     </Text>
-                    <TextInput
-                      value={String(value)}
-                      size="small"
-                      style={{ fontSize: '12px' }}
-                      onChange={(e) => handleFieldChange(key as keyof Product, e.target.value)}
-                    />
+                    {key === 'on_sale' || key === 'is_live' ? (
+                      <Select
+                        options={[
+                          { label: 'Yes', value: 'yes' },
+                          { label: 'No', value: 'no' },
+                        ]}
+                        labelKey="label"
+                        valueKey={{ key: 'value', reduce: true }}
+                        value={parseBooleanValue(value) ? 'yes' : 'no'}
+                        onChange={({ value: selectedValue }) =>
+                          handleFieldChange(key as keyof Product, String(selectedValue))
+                        }
+                      />
+                    ) : (
+                      <TextInput
+                        value={String(value)}
+                        size="small"
+                        style={{ fontSize: '12px' }}
+                        readOnly={key === 'id'}
+                        disabled={key === 'id'}
+                        onChange={(e) => handleFieldChange(key as keyof Product, e.target.value)}
+                      />
+                    )}
                   </Box>
                 ))}
           </Grid>

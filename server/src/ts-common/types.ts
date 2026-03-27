@@ -1,3 +1,5 @@
+import { Query } from "slonik";
+
 export type Primative = string | number | boolean | string[];
 
 export type SortParams = {
@@ -28,7 +30,14 @@ export type SearchParams = {
   searchFields?: string;
 };
 
+export type QueryPrams ={
+  is_live?: string;
+  on_sale?: string;
+  category?: string;
+}
+
 export type DefaultQueryParams = PageSizePrams &
+  QueryPrams &
   SortParams &
   SearchParams &
   object;
