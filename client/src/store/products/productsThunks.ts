@@ -1,6 +1,14 @@
 // src/store/products/productsThunks.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Product } from "../../types";
+import { createAuditEntry } from "../audits/auditThunks";
+
+const getChangedBy = (state: any) => {
+  const loggedInUser = state.auth?.user;
+  return loggedInUser
+    ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
+    : "Unknown";
+};
 
 export const fetchProductById = createAsyncThunk<Product, string>(
   "products/fetchById",
@@ -37,7 +45,7 @@ export const fetchAllProducts = createAsyncThunk<Product[]>(
 
 export const createProduct = createAsyncThunk(
   "products/createProduct",
-  async (product: Product, { rejectWithValue }) => {
+  async (product: Product, { dispatch, rejectWithValue, getState }) => {
     try {
       const res = await fetch(`${process.env.REACT_APP_API_URL}/api/products`, {
         method: "POST",
@@ -53,6 +61,18 @@ export const createProduct = createAsyncThunk(
       }
 
       const data = await res.json();
+
+      const changedBy = getChangedBy(getState());
+      dispatch(
+        createAuditEntry({
+          user: String(product.id || data.insertId || ""),
+          field_changed: "product_created",
+          action_type: "CREATE",
+          api_source: "/products",
+          changed_by: changedBy
+        })
+      );
+
       return data; // Expected to return { message, insertId }
     } catch (err: any) {
       return rejectWithValue(err.message || "Unexpected error");
@@ -90,9 +110,11 @@ export const uploadProductImages = createAsyncThunk<
 
 export const updateProduct = createAsyncThunk<
   Product, // Return type on success
-  { id: string; product: Partial<Product> }, // Payload: id + partial product data
+  { id: string; product: Partial<Product>; previousProduct?: Product }, // Payload: id + partial product data
   { rejectValue: string }
->("products/updateProduct", async ({ id, product }, { rejectWithValue }) => {
+>(
+  "products/updateProduct",
+  async ({ id, product, previousProduct }, { dispatch, rejectWithValue, getState }) => {
   try {
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/api/products/${id}`,
@@ -109,11 +131,35 @@ export const updateProduct = createAsyncThunk<
     }
 
     const updatedProduct = await response.json();
+
+    if (previousProduct) {
+      const changedBy = getChangedBy(getState());
+
+      Object.keys(product).forEach((key) => {
+        const typedKey = key as keyof Product;
+        const oldValue = previousProduct[typedKey];
+        const newValue = product[typedKey];
+
+        if (typedKey !== "images" && oldValue !== newValue) {
+          dispatch(
+            createAuditEntry({
+              user: id,
+              field_changed: typedKey,
+              action_type: "UPDATE",
+              api_source: `/products`,
+              changed_by: changedBy
+            })
+          );
+        }
+      });
+    }
+
     return updatedProduct;
   } catch (err) {
     return rejectWithValue("Network error");
   }
-});
+}
+);
 
 export const fetchFilteredProducts = createAsyncThunk(
   "products/fetchFilteredProducts",

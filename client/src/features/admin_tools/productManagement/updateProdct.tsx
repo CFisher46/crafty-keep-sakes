@@ -41,7 +41,13 @@ const UpdateProduct = () => {
   const handleSave = async () => {
     if (!editedProduct || !selectedProduct) return;
     try {
-      await dispatch(updateProduct({ id: selectedProduct.id, product: editedProduct })).unwrap();
+      await dispatch(
+        updateProduct({
+          id: selectedProduct.id,
+          product: editedProduct,
+          previousProduct: selectedProduct,
+        })
+      ).unwrap();
       setSelectedProduct(null);
       setEditedProduct(null);
       setSelectedProductId('');
