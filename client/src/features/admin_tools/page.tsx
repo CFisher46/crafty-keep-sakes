@@ -20,6 +20,27 @@ function AdminTools() {
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
   const dispatch = useAppDispatch();
 
+  const actionToToolOptions: Record<string, string[]> = {
+    Add: ['User', 'Product', 'Report'],
+    Update: ['User', 'Product', 'Report'],
+    Delete: ['User', 'Report'],
+  };
+
+  const availableToolOptions = requestedAction
+    ? actionToToolOptions[requestedAction] ?? []
+    : ['User', 'Product', 'Report'];
+
+  const isValidCombination =
+    !!requestedAction &&
+    !!requestedTool &&
+    availableToolOptions.includes(requestedTool);
+
+  const requiresSelectedUser =
+    requestedTool === 'User' &&
+    (requestedAction === 'Update' || requestedAction === 'Delete');
+
+  const canSubmit = isValidCombination && (!requiresSelectedUser || !!selectedUser);
+
   useEffect(() => {
     const fetchUsers = async () => {
       const result = await dispatch(fetchAllUsers());
@@ -60,9 +81,6 @@ function AdminTools() {
     } else if (requestedTool === 'Product' && requestedAction === 'Update') {
       console.log('Product Update selected');
       setActiveComponent(()=> UpdateProduct);
-    } else if (requestedTool === 'Product' && requestedAction === 'Delete') {
-      console.log('Product Delete selected');
-      setActiveComponent(null);
     } else if (requestedTool === 'Report' && requestedAction === 'Add') {
       console.log('Report Add selected');
       setActiveComponent(null);
@@ -90,7 +108,14 @@ function AdminTools() {
             <Select
               placeholder="Select an action"
               options={['Add', 'Update', 'Delete']}
-              onChange={({ option }) => setRequestedAction(option)}
+              onChange={({ option }) => {
+                setRequestedAction(option);
+                setActiveComponent(null);
+                if (!actionToToolOptions[option]?.includes(requestedTool)) {
+                  setRequestedTool('');
+                  setSelectedUser(undefined);
+                }
+              }}
               value={requestedAction}
             />
           </Text>
@@ -99,8 +124,13 @@ function AdminTools() {
             {'a '}
             <Select
               placeholder="Select a tool"
-              options={['User', 'Product', 'Report']}
-              onChange={({ option }) => setRequestedTool(option)}
+              options={availableToolOptions}
+              disabled={!requestedAction}
+              onChange={({ option }) => {
+                setRequestedTool(option);
+                setSelectedUser(undefined);
+                setActiveComponent(null);
+              }}
               value={requestedTool}
             />
           </Text>
@@ -125,6 +155,7 @@ function AdminTools() {
             <Button
               label="Submit"
               onClick={() => handleRequest(requestedAction, requestedTool)}
+              disabled={!canSubmit}
               style={buttonStyles.default}
             />
             <Button
