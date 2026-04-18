@@ -38,9 +38,13 @@ function Shop() {
       try {
         const queryParams = new URLSearchParams(location.search);
         const filtersFromURL = Object.fromEntries(queryParams.entries());
+        const shopFilters = {
+          ...filtersFromURL,
+          is_live: 'true',
+        };
 
         const data = await dispatch<any>(
-          fetchFilteredProducts(filtersFromURL)
+          fetchFilteredProducts(shopFilters)
         ).unwrap();
 
         setProducts(

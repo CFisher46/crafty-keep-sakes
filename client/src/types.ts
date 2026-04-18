@@ -21,12 +21,12 @@ export type Product = {
   category: string;
   description: string;
   price: number;
-  quantity: string;
-  on_sale: string;
+  quantity: number;
+  on_sale: boolean;
   product_name: string;
-  is_live: string;
-  sale_percent: string | null;
-  images: string | null;
+  is_live: boolean;
+  sale_percent: number;
+  images: string;
 };
 
 export type Audit = {

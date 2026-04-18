@@ -39,7 +39,9 @@ export const AuditLogs = () => {
                 border="bottom"
                 align="center"
               >
-                <Text weight="bold">{header.replace(/_/g, ' ')}</Text>
+                <Text weight="bold">
+                  {header === 'user' ? 'id' : header.replace(/_/g, ' ')}
+                </Text>
               </TableCell>
             ))}
           </TableRow>

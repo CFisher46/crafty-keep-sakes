@@ -102,12 +102,12 @@ const UpdateUser = (updateUserData: Partial<User>) => {
               handlePasswordReset(event.target.value);
             }}
           />
+          <Button
+            label="Update User"
+            onClick={handleUserUpdate}
+            style={buttonStyles.default}
+          />
         </Box>
-        <Button
-          label="Update User"
-          onClick={handleUserUpdate}
-          style={buttonStyles.default}
-        />
       </Grid>
     </Card>
   );
