@@ -1,4 +1,3 @@
-import { Query } from "slonik";
 
 export type Primative = string | number | boolean | string[];
 
