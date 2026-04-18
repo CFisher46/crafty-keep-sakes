@@ -2,6 +2,7 @@ import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "..";
 import {
   fetchAllProducts,
+  fetchFilteredProducts,
   fetchProductById,
   createProduct,
   updateProduct
@@ -53,6 +54,21 @@ const productsSlice = createSlice({
       .addCase(fetchAllProducts.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(fetchFilteredProducts.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchFilteredProducts.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+
+        const payload = action.payload;
+        state.list = typeof payload === "string" ? JSON.parse(payload) : payload;
+      })
+      .addCase(fetchFilteredProducts.rejected, (state, action) => {
+        state.loading = false;
+        state.error = (action.payload as string) ?? "Failed to filter products";
       })
       .addCase(fetchProductById.pending, (state) => {
         state.loading = true;

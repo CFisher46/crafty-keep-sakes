@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { Form, Text, Box, Card, Grid, Button } from 'grommet';
 import ShopFilterBar from '../../components/shop-filters-bar/shop-filter-bar';
 // import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
@@ -9,25 +8,39 @@ import { addItemToBasket } from '../../store/basket/basketSlice';
 import { buttonStyles } from '../../helpers/formatting';
 import CommonModal from '../../components/modals/common-modal';
 import { Product } from '../../types';
-import SearchBar from '../../components/header/searchBar';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { selectAllProducts } from '../../store/products/productsSlice';
 
 //TODO: change the products query to be dynamic based on the filters
 // and categories selected by the user rather than geting all products
 // including non-live.
 
 function Shop() {
-  const [products, setProducts] = useState<Product[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
+  const products = useAppSelector(selectAllProducts);
   const location = useLocation();
 
+  const parseProductImages = (images: Product['images']) => {
+    if (Array.isArray(images)) return images;
+    if (typeof images !== 'string' || !images.trim()) return [];
+
+    try {
+      return JSON.parse(images);
+    } catch {
+      return [];
+    }
+  };
+
   const handleAddToCart = (product: Product) => {
+    const productImages = parseProductImages(product.images);
+
     dispatch(
       addItemToBasket({
         id: product.id,
-        image: product.images?.[0] || '', // Ensure a valid image or placeholder is passed
+        image: productImages[0] || '',
         product_name: product.product_name,
         price: product.price,
         quantity: 1,
@@ -45,18 +58,7 @@ function Shop() {
           is_live: 'true',
         };
 
-        const data = await dispatch<any>(
-          fetchFilteredProducts(shopFilters)
-        ).unwrap();
-
-        setProducts(
-          JSON.parse(data).map((p: Product) => ({
-            ...p,
-            name: p.product_name,
-            images:
-              typeof p.images === 'string' ? JSON.parse(p.images) : p.images,
-          }))
-        );
+        await dispatch<any>(fetchFilteredProducts(shopFilters)).unwrap();
       } catch (error) {
         console.error('Error fetching filtered products:', error);
       }
@@ -84,7 +86,10 @@ function Shop() {
           {products.length === 0 ? (
             <Text>Loading... </Text>
           ) : (
-            products.map((product, i) => (
+            products.map((product, i) => {
+              const productImages = parseProductImages(product.images);
+
+              return (
               <Card
                 height="medium"
                 width="medium"
@@ -102,9 +107,9 @@ function Shop() {
                 onMouseLeave={() => setHoveredCard(null)}
               >
                 <Box height="small" width="100%" overflow="hidden">
-                  {product.images && product.images.length > 0 ? (
+                  {productImages && productImages.length > 0 ? (
                     <img
-                      src={product.images[0]}
+                      src={productImages[0]}
                       alt={product.product_name}
                       style={{
                         width: '100%',
@@ -145,7 +150,8 @@ function Shop() {
                   style={buttonStyles.default}
                 />
               </Card>
-            ))
+              );
+            })
           )}
         </Grid>
       </Form>
