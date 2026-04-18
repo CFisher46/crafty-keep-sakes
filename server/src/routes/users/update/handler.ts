@@ -12,15 +12,13 @@ router.put('/:id', async (req, res) => {
   const updates = req.body as Partial<User>;
 
   try {
-    // Build dynamic SQL query based on provided fields
-    const fields = Object.keys(updates);
-    const values: string[] = [];
+    const values: Array<string | number> = [];
 
-    if (fields.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: 'No fields to update' });
+      return;
     }
 
-    // Encrypt fields that need encryption before updating
     const encryptedUpdates: Partial<User> = { ...updates };
 
     if (encryptedUpdates.first_name) {
@@ -50,10 +48,20 @@ router.put('/:id', async (req, res) => {
       );
     }
 
-    // Build the SET clause with encrypted values
-    const setClause = Object.keys(encryptedUpdates)
-      .map((field) => {
-        values.push(encryptedUpdates[field as keyof User]);
+    const updateEntries = Object.entries(encryptedUpdates).filter(
+      (
+        entry
+      ): entry is [keyof User, string | number] => entry[1] !== undefined
+    );
+
+    if (updateEntries.length === 0) {
+      res.status(400).json({ error: 'No fields to update' });
+      return;
+    }
+
+    const setClause = updateEntries
+      .map(([field, value]) => {
+        values.push(value);
         return `${field} = ?`;
       })
       .join(', ');
