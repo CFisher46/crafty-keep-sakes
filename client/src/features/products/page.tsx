@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { Form, Text, Box, Card, Grid, Button } from 'grommet';
+import ShopFilterBar from '../../components/shop-filters-bar/shop-filter-bar';
 // import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
 import { useLocation } from 'react-router-dom';
 import { fetchFilteredProducts } from '../../store/products/productsThunks';
@@ -8,6 +9,7 @@ import { addItemToBasket } from '../../store/basket/basketSlice';
 import { buttonStyles } from '../../helpers/formatting';
 import CommonModal from '../../components/modals/common-modal';
 import { Product } from '../../types';
+import SearchBar from '../../components/header/searchBar';
 
 //TODO: change the products query to be dynamic based on the filters
 // and categories selected by the user rather than geting all products
@@ -74,6 +76,8 @@ function Shop() {
   };
 
   return (
+    <>
+    <ShopFilterBar />
     <Box>
       <Form value={{}} onChange={() => {}}>
         <Grid columns={{ count: 5, size: 'small' }} gap="small">
@@ -155,6 +159,7 @@ function Shop() {
         />
       )}
     </Box>
+    </>
   );
 }
 

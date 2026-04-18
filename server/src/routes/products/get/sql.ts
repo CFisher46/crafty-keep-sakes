@@ -1,8 +1,9 @@
 import {
+  generateFilterSql,
   generateSortSql
 } from "../../../ts-common/sql-utils";
 import { DefaultQueryParams } from "../../../ts-common/types";
-import { SortOptions } from "../types";
+import { SortOptions, FilterOptions } from "../types";
 
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: "fp" },
@@ -12,6 +13,18 @@ export const SORT_OPTIONS: SortOptions = {
     alias: "fp"
   }
 };
+
+export const FILTER_OPTIONS: FilterOptions = {
+  price: { alias: "fp" },
+  is_live: { alias: "fp" },
+  on_sale: { alias: "fp" },
+  category: { alias: "fp" },
+  product_name: {
+    alias: ""
+  }
+};
+
+export
 
 const splitCsv = (value?: string) =>
   String(value ?? "")
@@ -74,6 +87,7 @@ export function GetAllProductsQuery(
   const whereSql = `WHERE ${whereClauses.length ? whereClauses.join(" AND ") : "p.id IS NOT NULL"}`;
 
   const dynamicSortSql = generateSortSql(SORT_OPTIONS, queryStringParams ?? {});
+  const dynamicFilter = generateFilterSql(FILTER_OPTIONS, queryStringParams ?? {});
 
   const result = `
     WITH FilteredProducts AS (
@@ -89,6 +103,7 @@ export function GetAllProductsQuery(
             p.sale_percent
         FROM products p
           ${whereSql}
+          
     ),
     ProductCount AS (
         SELECT COUNT(*) AS total_count
