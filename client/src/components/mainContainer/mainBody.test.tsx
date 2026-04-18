@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import type { ReactElement, ReactNode } from "react";
 import MainBody from "./mainBody";
 
 let mockCurrentPath = "/";
@@ -6,7 +7,7 @@ let mockCurrentPath = "/";
 jest.mock(
   "react-router-dom",
   () => {
-    const React = require("react");
+    const React = require("react") as typeof import("react");
     const MockNavigate = ({ to }: { to: string }) => {
       mockCurrentPath = to;
       return null;
@@ -23,22 +24,31 @@ jest.mock(
 
     const resolveRoute = (
       currentPath: string,
-      children: React.ReactNode
-    ): React.ReactNode => {
-      let matchedElement: React.ReactNode = null;
+      children: ReactNode
+    ): ReactNode => {
+      let matchedElement: ReactNode = null;
 
-      React.Children.forEach(children, (child) => {
+      React.Children.forEach(children, (child: ReactNode) => {
         if (!React.isValidElement(child) || matchedElement) {
           return;
         }
 
-        if (matchesPath(currentPath, child.props.path)) {
-          matchedElement = child.props.element;
+        const routeChild = child as ReactElement<{
+          path: string;
+          element: ReactNode;
+        }>;
+
+        if (matchesPath(currentPath, routeChild.props.path)) {
+          matchedElement = routeChild.props.element;
         }
       });
 
-      if (React.isValidElement(matchedElement) && matchedElement.type === MockNavigate) {
-        mockCurrentPath = matchedElement.props.to;
+      const navigateElement = React.isValidElement(matchedElement)
+        ? (matchedElement as ReactElement<{ to: string }>)
+        : null;
+
+      if (navigateElement && navigateElement.type === MockNavigate) {
+        mockCurrentPath = navigateElement.props.to;
         return resolveRoute(mockCurrentPath, children);
       }
 
@@ -49,7 +59,7 @@ jest.mock(
       __esModule: true,
       Navigate: MockNavigate,
       Route: () => null,
-      Routes: ({ children }: { children: React.ReactNode }) => (
+      Routes: ({ children }: { children: ReactNode }) => (
         <>{resolveRoute(mockCurrentPath, children)}</>
       ),
       useLocation: () => ({ pathname: mockCurrentPath })
@@ -84,7 +94,7 @@ jest.mock("../../helpers/protectedRoutes", () => ({
     element,
     requiredTypes
   }: {
-    element: JSX.Element;
+    element: ReactElement;
     requiredTypes: string[];
   }) => (
     <div
