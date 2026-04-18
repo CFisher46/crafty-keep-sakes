@@ -1,4 +1,9 @@
 {
+  "scripts": {
+    "test": "npm run test:server && npm run test:client",
+    "test:server": "npm --prefix server test",
+    "test:client": "npm --prefix client test -- --watchAll=false"
+  },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/jest": "^29.5.14",

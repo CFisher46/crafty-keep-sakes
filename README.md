@@ -34,6 +34,16 @@ In another terminal:
 
 The frontend reads `REACT_APP_API_URL` from `client/.env` and should point to your backend URL (default: `http://localhost:3001`).
 
+### 4) Run the baseline tests
+
+From the repo root:
+
+- `npm test` runs the server and client test suites.
+- `npm run test:server` runs the backend tests only.
+- `npm run test:client` runs the frontend tests once without watch mode.
+
+The current baseline is intentionally read-only on the backend. Server tests mock the shared database module so they catch route and response regressions without writing to MySQL.
+
 ## Encrypted user data recovery
 
 If old encrypted user fields can no longer be decrypted (lost historical key), run the server repair script.
