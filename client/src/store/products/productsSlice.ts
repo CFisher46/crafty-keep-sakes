@@ -10,8 +10,35 @@ import {
 import { ProductsState } from "./types";
 import { Product } from "../../types";
 
+const toPriceNumber = (value: unknown) => {
+  if (typeof value === "number") return value;
+  if (typeof value === "string") {
+    const normalized = value.replace("£", "").trim();
+    return Number(normalized);
+  }
+
+  return Number.NaN;
+};
+
+const getCatalogPriceBounds = (products: Product[]) => {
+  const numericPrices = products
+    .map((product) => toPriceNumber(product.price))
+    .filter((price) => Number.isFinite(price) && price >= 0);
+
+  if (!numericPrices.length) {
+    return { min: 0, max: 0 };
+  }
+
+  return {
+    min: Math.floor(Math.min(...numericPrices)),
+    max: Math.ceil(Math.max(...numericPrices))
+  };
+};
+
 const initialState: ProductsState = {
   list: [],
+  catalogPriceMin: 0,
+  catalogPriceMax: 0,
   selectedProduct: null,
   loading: false,
   error: null,
@@ -50,6 +77,10 @@ const productsSlice = createSlice({
       .addCase(fetchAllProducts.fulfilled, (state, action) => {
         state.loading = false;
         state.list = action.payload;
+
+        const bounds = getCatalogPriceBounds(action.payload);
+        state.catalogPriceMin = bounds.min;
+        state.catalogPriceMax = bounds.max;
       })
       .addCase(fetchAllProducts.rejected, (state, action) => {
         state.loading = false;
@@ -110,6 +141,10 @@ const productsSlice = createSlice({
 });
 
 export const selectAllProducts = (state: RootState) => state.products.list;
+export const selectCatalogPriceMin = (state: RootState) =>
+  state.products.catalogPriceMin;
+export const selectCatalogPriceMax = (state: RootState) =>
+  state.products.catalogPriceMax;
 export const selectProductsLoading = (state: RootState) =>
   state.products.loading;
 export const selectProductsError = (state: RootState) => state.products.error;

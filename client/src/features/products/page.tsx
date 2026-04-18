@@ -3,7 +3,7 @@ import { Form, Text, Box, Card, Grid, Button } from 'grommet';
 import ShopFilterBar from '../../components/shop-filters-bar/shop-filter-bar';
 // import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
 import { useLocation } from 'react-router-dom';
-import { fetchFilteredProducts } from '../../store/products/productsThunks';
+import { fetchAllProducts, fetchFilteredProducts } from '../../store/products/productsThunks';
 import { addItemToBasket } from '../../store/basket/basketSlice';
 import { buttonStyles } from '../../helpers/formatting';
 import CommonModal from '../../components/modals/common-modal';
@@ -51,8 +51,16 @@ function Shop() {
   useEffect(() => {
     const loadProducts = async () => {
       try {
+        await dispatch<any>(fetchAllProducts()).unwrap();
+
         const queryParams = new URLSearchParams(location.search);
         const filtersFromURL = Object.fromEntries(queryParams.entries());
+        const hasUrlFilters = Object.keys(filtersFromURL).length > 0;
+
+        if (!hasUrlFilters) {
+          return;
+        }
+
         const shopFilters = {
           ...filtersFromURL,
           is_live: 'true',
