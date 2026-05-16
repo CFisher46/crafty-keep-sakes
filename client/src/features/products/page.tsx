@@ -9,7 +9,10 @@ import { buttonStyles } from '../../helpers/formatting';
 import CommonModal from '../../components/modals/common-modal';
 import { Product } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { selectAllProducts } from '../../store/products/productsSlice';
+import {
+  selectAllProducts,
+  selectProductsLoading,
+} from '../../store/products/productsSlice';
 
 //TODO: change the products query to be dynamic based on the filters
 // and categories selected by the user rather than geting all products
@@ -21,7 +24,12 @@ function Shop() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAllProducts);
+  const loading = useAppSelector(selectProductsLoading);
   const location = useLocation();
+
+  const visibleProducts = products.filter(
+    (product) => Boolean(product?.id) && Boolean(product?.product_name)
+  );
 
   const parseProductImages = (images: Product['images']) => {
     if (Array.isArray(images)) return images;
@@ -87,92 +95,101 @@ function Shop() {
 
   return (
     <>
-    <ShopFilterBar />
-    <Box>
-      <Form value={{}} onChange={() => {}}>
-        <Grid columns={{ count: 5, size: 'small' }} gap="small">
-          {products.length === 0 ? (
+      <ShopFilterBar />
+      <Box>
+        <Form value={{}} onChange={() => {}}>
+          {loading ? (
             <Text>Loading... </Text>
+          ) : visibleProducts.length === 0 ? (
+            <Box pad="medium" align="center" width="100%">
+              <Text size="large">No products found.</Text>
+              <Text size="small" color="dark-5">
+                Try a different search or clear the filters.
+              </Text>
+            </Box>
           ) : (
-            products.map((product, i) => {
-              const productImages = parseProductImages(product.images);
+            <Grid columns={{ count: 5, size: 'small' }} gap="small">
+              {visibleProducts.map((product, i) => {
+                const productImages = parseProductImages(product.images);
 
-              return (
-              <Card
-                height="medium"
-                width="medium"
-                background="white"
-                key={i}
-                margin="small"
-                pad="small"
-                border={{ color: 'light-4', size: 'xsmall' }}
-                style={{
-                  boxShadow:
-                    hoveredCard === i ? '0px 0px 20px rgb(45, 44, 45)' : 'none',
-                  transition: 'box-shadow 0.3s ease',
-                }}
-                onMouseEnter={() => setHoveredCard(i)}
-                onMouseLeave={() => setHoveredCard(null)}
-              >
-                <Box height="small" width="100%" overflow="hidden">
-                  {productImages && productImages.length > 0 ? (
-                    <img
-                      src={productImages[0]}
-                      alt={product.product_name}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                      }}
-                    />
-                  ) : (
-                    <Box
-                      height="100%"
-                      width="100%"
-                      background="white"
-                      align="center"
-                      justify="center"
-                      round="small"
-                    >
-                      <Text>No Image</Text>
+                return (
+                  <Card
+                    height="medium"
+                    width="medium"
+                    background="white"
+                    key={product.id}
+                    margin="small"
+                    pad="small"
+                    border={{ color: 'light-4', size: 'xsmall' }}
+                    style={{
+                      boxShadow:
+                        hoveredCard === i
+                          ? '0px 0px 20px rgb(45, 44, 45)'
+                          : 'none',
+                      transition: 'box-shadow 0.3s ease',
+                    }}
+                    onMouseEnter={() => setHoveredCard(i)}
+                    onMouseLeave={() => setHoveredCard(null)}
+                  >
+                    <Box height="small" width="100%" overflow="hidden">
+                      {productImages && productImages.length > 0 ? (
+                        <img
+                          src={productImages[0]}
+                          alt={product.product_name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          height="100%"
+                          width="100%"
+                          background="white"
+                          align="center"
+                          justify="center"
+                          round="small"
+                        >
+                          <Text>No Image</Text>
+                        </Box>
+                      )}
                     </Box>
-                  )}
-                </Box>
-                <Box pad={{ vertical: 'small' }}>
-                  <Text>{product.product_name}</Text>
-                  <Text>£{product.price}</Text>
-                </Box>
-                <Box pad={{ vertical: 'small' }}>
-                  <Button
-                    label="Add to Basket"
-                    //status="enabled"
-                    //primary
-                    style={buttonStyles.default}
-                    onClick={() => handleAddToCart(product)}
-                  />
-                </Box>
-                <Button
-                  label="View Details"
-                  //status="enabled"
-                  onClick={() => openModal(product)}
-                  style={buttonStyles.default}
-                />
-              </Card>
-              );
-            })
+                    <Box pad={{ vertical: 'small' }}>
+                      <Text>{product.product_name}</Text>
+                      <Text>£{product.price}</Text>
+                    </Box>
+                    <Box pad={{ vertical: 'small' }}>
+                      <Button
+                        label="Add to Basket"
+                        //status="enabled"
+                        //primary
+                        style={buttonStyles.default}
+                        onClick={() => handleAddToCart(product)}
+                      />
+                    </Box>
+                    <Button
+                      label="View Details"
+                      //status="enabled"
+                      onClick={() => openModal(product)}
+                      style={buttonStyles.default}
+                    />
+                  </Card>
+                );
+              })}
+            </Grid>
           )}
-        </Grid>
-      </Form>
+        </Form>
 
-      {isModalOpen && selectedProduct && (
-        <CommonModal
-          title={selectedProduct?.product_name || 'Product Details'}
-          type="viewProducts"
-          values={selectedProduct}
-          onClose={closeModal}
-        />
-      )}
-    </Box>
+        {isModalOpen && selectedProduct && (
+          <CommonModal
+            title={selectedProduct?.product_name || 'Product Details'}
+            type="viewProducts"
+            values={selectedProduct}
+            onClose={closeModal}
+          />
+        )}
+      </Box>
     </>
   );
 }
