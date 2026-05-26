@@ -33,6 +33,9 @@ export type QueryPrams ={
   is_live?: string;
   on_sale?: string;
   category?: string;
+  product_name?: string;
+  price_min?: string;
+  price_max?: string;
 }
 
 export type DefaultQueryParams = PageSizePrams &

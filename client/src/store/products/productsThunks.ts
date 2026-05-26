@@ -184,11 +184,29 @@ export const fetchFilteredProducts = createAsyncThunk(
     try {
       const queryParams = new URLSearchParams(filters).toString();
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/products/filter?${queryParams}`
+        `${process.env.REACT_APP_API_URL}/api/products/filter?${queryParams}`,
+        {
+          cache: "no-store"
+        }
       );
       if (!res.ok) throw new Error("Failed to fetch products");
       const json = await res.json();
-      return json.data; // This is important: unwrap `.data`
+      const data = json?.data;
+
+      if (Array.isArray(data)) {
+        return data;
+      }
+
+      if (typeof data === "string" && data.trim()) {
+        try {
+          const parsedData = JSON.parse(data);
+          return Array.isArray(parsedData) ? parsedData : [];
+        } catch {
+          return [];
+        }
+      }
+
+      return [];
     } catch (err: any) {
       return rejectWithValue(err.message);
     }

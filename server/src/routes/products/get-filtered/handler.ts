@@ -9,12 +9,10 @@ router.get('/filter', async (req, res) => {
   console.log('GET /api/products/filter');
 
   try {
-    const { product_name, ...restQuery } = req.query;
-    const queryStringParams = restQuery as DefaultQueryParams;
-    const productName = product_name as string;
+    const queryStringParams = req.query as DefaultQueryParams;
 
     const [rows] = await db.query(
-      GetAllProductsQuery(queryStringParams, productName)
+      GetAllProductsQuery(queryStringParams)
     );
 
     const parsedResult = JSON.parse(

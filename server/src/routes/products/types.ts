@@ -21,6 +21,8 @@ interface FilterParams {
   is_live: boolean;
   on_sale: boolean;
   category: string;
+  product_name: string;
+  price: number;
 }
 export type SortOptions = SortOpts<SortParams>;
 export type FilterOptions = FilterOpts<FilterParams>;
