@@ -2,15 +2,27 @@ import { Box, Text, Button } from "grommet";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
-  clearBasket,
   removeItemFromBasket,
   addItemToBasket
 } from "../../store/basket/basketSlice";
 import { buttonStyles } from "../../helpers/formatting";
+import { useEffect, useState } from "react";
+import SuccessfulCheckout from "./successPage";
 
 function Basket() {
   const dispatch = useDispatch();
+  const [basketStatus, setBasketStatus] = useState<"idle" | "processing" | "success">("idle");
   const { items, totalItems } = useSelector((state: RootState) => state.basket);
+
+// use a timer to simulate the checkout process
+  useEffect(() => {
+    if (basketStatus === "processing") {
+      const timer = setTimeout(() => {
+        setBasketStatus("success");
+      }, 2000); // Simulate a 2-second checkout process
+      return () => clearTimeout(timer);
+    }
+  }, [basketStatus]);
 
   // Calculate the total price for all items
   const totalPrice = items.reduce(
@@ -19,13 +31,16 @@ function Basket() {
   );
 
   const handleCheckout = () => {
-    dispatch(clearBasket());
-    localStorage.removeItem("basket");
+    setBasketStatus("processing");
   };
+
+  if (basketStatus === "success") {
+    return <SuccessfulCheckout checkout={{ items, totalPrice }} />;
+  }
 
   return (
     <Box pad="medium" background="white" round="small" elevation="small">
-      <Text size="large" weight="bold" margin={{ bottom: "medium" }}>
+      <Text size="large" weight="bold" margin= {{ bottom: "medium" }}>
         Shopping Basket
       </Text>
       {items.length === 0 ? (
@@ -154,9 +169,9 @@ function Basket() {
           </Box>
           <Box direction="row" justify="end" pad={{ top: "small" }}>
             <Button
-              label="Checkout"
+              label={basketStatus === "processing" ? "Processing..." : "Checkout"}
               onClick={handleCheckout}
-              disabled={totalItems === 0}
+              disabled={totalItems === 0 || basketStatus === "processing"}
               style={buttonStyles.default}
             />
           </Box>

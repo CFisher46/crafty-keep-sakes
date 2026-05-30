@@ -41,7 +41,7 @@ export type Audit = {
 
 export type Invoice = {
     id: number;
-    product_id: number;
+    product_id: string | number;
     user_id: number;
     product_name: string;
     product_price: number;
