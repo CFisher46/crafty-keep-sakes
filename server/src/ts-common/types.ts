@@ -36,6 +36,7 @@ export type QueryPrams ={
   product_name?: string;
   price_min?: string;
   price_max?: string;
+  invoice_id?: string;
 }
 
 export type DefaultQueryParams = PageSizePrams &

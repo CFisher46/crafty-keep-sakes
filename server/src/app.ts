@@ -8,6 +8,7 @@ import productsRouter from "./routes/products";
 import usersRouter from "./routes/users";
 import authRoutes from "./routes/auth";
 import auditRouter from "./routes/audit";
+import invoicesRouter from "./routes/invoices";
 // import other routers...
 
 dotenv.config();
@@ -29,6 +30,7 @@ app.use("/api/users", usersRouter);
 app.use("/api/auth", authRoutes);
 app.use("/api/auth/me", authRoutes);
 app.use("/api/audit", auditRouter);
+app.use("/api/invoices", invoicesRouter);
 
 app.use(
   "/images",
