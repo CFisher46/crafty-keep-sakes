@@ -4,6 +4,7 @@ import basketReducers from "./basket/basketSlice";
 import usersReducer from "./users/usersSlice";
 import authReducer from "./auth/authSlice";
 import auditLogsReducer from "./audits/auditSlice";
+import invoiceReducer from "./invoices/invoicesSlice";
 
 export const store = configureStore({
   reducer: {
@@ -11,7 +12,8 @@ export const store = configureStore({
     basket: basketReducers,
     users: usersReducer,
     auth: authReducer,
-    audit: auditLogsReducer
+    audit: auditLogsReducer,
+    invoice: invoiceReducer
   }
 });
 

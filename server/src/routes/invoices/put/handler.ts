@@ -6,8 +6,8 @@ import { Invoice } from "../types";
 
 const router = express.Router();
 
-router.put('/', async (req:any, res:any) => {
-    console.log("PUT /api/invoices called");
+router.post('/', async (req:any, res:any) => {
+    console.log("POST /api/invoices called");
     
     try {
        

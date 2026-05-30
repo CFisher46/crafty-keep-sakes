@@ -10,7 +10,11 @@ function FetchInvoicesSQL(queryParams?: DefaultQueryParams){
                 p.price AS product_price,
                 i.sale_id,
                 i.quantity,
-                i.total_price
+                i.total_price,
+                i.user_id,
+                i.invoice_creation_date,
+                i.invoice_due_date,
+                i.invoice_status
             FROM invoices i
             LEFT JOIN products p ON i.product_id = p.id
             WHERE 1=1
@@ -31,7 +35,11 @@ function FetchInvoicesSQL(queryParams?: DefaultQueryParams){
                         'product_price', fi.product_price,
                         'sale_id', fi.sale_id,
                         'quantity', fi.quantity,
-                        'total_price', fi.total_price
+                        'total_price', fi.total_price,
+                        'user_id', fi.user_id,
+                        'invoice_creation_date', fi.invoice_creation_date,
+                        'invoice_due_date', fi.invoice_due_date,
+                        'invoice_status', fi.invoice_status
                     )
                 ),
                 JSON_ARRAY()

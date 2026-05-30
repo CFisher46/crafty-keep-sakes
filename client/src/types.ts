@@ -38,3 +38,16 @@ export type Audit = {
   api_source: string;
   changed_by?: string;
 };
+
+export type Invoice = {
+    id: number;
+    product_id: number;
+    user_id: number;
+    product_name: string;
+    product_price: number;
+    quantity: number;
+    total_price: number;
+    invoice_creation_date: string;
+    invoice_due_date: string;
+    invoice_status:string;
+}
