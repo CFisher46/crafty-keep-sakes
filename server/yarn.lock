@@ -1113,6 +1113,11 @@
   resolved "https://registry.npmjs.org/@types/cookie-parser/-/cookie-parser-1.4.9.tgz"
   integrity sha512-tGZiZ2Gtc4m3wIdLkZ8mkj1T6CEHb35+VApbL2T14Dew8HA7c+04dmKqsKRNC+8RJPm16JEK0tFSwdZqubfc4g==
 
+"@types/cookiejar@^2.1.5":
+  version "2.1.5"
+  resolved "https://registry.npmjs.org/@types/cookiejar/-/cookiejar-2.1.5.tgz"
+  integrity sha512-he+DHOWReW0nghN24E1WUqM0efK4kI9oTqDm6XmK8ZPe2djZ90BSNdGnIyCLzCPw7/pogPlGbzI2wHGGmi4O/Q==
+
 "@types/cors@^2.8.19":
   version "2.8.19"
   resolved "https://registry.npmjs.org/@types/cors/-/cors-2.8.19.tgz"
@@ -1181,6 +1186,11 @@
   resolved "https://registry.npmjs.org/@types/json-schema/-/json-schema-7.0.15.tgz"
   integrity sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==
 
+"@types/methods@^1.1.4":
+  version "1.1.4"
+  resolved "https://registry.npmjs.org/@types/methods/-/methods-1.1.4.tgz"
+  integrity sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==
+
 "@types/mime@^1":
   version "1.3.5"
   resolved "https://registry.npmjs.org/@types/mime/-/mime-1.3.5.tgz"
@@ -1241,6 +1251,24 @@
   version "0.0.30"
   resolved "https://registry.npmjs.org/@types/strip-json-comments/-/strip-json-comments-0.0.30.tgz"
   integrity sha512-7NQmHra/JILCd1QqpSzl8+mJRc8ZHz3uDm8YV1Ks9IhK0epEiTw8aIErbvH9PI+6XbqhyIQy3462nEsn7UVzjQ==
+
+"@types/superagent@^8.1.0":
+  version "8.1.11"
+  resolved "https://registry.npmjs.org/@types/superagent/-/superagent-8.1.11.tgz"
+  integrity sha512-KA7srSW/HENDtOw9DOqaFLgWuMqN9WgjEw62lh9dpvRaZDkhdOkazASd7X7i2eMUYLHa1U37ZttnePsH5zTDHw==
+  dependencies:
+    "@types/cookiejar" "^2.1.5"
+    "@types/methods" "^1.1.4"
+    "@types/node" "*"
+    form-data "^4.0.0"
+
+"@types/supertest@^7.2.1":
+  version "7.2.1"
+  resolved "https://registry.npmjs.org/@types/supertest/-/supertest-7.2.1.tgz"
+  integrity sha512-4CbBvoYVLHL7+yhbYrZET0vsvuyXTC05aRe7dNQkwMzm56auceoy6Yu3K50uZmwfHna1os3CMSgM/3QVkUtPTw==
+  dependencies:
+    "@types/methods" "^1.1.4"
+    "@types/superagent" "^8.1.0"
 
 "@types/use-sync-external-store@^0.0.6":
   version "0.0.6"
