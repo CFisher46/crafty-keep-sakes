@@ -2,10 +2,15 @@ import { Router, Request, Response } from 'express';
 import { db } from '../../../ts-common/database';
 import { GetSpecificUsersQuery } from './sql';
 import { decrypt } from '../../../ts-common/helpers';
+import { verifyAuthToken, requireSelfOrAdmin } from '../../../ts-common/middleware';
 
 const router = Router();
 
-router.get('/:id', async (req: Request, res: Response): Promise<void> => {
+router.get(
+  '/:id',
+  verifyAuthToken,
+  requireSelfOrAdmin(),
+  async (req: Request, res: Response): Promise<void> => {
   console.log('GET /api/users/:id called');
   const { id } = req.params;
   try {
@@ -40,6 +45,7 @@ router.get('/:id', async (req: Request, res: Response): Promise<void> => {
     console.error('Error fetching user:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+  }
+);
 
 export default router;

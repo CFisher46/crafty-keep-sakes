@@ -10,6 +10,8 @@ Secondary target (once Stage 1 is merged): Stage 2 - Parallel API and Client Swi
 
 Stage 2 status: Core implementation complete. Remaining check is non-prod rollback drill.
 
+Upcoming target: Stage 3 auth guards, then Stage 9 endpoint test hardening.
+
 Why now:
 
 - v2 tables exist.
@@ -91,6 +93,12 @@ Exit:
 - [x] Add client per-domain API switch utilities.
 - [x] Test rapid rollback by toggling flags from v2 to legacy.
 - [ ] Execute one non-prod rollback drill and record evidence.
+
+## Next Up (After Stage 3)
+
+- [ ] Build endpoint inventory by domain and role.
+- [ ] Add exhaustive `200/401/403/400` endpoint coverage.
+- [ ] Add endpoint contract regression checks to CI.
 
 ## Done Definition (This Week)
 

@@ -4,10 +4,15 @@ import { db } from '../../../ts-common/database';
 import { User } from '../types';
 import { ResultSetHeader } from 'mysql2';
 import { encrypt } from '../../../ts-common/helpers';
+import { verifyAuthToken, requireSelfOrAdmin } from '../../../ts-common/middleware';
 
 const router = express.Router();
 
-router.put('/:id', async (req, res): Promise<void> => {
+router.put(
+  '/:id',
+  verifyAuthToken,
+  requireSelfOrAdmin(),
+  async (req, res): Promise<void> => {
   const id = req.params.id;
   const updates = req.body as Partial<User>;
 
@@ -73,6 +78,7 @@ router.put('/:id', async (req, res): Promise<void> => {
     console.error('Update User Error:', err);
     res.status(500).json({ error: 'Database error' });
   }
-});
+  }
+);
 
 export default router;

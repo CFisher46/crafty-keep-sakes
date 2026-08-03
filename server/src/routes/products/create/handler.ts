@@ -3,6 +3,7 @@ import { db } from '../../../ts-common/database';
 import { Product } from '../types';
 import { createProductQuery } from './sql';
 import { ResultSetHeader } from 'mysql2';
+import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
 
 const router = express.Router();
 
@@ -54,7 +55,7 @@ const normalizeProduct = (input: Partial<Product>): Product => ({
   images: String(input.images ?? '').trim(),
 });
 
-router.post('/', async (req, res) => {
+router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
   console.log('POST /api/products');
 
   try {

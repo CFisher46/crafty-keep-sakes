@@ -5,10 +5,11 @@ import { User } from '../types';
 import { createUserQuery } from '../create/sql';
 import { ResultSetHeader } from 'mysql2';
 import { encrypt } from '../../../ts-common/helpers';
+import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
   const user = req.body as User;
 
   try {

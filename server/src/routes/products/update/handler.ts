@@ -3,10 +3,11 @@ import { db } from "../../../ts-common/database";
 import { Product } from "../types";
 import { updateProductQuery } from "./sql";
 import { ResultSetHeader } from "mysql2";
+import { verifyAuthToken, requireRole } from "../../../ts-common/middleware";
 
 const router = express.Router();
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", verifyAuthToken, requireRole("admin"), async (req, res) => {
   const id = req.params.id;
   const product = req.body as Product;
 

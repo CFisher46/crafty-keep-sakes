@@ -22,7 +22,8 @@ Purpose: split the v2 migration into small, reviewable PRs with explicit test ga
 | 6 | User/Profile Migration | Admin user CRUD + profile ownership on v2 | High | Stage 3 |
 | 7 | Basket-Order-Invoice Migration | Checkout transaction model in v2 | High | Stage 3 |
 | 8 | Audit Migration | Append-only audit_events_v2 read path + guards | Medium | Stage 3 |
-| 9 | Legacy Decommission | Remove legacy reads/writes and cleanup | High | Stages 4-8 |
+| 9 | Endpoint Test Hardening | Exhaustive endpoint regression, authz matrix, and rollback confidence tests | Medium | Stages 3-8 |
+| 10 | Legacy Decommission | Remove legacy reads/writes and cleanup | High | Stages 4-9 |
 
 ## Stage Checklists
 
@@ -268,7 +269,35 @@ Exit Criteria:
 
 - [ ] Legacy audit table not used by active routes.
 
-## [ ] Stage 9 - Legacy Decommission
+## [ ] Stage 9 - Endpoint Test Hardening
+
+PR Goal: add exhaustive API coverage so breakages are caught early as migration complexity grows.
+
+Implementation:
+
+- [ ] Build an endpoint inventory file grouped by domain and role.
+- [ ] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
+- [ ] Add request validation tests for malformed payloads and missing fields (`400`).
+- [ ] Add data contract tests for critical responses to prevent schema drift.
+- [ ] Add smoke test bundle for canary deploy and rollback validation.
+- [ ] Add CI reporting for endpoint coverage trend (minimum threshold gate).
+
+Tests:
+
+- [ ] Auth endpoints: login, me, logout, invalid credentials, expired/invalid token.
+- [ ] Users endpoints: admin allowed, non-admin denied, owner checks enforced.
+- [ ] Products endpoints: public reads, admin-only writes, validation failures.
+- [ ] Audit endpoints: admin-read only, no public write.
+- [ ] Invoice/order endpoints: ownership checks and admin overrides.
+- [ ] Route source tests: canonical and `/api/v2` parity for each domain.
+
+Exit Criteria:
+
+- [ ] Endpoint auth matrix covered for all active routes.
+- [ ] Critical endpoint contract snapshots/baselines recorded.
+- [ ] CI fails on regression in endpoint authorization or contract checks.
+
+## [ ] Stage 10 - Legacy Decommission
 
 PR Goal: remove legacy table dependencies and dead code.
 
@@ -305,3 +334,4 @@ Exit Criteria:
 - 2026-08-03: Added Auth Slice A scaffolding with `AUTH_SOURCE` resolver and dual-source lookup service (no route behavior changes yet).
 - 2026-08-03: Added explicit parallel API and client switchboard stage so each migrated domain keeps a low-risk fallback path.
 - 2026-08-03: Added first switchboard pass with `/api/v2` route aliases and client domain URL helpers for fallback routing.
+- 2026-08-03: Added dedicated Endpoint Test Hardening stage before decommission to improve regression safety and rollback confidence.

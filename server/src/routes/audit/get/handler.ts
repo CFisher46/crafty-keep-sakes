@@ -1,10 +1,11 @@
 import express from 'express';
 import { db } from '../../../ts-common/database';
 import { getAudits } from './sql';
+import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
 
 const router = express.Router();
 
-router.get('/', async (req, res) => {
+router.get('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
   try {
     const query = getAudits();
     const values: string[] = [];
