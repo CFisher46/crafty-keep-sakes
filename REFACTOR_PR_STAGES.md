@@ -15,13 +15,14 @@ Purpose: split the v2 migration into small, reviewable PRs with explicit test ga
 |---|---|---|---|---|
 | 0 | Foundation and v2 Schema | v2 tables, bootstrap scripts, baseline tests | Low | None |
 | 1 | Auth Bridge (legacy + v2) | Login/session dual source with feature flag | Medium | Stage 0 |
-| 2 | Server Authorization Guards | Admin and self-or-admin middleware + tests | Medium | Stage 1 |
-| 3 | Product Read Migration | Product GET/filter/by-id from v2 tables | Medium | Stage 2 |
-| 4 | Product Write Migration | Product create/update/image upload to v2 | High | Stage 3 |
-| 5 | User/Profile Migration | Admin user CRUD + profile ownership on v2 | High | Stage 2 |
-| 6 | Basket-Order-Invoice Migration | Checkout transaction model in v2 | High | Stage 2 |
-| 7 | Audit Migration | Append-only audit_events_v2 read path + guards | Medium | Stage 2 |
-| 8 | Legacy Decommission | Remove legacy reads/writes and cleanup | High | Stages 3-7 |
+| 2 | Parallel API and Client Switchboard | Side-by-side legacy and v2 routes and client handlers with rollout flags | Medium | Stage 1 |
+| 3 | Server Authorization Guards | Admin and self-or-admin middleware + tests | Medium | Stage 2 |
+| 4 | Product Read Migration | Product GET/filter/by-id from v2 tables | Medium | Stage 3 |
+| 5 | Product Write Migration | Product create/update/image upload to v2 | High | Stage 4 |
+| 6 | User/Profile Migration | Admin user CRUD + profile ownership on v2 | High | Stage 3 |
+| 7 | Basket-Order-Invoice Migration | Checkout transaction model in v2 | High | Stage 3 |
+| 8 | Audit Migration | Append-only audit_events_v2 read path + guards | Medium | Stage 3 |
+| 9 | Legacy Decommission | Remove legacy reads/writes and cleanup | High | Stages 4-8 |
 
 ## Stage Checklists
 
@@ -70,6 +71,31 @@ Exit Criteria:
 
 ## [ ] Stage 2 - Server Authorization Guards
 
+PR Goal: create explicit fallback controls by keeping legacy and v2 APIs available in parallel, and switch via feature flags.
+
+Implementation:
+
+- [ ] Introduce versioned route namespaces for migrated domains (for example, `/api/v2/...`) while keeping legacy routes active.
+- [ ] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
+- [ ] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
+- [ ] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
+- [ ] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
+
+Tests:
+
+- [ ] Legacy route path still passes after v2 route is introduced.
+- [ ] V2 route path passes for the same scenario.
+- [ ] Flag flip test confirms client can call legacy then v2 without code changes.
+- [ ] Smoke tests validate both paths during transition.
+
+Exit Criteria:
+
+- [ ] Every migrated domain has both legacy and v2 callable routes.
+- [ ] Client handler switch can revert traffic in minutes.
+- [ ] Rollback runbook tested at least once in non-prod.
+
+## [ ] Stage 3 - Server Authorization Guards
+
 PR Goal: enforce permissions on API, not just in UI.
 
 Implementation:
@@ -91,7 +117,7 @@ Exit Criteria:
 - [ ] Admin-only routes are not publicly writable/readable.
 - [ ] Ownership checks enforced for profile operations.
 
-## [ ] Stage 3 - Product Read Migration
+## [ ] Stage 4 - Product Read Migration
 
 PR Goal: move product read paths to v2 without changing client contract.
 
@@ -112,7 +138,7 @@ Exit Criteria:
 
 - [ ] Shop and landing page render correctly from v2 read paths.
 
-## [ ] Stage 4 - Product Write Migration
+## [ ] Stage 5 - Product Write Migration
 
 PR Goal: migrate create/update/image upload to v2 product tables.
 
@@ -133,7 +159,7 @@ Exit Criteria:
 
 - [ ] Admin product tooling functions end-to-end on v2.
 
-## [ ] Stage 5 - User/Profile Migration
+## [ ] Stage 6 - User/Profile Migration
 
 PR Goal: split identity and profile usage to v2 user model.
 
@@ -154,7 +180,7 @@ Exit Criteria:
 
 - [ ] Legacy `users` dependency removed from active auth/profile flows.
 
-## [ ] Stage 6 - Basket-Order-Invoice Migration
+## [ ] Stage 7 - Basket-Order-Invoice Migration
 
 PR Goal: implement transactional checkout model in v2.
 
@@ -176,7 +202,7 @@ Exit Criteria:
 
 - [ ] Checkout no longer depends on legacy invoices path.
 
-## [ ] Stage 7 - Audit Migration
+## [ ] Stage 8 - Audit Migration
 
 PR Goal: move to append-only audit events with controlled read access.
 
@@ -196,7 +222,7 @@ Exit Criteria:
 
 - [ ] Legacy audit table not used by active routes.
 
-## [ ] Stage 8 - Legacy Decommission
+## [ ] Stage 9 - Legacy Decommission
 
 PR Goal: remove legacy table dependencies and dead code.
 
@@ -231,3 +257,4 @@ Exit Criteria:
 - 2026-08-03: Unified user generation script defaults to v2 and supports legacy fallback.
 - 2026-08-03: Chosen migration sequence starts with auth bridge to unblock v2 login testing.
 - 2026-08-03: Added Auth Slice A scaffolding with `AUTH_SOURCE` resolver and dual-source lookup service (no route behavior changes yet).
+- 2026-08-03: Added explicit parallel API and client switchboard stage so each migrated domain keeps a low-risk fallback path.

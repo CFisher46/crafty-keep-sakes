@@ -6,6 +6,8 @@ Quick companion to `REFACTOR_PR_STAGES.md` for short dev sessions.
 
 Primary target: Stage 1 - Auth Bridge (legacy + v2)
 
+Secondary target (once Stage 1 is merged): Stage 2 - Parallel API and Client Switchboard
+
 Why now:
 
 - v2 tables exist.
@@ -19,6 +21,7 @@ Why now:
 - [ ] Keep JWT payload shape backward compatible.
 - [ ] Add auth bridge tests.
 - [ ] Verify manual login with seeded v2 admin user.
+- [ ] Define per-domain fallback flags for parallel legacy and v2 APIs.
 
 ## Session Plan (30-90 mins)
 
@@ -78,6 +81,13 @@ Exit:
 - Password source mismatch between legacy `password` and v2 `password_hash`.
 - Payload field differences between legacy and v2 profile sources.
 - Token claim shape drift that could break client assumptions.
+- Missing switchboard utility can force emergency code revert instead of configuration rollback.
+
+## Next Up (After Stage 1)
+
+- [ ] Add route versioning strategy for migrated domains.
+- [ ] Add client per-domain API switch utilities.
+- [ ] Test rapid rollback by toggling flags from v2 to legacy.
 
 ## Done Definition (This Week)
 
