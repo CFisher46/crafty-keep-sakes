@@ -17,7 +17,7 @@ import {
 export const AuditLogs = () => {
   const dispatch = useAppDispatch();
   const logs = useAppSelector((state) => state.audit.logs);
-  const auditLogs = Array.isArray(logs) ? logs : [];
+  const auditLogs = useMemo(() => (Array.isArray(logs) ? logs : []), [logs]);
   const [selectedFilters, setSelectedFilters] = useState<
     Partial<Record<keyof Audit, string[]>>
   >({});
@@ -27,17 +27,20 @@ export const AuditLogs = () => {
   }, [dispatch]);
 
   // Dynamically get the column headers from the keys of the first log
-  const columnHeaders = auditLogs.length
-    ? (Object.keys(auditLogs[0]) as (keyof Audit)[])
-    : [];
+  const columnHeaders = useMemo(
+    () =>
+      auditLogs.length
+        ? (Object.keys(auditLogs[0]) as (keyof Audit)[])
+        : [],
+    [auditLogs]
+  );
 
   const filterOptions = useMemo(
     () =>
       columnHeaders.reduce((options, header) => {
         const values = Array.from(
           new Set(
-            logs
-              
+            auditLogs
               .map((log) => log[header])
               .filter((value) => value !== null && value !== undefined)
               .map((value) => String(value))

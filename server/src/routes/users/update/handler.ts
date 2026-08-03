@@ -7,17 +7,18 @@ import { encrypt } from '../../../ts-common/helpers';
 
 const router = express.Router();
 
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req, res): Promise<void> => {
   const id = req.params.id;
   const updates = req.body as Partial<User>;
 
   try {
     // Build dynamic SQL query based on provided fields
     const fields = Object.keys(updates);
-    const values: string[] = [];
+    const values: Array<string | number | null> = [];
 
     if (fields.length === 0) {
-      return res.status(400).json({ error: 'No fields to update' });
+      res.status(400).json({ error: 'No fields to update' });
+      return;
     }
 
     // Encrypt fields that need encryption before updating
@@ -53,7 +54,8 @@ router.put('/:id', async (req, res) => {
     // Build the SET clause with encrypted values
     const setClause = Object.keys(encryptedUpdates)
       .map((field) => {
-        values.push(encryptedUpdates[field as keyof User]);
+        const fieldValue = encryptedUpdates[field as keyof User];
+        values.push(fieldValue ?? null);
         return `${field} = ?`;
       })
       .join(', ');

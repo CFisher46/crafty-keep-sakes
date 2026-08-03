@@ -1,3 +1,6 @@
 {
-    "workbench.sideBar.location": "right"
+    "workbench.sideBar.location": "right",
+    "chat.tools.terminal.autoApprove": {
+        "npm test": true
+    }
 }
