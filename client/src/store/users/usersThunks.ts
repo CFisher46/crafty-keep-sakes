@@ -1,8 +1,8 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { User } from '../../types';
 import { createAuditEntry } from '../audits/auditThunks';
+import { buildApiUrl } from '../../api/apiPath';
 
-const API_URL = process.env.REACT_APP_API_URL;
 // Helper to get changedBy from state
 const getChangedBy = (state: any) => {
   const loggedInUser = state.auth?.user;
@@ -12,7 +12,7 @@ const getChangedBy = (state: any) => {
 };
 
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
-  const res = await fetch(`${API_URL}/api/users`);
+  const res = await fetch(buildApiUrl('users'));
   const data = await res.json();
   const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
   return parsedData || [];
@@ -23,7 +23,7 @@ export const fetchUserById = createAsyncThunk<User, string>(
   async (id, thunkAPI) => {
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/users/${id}`,
+        buildApiUrl('users', `/${id}`),
         {
           credentials: 'include',
         }
@@ -53,7 +53,7 @@ export const updateUser = createAsyncThunk(
     { dispatch, rejectWithValue, getState }
   ) => {
     try {
-      const res = await fetch(`${API_URL}/api/users/${id}`, {
+      const res = await fetch(buildApiUrl('users', `/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -98,7 +98,7 @@ export const createUser = createAsyncThunk(
   'users/create',
   async (newUser: Partial<User>, { dispatch, rejectWithValue, getState }) => {
     try {
-      const res = await fetch(`${API_URL}/api/users`, {
+      const res = await fetch(buildApiUrl('users'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -134,7 +134,7 @@ export const createUser = createAsyncThunk(
 export const deleteUser = createAsyncThunk(
   'users/delete',
   async (id: string, { dispatch, getState }) => {
-    await fetch(`${API_URL}/api/users/${id}`, {
+    await fetch(buildApiUrl('users', `/${id}`), {
       method: 'DELETE',
       credentials: 'include',
     });
@@ -158,7 +158,7 @@ export const verifyCurrentPassword = async (
   userId: string,
   currentPassword: string
 ) => {
-  const response = await fetch(`${API_URL}/api/auth/verify-password`, {
+  const response = await fetch(buildApiUrl('auth', '/verify-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ userId, currentPassword }),

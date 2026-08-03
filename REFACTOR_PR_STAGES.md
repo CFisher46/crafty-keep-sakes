@@ -75,10 +75,10 @@ PR Goal: create explicit fallback controls by keeping legacy and v2 APIs availab
 
 Implementation:
 
-- [ ] Introduce versioned route namespaces for migrated domains (for example, `/api/v2/...`) while keeping legacy routes active.
+- [x] Introduce versioned route namespaces for migrated domains (for example, `/api/v2/...`) while keeping legacy routes active.
 - [ ] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
-- [ ] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
-- [ ] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
+- [x] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
+- [x] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
 - [ ] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
 
 Tests:
@@ -258,3 +258,4 @@ Exit Criteria:
 - 2026-08-03: Chosen migration sequence starts with auth bridge to unblock v2 login testing.
 - 2026-08-03: Added Auth Slice A scaffolding with `AUTH_SOURCE` resolver and dual-source lookup service (no route behavior changes yet).
 - 2026-08-03: Added explicit parallel API and client switchboard stage so each migrated domain keeps a low-risk fallback path.
+- 2026-08-03: Added first switchboard pass with `/api/v2` route aliases and client domain URL helpers for fallback routing.

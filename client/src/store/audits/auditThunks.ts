@@ -1,13 +1,12 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { Audit } from '../../types';
-
-const API_URL = process.env.REACT_APP_API_URL;
+import { buildApiUrl } from '../../api/apiPath';
 
 export const fetchAuditLogs = createAsyncThunk<Audit[]>(
   'audit/fetchLogs',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch(`${API_URL}/api/audit`, {
+      const response = await fetch(buildApiUrl('audit'), {
         credentials: 'include',
       });
 
@@ -35,7 +34,7 @@ export const createAuditEntry = createAsyncThunk<
   { rejectValue: string }
 >('audits/create', async (auditData, { rejectWithValue }) => {
   try {
-    const res = await fetch(`${API_URL}/api/audit`, {
+    const res = await fetch(buildApiUrl('audit'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

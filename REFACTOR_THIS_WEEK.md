@@ -21,7 +21,7 @@ Why now:
 - [ ] Keep JWT payload shape backward compatible.
 - [ ] Add auth bridge tests.
 - [ ] Verify manual login with seeded v2 admin user.
-- [ ] Define per-domain fallback flags for parallel legacy and v2 APIs.
+- [x] Define per-domain fallback flags for parallel legacy and v2 APIs.
 
 ## Session Plan (30-90 mins)
 
@@ -85,8 +85,8 @@ Exit:
 
 ## Next Up (After Stage 1)
 
-- [ ] Add route versioning strategy for migrated domains.
-- [ ] Add client per-domain API switch utilities.
+- [x] Add route versioning strategy for migrated domains.
+- [x] Add client per-domain API switch utilities.
 - [ ] Test rapid rollback by toggling flags from v2 to legacy.
 
 ## Done Definition (This Week)
