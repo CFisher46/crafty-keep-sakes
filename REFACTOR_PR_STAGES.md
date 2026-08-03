@@ -76,7 +76,7 @@ PR Goal: create explicit fallback controls by keeping legacy and v2 APIs availab
 Implementation:
 
 - [x] Introduce versioned route namespaces for migrated domains (for example, `/api/v2/...`) while keeping legacy routes active.
-- [ ] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
+- [x] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
 - [x] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
 - [x] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
 - [ ] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
