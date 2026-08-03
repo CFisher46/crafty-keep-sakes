@@ -12,6 +12,7 @@
     "repair:encrypted-users": "node scripts/repair-encrypted-users.js",
     "repair:encrypted-users:apply": "node scripts/repair-encrypted-users.js --apply",
     "user:generate-insert": "node scripts/generate-user-insert.js",
+    "user:v2:generate-insert": "node scripts/generate-user-v2-insert.js",
     "key:generate": "node scripts/generate-encryption-key.js",
     "key:fingerprints": "node scripts/print-key-fingerprints.js"
   },

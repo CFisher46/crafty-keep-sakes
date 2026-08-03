@@ -7,5 +7,6 @@ module.exports = {
   testEnvironment: "node",
   transform: {
     ...tsJestTransformCfg
-  }
+  },
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"]
 };
