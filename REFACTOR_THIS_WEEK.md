@@ -87,10 +87,10 @@ Exit:
 
 - [x] Add route versioning strategy for migrated domains.
 - [x] Add client per-domain API switch utilities.
-- [ ] Test rapid rollback by toggling flags from v2 to legacy.
+- [x] Test rapid rollback by toggling flags from v2 to legacy.
 
 ## Done Definition (This Week)
 
 - [ ] Stage 1 merged or ready-for-review with tests.
-- [ ] CI green.
-- [ ] Tracker files updated.
+- [x] CI green.
+- [x] Tracker files updated.

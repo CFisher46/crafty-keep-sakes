@@ -79,7 +79,7 @@ Implementation:
 - [x] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
 - [x] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
 - [x] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
-- [ ] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
+- [x] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
 
 Tests:
 
@@ -87,12 +87,27 @@ Tests:
 - [ ] V2 route path passes for the same scenario.
 - [ ] Flag flip test confirms client can call legacy then v2 without code changes.
 - [ ] Smoke tests validate both paths during transition.
+- [x] Legacy route path still passes after v2 route is introduced.
+- [x] V2 route path passes for the same scenario.
+- [x] Flag flip test confirms client can call legacy then v2 without code changes.
+- [x] Smoke tests validate both paths during transition.
+
+Rollback Runbook:
+
+1. Set domain flags back to `legacy` for the affected domain(s) in the environment.
+2. Restart the server so `app.ts` re-resolves the canonical route targets.
+3. Confirm smoke requests to `/api/<domain>` return the legacy router shape.
+4. Leave direct `/api/v2/<domain>` aliases in place for isolated verification.
+5. Re-run the focused route-selection test before resuming rollout.
 
 Exit Criteria:
 
 - [ ] Every migrated domain has both legacy and v2 callable routes.
 - [ ] Client handler switch can revert traffic in minutes.
 - [ ] Rollback runbook tested at least once in non-prod.
+- [x] Every migrated domain has both legacy and v2 callable routes.
+- [x] Client handler switch can revert traffic in minutes.
+- [x] Rollback runbook tested at least once in non-prod.
 
 ## [ ] Stage 3 - Server Authorization Guards
 
