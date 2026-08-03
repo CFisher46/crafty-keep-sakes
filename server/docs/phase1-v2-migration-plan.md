@@ -31,9 +31,10 @@ Generate an insert script:
 
 ```bash
 cd server
-npm run user:v2:generate-insert -- \
+npm run user:generate-insert -- \
   --email admin@example.com \
   --password "ChangeMeNow!" \
+  --target v2 \
   --role admin \
   --firstName Admin \
   --lastName User

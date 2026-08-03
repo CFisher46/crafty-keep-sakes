@@ -15,7 +15,8 @@ Express + TypeScript REST API for the Crafty Keepsakes e-commerce platform. Conn
 | `npm test` | Runs the Jest test suite (passes with no tests found). |
 | `npm run key:generate` | Generates a new 64-character hex AES-256-CBC encryption key and prints it to stdout. |
 | `npm run key:fingerprints` | Prints fingerprints of the current and previous encryption keys for verification. |
-| `npm run user:generate-insert` | Generates a ready-to-run SQL INSERT statement for a new user with encrypted PII fields. |
+| `npm run user:generate-insert` | Generates a ready-to-run SQL INSERT statement for a new user in `users_v2` + `user_roles_v2` + `customer_profiles_v2` (default target). |
+| `npm run user:generate-insert:legacy` | Generates a ready-to-run SQL INSERT statement for the legacy `users` table with encrypted PII fields. |
 | `npm run repair:encrypted-users` | Dry-run: reports which user records have PII that cannot be decrypted with the current key. |
 | `npm run repair:encrypted-users:apply` | Live run: re-encrypts all user PII using the current key (used after a key rotation). |
 
