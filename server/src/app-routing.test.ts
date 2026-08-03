@@ -106,4 +106,88 @@ describe('app route source selection', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ source: 'v2-auth' });
   });
+
+  it('routes canonical products requests to the v2 products router when enabled', async () => {
+    process.env.PRODUCTS_API_SOURCE = 'v2';
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/products');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-products' });
+  });
+
+  it('routes canonical products requests to the legacy products router by default', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/products');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'legacy-products' });
+  });
+
+  it('keeps the direct v2 products alias available for isolated verification', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/v2/products');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-products' });
+  });
+
+  it('routes canonical users requests to the v2 users router when enabled', async () => {
+    process.env.USERS_API_SOURCE = 'v2';
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/users');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-users' });
+  });
+
+  it('routes canonical users requests to the legacy users router by default', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/users');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'legacy-users' });
+  });
+
+  it('keeps the direct v2 users alias available for isolated verification', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/v2/users');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-users' });
+  });
+
+  it('routes canonical audit requests to the v2 audit router when enabled', async () => {
+    process.env.AUDIT_API_SOURCE = 'v2';
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/audit');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-audit' });
+  });
+
+  it('routes canonical audit requests to the legacy audit router by default', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/audit');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'legacy-audit' });
+  });
+
+  it('keeps the direct v2 audit alias available for isolated verification', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/v2/audit');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-audit' });
+  });
 });

@@ -8,6 +8,8 @@ Primary target: Stage 1 - Auth Bridge (legacy + v2)
 
 Secondary target (once Stage 1 is merged): Stage 2 - Parallel API and Client Switchboard
 
+Stage 2 status: Core implementation complete. Remaining check is non-prod rollback drill.
+
 Why now:
 
 - v2 tables exist.
@@ -88,6 +90,7 @@ Exit:
 - [x] Add route versioning strategy for migrated domains.
 - [x] Add client per-domain API switch utilities.
 - [x] Test rapid rollback by toggling flags from v2 to legacy.
+- [ ] Execute one non-prod rollback drill and record evidence.
 
 ## Done Definition (This Week)
 

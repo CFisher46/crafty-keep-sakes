@@ -69,7 +69,7 @@ Exit Criteria:
 - [ ] Existing legacy login still works in dual mode.
 - [ ] All auth tests green.
 
-## [ ] Stage 2 - Server Authorization Guards
+## [ ] Stage 2 - Parallel API and Client Switchboard
 
 PR Goal: create explicit fallback controls by keeping legacy and v2 APIs available in parallel, and switch via feature flags.
 
@@ -83,10 +83,6 @@ Implementation:
 
 Tests:
 
-- [ ] Legacy route path still passes after v2 route is introduced.
-- [ ] V2 route path passes for the same scenario.
-- [ ] Flag flip test confirms client can call legacy then v2 without code changes.
-- [ ] Smoke tests validate both paths during transition.
 - [x] Legacy route path still passes after v2 route is introduced.
 - [x] V2 route path passes for the same scenario.
 - [x] Flag flip test confirms client can call legacy then v2 without code changes.
@@ -100,14 +96,49 @@ Rollback Runbook:
 4. Leave direct `/api/v2/<domain>` aliases in place for isolated verification.
 5. Re-run the focused route-selection test before resuming rollout.
 
+Rollback Drill Procedure (non-prod):
+
+1. Set one domain to `v2` (example auth), keep the rest `legacy`.
+2. Restart the server.
+3. Validate canonical route follows the selected source:
+	- `GET /api/auth/me` should follow `AUTH_API_SOURCE`
+4. Validate direct v2 alias remains callable:
+	- `GET /api/v2/auth/me`
+5. Flip the same domain back to `legacy`.
+6. Restart the server.
+7. Re-run smoke checks:
+	- `GET /api/auth/me` now follows legacy path again
+	- `GET /api/v2/auth/me` still callable for isolated testing
+8. Run local verification gates:
+	- `cd server && npm run lint`
+	- `cd server && npm test -- --runInBand`
+	- `cd client && npm run lint`
+	- `cd client && CI=true npm test -- --watchAll=false --passWithNoTests`
+
+Suggested Environment Flags:
+
+- `AUTH_API_SOURCE=legacy|v2`
+- `PRODUCTS_API_SOURCE=legacy|v2`
+- `USERS_API_SOURCE=legacy|v2`
+- `AUDIT_API_SOURCE=legacy|v2`
+
+Rollback Drill Evidence (complete this once run):
+
+- Date:
+- Environment:
+- Operator:
+- Domain tested:
+- Flag flip performed:
+- Canonical route check result:
+- Direct `/api/v2` alias check result:
+- Verification commands result:
+- Notes:
+
 Exit Criteria:
 
-- [ ] Every migrated domain has both legacy and v2 callable routes.
-- [ ] Client handler switch can revert traffic in minutes.
-- [ ] Rollback runbook tested at least once in non-prod.
 - [x] Every migrated domain has both legacy and v2 callable routes.
 - [x] Client handler switch can revert traffic in minutes.
-- [x] Rollback runbook tested at least once in non-prod.
+- [ ] Rollback runbook tested at least once in non-prod.
 
 ## [ ] Stage 3 - Server Authorization Guards
 
