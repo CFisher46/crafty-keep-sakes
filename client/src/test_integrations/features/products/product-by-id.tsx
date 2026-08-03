@@ -60,7 +60,7 @@ const GetProductById = () => {
                     <li key={idx}>
                       <img
                         src={img}
-                        alt={`Product ${product.id} Image ${idx + 1}`}
+                        alt={`Product ${product.id} view ${idx + 1}`}
                         style={{ width: "100px" }}
                       />
                     </li>

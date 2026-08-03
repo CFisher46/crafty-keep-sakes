@@ -11,7 +11,6 @@ import Login from '../../components/login/login';
 import {
   selectAllProducts,
   selectProductsLoading,
-  selectProductsError,
 } from '../../store/products/productsSlice';
 import { fetchUserById } from '../../store/users/usersThunks';
 
@@ -24,7 +23,6 @@ function Home() {
   const userType = useAppSelector((state) => state.users.selectedUser?.type);
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
-  const error = useAppSelector(selectProductsError);
 
   const [showLogin, setShowLogin] = useState(false);
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);

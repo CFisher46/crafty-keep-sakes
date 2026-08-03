@@ -65,7 +65,7 @@ export const updateUser = createAsyncThunk(
         return rejectWithValue(errorData.error || 'Failed to update user');
       }
 
-      const data = await res.json();
+      await res.json();
 
       // Create audit entries for each changed field
       if (previousUser) {

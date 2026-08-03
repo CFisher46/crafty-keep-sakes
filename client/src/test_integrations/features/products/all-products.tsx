@@ -58,7 +58,7 @@ const GetAllProducts = () => {
                         <li key={index}>
                           <img
                             src={image}
-                            alt={`Product ${product.id} Image ${index + 1}`}
+                            alt={`Product ${product.id} view ${index + 1}`}
                             style={{ width: "100px" }}
                           />
                         </li>
