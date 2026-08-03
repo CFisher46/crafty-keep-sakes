@@ -2,6 +2,7 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Product } from "../../types";
 import { createAuditEntry } from "../audits/auditThunks";
+import { buildApiUrl } from "../../api/apiPath";
 
 const getChangedBy = (state: any) => {
   const loggedInUser = state.auth?.user;
@@ -14,7 +15,7 @@ export const fetchProductById = createAsyncThunk<Product, string>(
   "products/fetchById",
   async (id: string) => {
     const res = await fetch(
-      `${process.env.REACT_APP_API_URL}/api/products/${id}`
+      buildApiUrl('products', `/${id}`)
     );
     const raw = await res.json();
     const result = JSON.parse(raw[0].result);
@@ -30,7 +31,7 @@ export const fetchAllProducts = createAsyncThunk<Product[]>(
   "products/fetchAll",
   async (_, thunkAPI) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/products?is_live=true`);
+      const res = await fetch(buildApiUrl('products', `?is_live=true`));
       const data = await res.json();
       if (data && data.data) {
         return JSON.parse(data.data);
@@ -47,7 +48,7 @@ export const fetchAllProductsForAdmin = createAsyncThunk<Product[]>(
   "products/fetchAllForAdmin",
   async (_, thunkAPI) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/products`);
+      const res = await fetch(buildApiUrl('products'));
       const data = await res.json();
       if (data && data.data) {
         return JSON.parse(data.data);
@@ -64,7 +65,7 @@ export const createProduct = createAsyncThunk(
   "products/createProduct",
   async (product: Product, { dispatch, rejectWithValue, getState }) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/api/products`, {
+      const res = await fetch(buildApiUrl('products'), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -107,7 +108,7 @@ export const uploadProductImages = createAsyncThunk<
     files.forEach((file) => formData.append("images", file));
 
     const res = await fetch(
-      `${process.env.REACT_APP_API_URL}/api/products/${productId}/images/upload`,
+    buildApiUrl('products', `/${productId}/images/upload`),
       {
         method: "POST",
         body: formData
@@ -134,7 +135,7 @@ export const updateProduct = createAsyncThunk<
   async ({ id, product, previousProduct }, { dispatch, rejectWithValue, getState }) => {
   try {
     const response = await fetch(
-      `${process.env.REACT_APP_API_URL}/api/products/${id}`,
+      buildApiUrl('products', `/${id}`),
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -184,7 +185,7 @@ export const fetchFilteredProducts = createAsyncThunk(
     try {
       const queryParams = new URLSearchParams(filters).toString();
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/products/filter?${queryParams}`,
+        buildApiUrl('products', `/filter?${queryParams}`),
         {
           cache: "no-store"
         }

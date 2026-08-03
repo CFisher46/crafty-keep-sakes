@@ -1,15 +1,13 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { loginSuccess, logout, resetState } from './authSlice';
 import { fetchUserById } from '../users/usersThunks';
+import { buildApiUrl } from '../../api/apiPath';
 
 export const checkAuth = createAsyncThunk('auth/check', async (_, thunkAPI) => {
   try {
-    const response = await fetch(
-      `${process.env.REACT_APP_API_URL}/api/auth/me`,
-      {
-        credentials: 'include',
-      }
-    );
+    const response = await fetch(buildApiUrl('auth', '/me'), {
+      credentials: 'include',
+    });
 
     if (!response.ok) throw new Error('Not authenticated');
 
@@ -31,7 +29,7 @@ export const performLogout = createAsyncThunk(
   'auth/logout',
   async (_, thunkAPI) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/auth/logout`, {
+      await fetch(buildApiUrl('auth', '/logout'), {
         method: 'POST',
         credentials: 'include', // needed to send the auth cookie
       });

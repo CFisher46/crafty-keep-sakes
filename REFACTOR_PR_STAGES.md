@@ -69,29 +69,75 @@ Exit Criteria:
 - [ ] Existing legacy login still works in dual mode.
 - [ ] All auth tests green.
 
-## [ ] Stage 2 - Server Authorization Guards
+## [ ] Stage 2 - Parallel API and Client Switchboard
 
 PR Goal: create explicit fallback controls by keeping legacy and v2 APIs available in parallel, and switch via feature flags.
 
 Implementation:
 
-- [ ] Introduce versioned route namespaces for migrated domains (for example, `/api/v2/...`) while keeping legacy routes active.
-- [ ] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
-- [ ] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
-- [ ] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
-- [ ] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
+- [x] Introduce versioned route namespaces for migrated domains (for example, `/api/v2/...`) while keeping legacy routes active.
+- [x] Add server routing flags to select default route target by domain (auth/products/users/orders/audit).
+- [x] Add client API handlers that can call either legacy or v2 endpoints via per-domain flags.
+- [x] Add one switchboard utility per client domain so fallback is one config change, not a code revert.
+- [x] Document emergency rollback sequence (flip flags, restart service, verify smoke tests).
 
 Tests:
 
-- [ ] Legacy route path still passes after v2 route is introduced.
-- [ ] V2 route path passes for the same scenario.
-- [ ] Flag flip test confirms client can call legacy then v2 without code changes.
-- [ ] Smoke tests validate both paths during transition.
+- [x] Legacy route path still passes after v2 route is introduced.
+- [x] V2 route path passes for the same scenario.
+- [x] Flag flip test confirms client can call legacy then v2 without code changes.
+- [x] Smoke tests validate both paths during transition.
+
+Rollback Runbook:
+
+1. Set domain flags back to `legacy` for the affected domain(s) in the environment.
+2. Restart the server so `app.ts` re-resolves the canonical route targets.
+3. Confirm smoke requests to `/api/<domain>` return the legacy router shape.
+4. Leave direct `/api/v2/<domain>` aliases in place for isolated verification.
+5. Re-run the focused route-selection test before resuming rollout.
+
+Rollback Drill Procedure (non-prod):
+
+1. Set one domain to `v2` (example auth), keep the rest `legacy`.
+2. Restart the server.
+3. Validate canonical route follows the selected source:
+	- `GET /api/auth/me` should follow `AUTH_API_SOURCE`
+4. Validate direct v2 alias remains callable:
+	- `GET /api/v2/auth/me`
+5. Flip the same domain back to `legacy`.
+6. Restart the server.
+7. Re-run smoke checks:
+	- `GET /api/auth/me` now follows legacy path again
+	- `GET /api/v2/auth/me` still callable for isolated testing
+8. Run local verification gates:
+	- `cd server && npm run lint`
+	- `cd server && npm test -- --runInBand`
+	- `cd client && npm run lint`
+	- `cd client && CI=true npm test -- --watchAll=false --passWithNoTests`
+
+Suggested Environment Flags:
+
+- `AUTH_API_SOURCE=legacy|v2`
+- `PRODUCTS_API_SOURCE=legacy|v2`
+- `USERS_API_SOURCE=legacy|v2`
+- `AUDIT_API_SOURCE=legacy|v2`
+
+Rollback Drill Evidence (complete this once run):
+
+- Date:
+- Environment:
+- Operator:
+- Domain tested:
+- Flag flip performed:
+- Canonical route check result:
+- Direct `/api/v2` alias check result:
+- Verification commands result:
+- Notes:
 
 Exit Criteria:
 
-- [ ] Every migrated domain has both legacy and v2 callable routes.
-- [ ] Client handler switch can revert traffic in minutes.
+- [x] Every migrated domain has both legacy and v2 callable routes.
+- [x] Client handler switch can revert traffic in minutes.
 - [ ] Rollback runbook tested at least once in non-prod.
 
 ## [ ] Stage 3 - Server Authorization Guards
@@ -258,3 +304,4 @@ Exit Criteria:
 - 2026-08-03: Chosen migration sequence starts with auth bridge to unblock v2 login testing.
 - 2026-08-03: Added Auth Slice A scaffolding with `AUTH_SOURCE` resolver and dual-source lookup service (no route behavior changes yet).
 - 2026-08-03: Added explicit parallel API and client switchboard stage so each migrated domain keeps a low-risk fallback path.
+- 2026-08-03: Added first switchboard pass with `/api/v2` route aliases and client domain URL helpers for fallback routing.
