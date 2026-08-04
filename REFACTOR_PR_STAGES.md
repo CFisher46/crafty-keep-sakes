@@ -141,28 +141,28 @@ Exit Criteria:
 - [x] Client handler switch can revert traffic in minutes.
 - [ ] Rollback runbook tested at least once in non-prod.
 
-## [ ] Stage 3 - Server Authorization Guards
+## [x] Stage 3 - Server Authorization Guards
 
 PR Goal: enforce permissions on API, not just in UI.
 
 Implementation:
 
-- [ ] Add middleware helpers: `requireAuth`, `requireRole('admin')`, `requireSelfOrAdmin`.
-- [ ] Protect admin endpoints (`/users`, product write routes, audit read route).
-- [ ] Protect profile route ownership.
-- [ ] Return consistent `401` and `403` responses.
+- [x] Add middleware helpers: `requireAuth`, `requireRole('admin')`, `requireSelfOrAdmin`.
+- [x] Protect admin endpoints (`/users`, product write routes, audit read route).
+- [x] Protect profile route ownership.
+- [x] Return consistent `401` and `403` responses.
 
 Tests:
 
-- [ ] Unauthenticated requests return `401`.
-- [ ] Authenticated non-admin requests return `403` on admin routes.
-- [ ] Owner can access own profile.
-- [ ] Non-owner customer blocked.
+- [x] Unauthenticated requests return `401`.
+- [x] Authenticated non-admin requests return `403` on admin routes.
+- [x] Owner can access own profile.
+- [x] Non-owner customer blocked.
 
 Exit Criteria:
 
-- [ ] Admin-only routes are not publicly writable/readable.
-- [ ] Ownership checks enforced for profile operations.
+- [x] Admin-only routes are not publicly writable/readable.
+- [x] Ownership checks enforced for profile operations.
 
 ## [ ] Stage 4 - Product Read Migration
 

@@ -48,6 +48,8 @@ export function verifyAuthToken(
   }
 }
 
+export const requireAuth = verifyAuthToken;
+
 export function requireRole(requiredRole: string) {
   const normalizedRole = requiredRole.trim().toLowerCase();
 
