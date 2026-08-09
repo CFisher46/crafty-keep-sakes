@@ -1,4 +1,9 @@
-import { fetchFilteredProducts } from "./productsThunks";
+import {
+  createProduct,
+  fetchFilteredProducts,
+  updateProduct,
+  uploadProductImages,
+} from "./productsThunks";
 
 jest.mock("../../api/apiPath", () => ({
   buildApiUrl: (_domain: string, path = "") => `/api/products${path}`,
@@ -80,5 +85,70 @@ describe("products filter regression checks", () => {
     expect(resultAction.payload).toEqual([
       { id: "P1", product_name: "Laptop", images: "[]" },
     ]);
+  });
+
+  it("sends credentials when creating a product", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: "Product created", insertId: 1 }),
+    });
+
+    const dispatch = jest.fn();
+    const getState = jest.fn(() => ({ auth: { user: null } }));
+
+    await createProduct(
+      {
+        id: "sku-1",
+        category: "Computers",
+        description: "Test",
+        price: 100,
+        quantity: 1,
+        on_sale: false,
+        product_name: "Test Product",
+        is_live: true,
+        sale_percent: 0,
+        images: "",
+      } as any
+    )(dispatch, getState, undefined);
+
+    const options = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(options.credentials).toBe("include");
+  });
+
+  it("sends credentials when updating a product", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: "sku-1" }),
+    });
+
+    const dispatch = jest.fn();
+    const getState = jest.fn(() => ({ auth: { user: null } }));
+
+    await updateProduct({ id: "sku-1", product: { price: 200 } as any })(
+      dispatch,
+      getState,
+      undefined
+    );
+
+    const options = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(options.credentials).toBe("include");
+  });
+
+  it("sends credentials when uploading product images", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: "Images uploaded", images: [] }),
+    });
+
+    const dispatch = jest.fn();
+    const getState = jest.fn();
+
+    await uploadProductImages({
+      productId: "sku-1",
+      files: [new File(["binary"], "test.png", { type: "image/png" })],
+    })(dispatch, getState, undefined);
+
+    const options = (global.fetch as jest.Mock).mock.calls[0][1];
+    expect(options.credentials).toBe("include");
   });
 });

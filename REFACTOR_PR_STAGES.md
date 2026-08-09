@@ -204,7 +204,7 @@ Tests:
 
 Exit Criteria:
 
-- [ ] Admin product tooling functions end-to-end on v2.
+- [x] Admin product tooling functions end-to-end on v2.
 
 ## [ ] Stage 6 - User/Profile Migration
 
