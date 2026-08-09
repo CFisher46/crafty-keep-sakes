@@ -145,13 +145,13 @@ describe('app route source selection', () => {
     expect(response.body).toEqual({ source: 'v2-users' });
   });
 
-  it('routes canonical users requests to the legacy users router by default', async () => {
+  it('routes canonical users requests to the v2 users router by default', async () => {
     const app = await loadApp();
 
     const response = await request(app).get('/api/users');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ source: 'legacy-users' });
+    expect(response.body).toEqual({ source: 'v2-users' });
   });
 
   it('keeps the direct v2 users alias available for isolated verification', async () => {

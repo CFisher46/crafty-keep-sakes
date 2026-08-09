@@ -10,6 +10,7 @@ import { buttonStyles } from '../../helpers/formatting';
 import DeleteExisitingUser from './userManagement/deleteUser';
 import CreateNewProduct from './productManagement/createProduct';
 import UpdateProduct from './productManagement/updateProdct';
+import { shouldLoadUsersForSelection } from './userListLoading';
 
 function AdminTools() {
   const [requestedAction, setRequestedAction] = React.useState('');
@@ -46,8 +47,11 @@ function AdminTools() {
       const result = await dispatch(fetchAllUsers());
       setUsers(result.payload as User[]);
     };
-    fetchUsers();
-  }, [dispatch]);
+
+    if (shouldLoadUsersForSelection(requestedAction, requestedTool, users.length)) {
+      fetchUsers();
+    }
+  }, [dispatch, requestedAction, requestedTool, users.length]);
 
   const resetAll = () => {
     setRequestedAction('');

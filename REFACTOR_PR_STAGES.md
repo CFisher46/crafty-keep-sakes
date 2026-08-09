@@ -225,7 +225,7 @@ Tests:
 
 Exit Criteria:
 
-- [ ] Legacy `users` dependency removed from active auth/profile flows.
+- [x] Legacy `users` dependency removed from active auth/profile flows.
 
 ## [ ] Stage 7 - Basket-Order-Invoice Migration
 
