@@ -1,5 +1,4 @@
 import express from 'express';
-import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
@@ -13,17 +12,11 @@ import {
   verifyAuthToken,
   requireRole,
 } from '../../../../../ts-common/middleware';
+import { getProductImagesDirectory } from '../../../../../ts-common/upload-images-directory';
 
 const router = express.Router();
 
-const imagesDirectory = path.join(
-  __dirname,
-  '../../../../../../../client/public/images'
-);
-
-if (!fs.existsSync(imagesDirectory)) {
-  fs.mkdirSync(imagesDirectory, { recursive: true });
-}
+const imagesDirectory = getProductImagesDirectory();
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
