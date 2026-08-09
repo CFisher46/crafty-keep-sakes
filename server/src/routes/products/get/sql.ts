@@ -2,6 +2,8 @@ import { generateSortSql } from "../../../ts-common/sql-utils";
 import { DefaultQueryParams } from "../../../ts-common/types";
 import { SortOptions } from "../types";
 
+type ProductReadSource = "legacy" | "v2";
+
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: "fp" },
   id: { alias: "fp" },
@@ -62,45 +64,32 @@ const buildBooleanInClause = (
 };
 
 export function GetAllProductsQuery(
-  queryStringParams?: DefaultQueryParams
+  queryStringParams?: DefaultQueryParams,
+  source: ProductReadSource = "legacy"
 ) {
-  const whereClauses: string[] = [];
-  const liveOnly = queryStringParams?.is_live === "true";
+  const productsTable = source === "v2" ? "products_v2" : "products";
+  const productImagesTable =
+    source === "v2" ? "product_images_v2" : "product_images";
 
-  if (liveOnly) {
-    whereClauses.push("p.is_live = TRUE");
-  }
-
-  const productNameClause = buildSearchClause(
-    "p",
-    "product_name",
-    queryStringParams?.product_name ?? queryStringParams?.search
-  );
-  if (productNameClause) whereClauses.push(productNameClause);
-
-  const categoryClause = buildTextInClause("p", "category", queryStringParams?.category);
-  if (categoryClause) whereClauses.push(categoryClause);
-
-  const onSaleClause = buildBooleanInClause("p", "on_sale", queryStringParams?.on_sale);
-  if (onSaleClause) whereClauses.push(onSaleClause);
-
-  const priceMin = parseNumber(queryStringParams?.price_min);
-  const priceMax = parseNumber(queryStringParams?.price_max);
-
-  if (priceMin !== null) {
-    whereClauses.push(`p.price >= ${priceMin}`);
-  }
-
-  if (priceMax !== null) {
-    whereClauses.push(`p.price <= ${priceMax}`);
-  }
-
-  const whereSql = `WHERE ${whereClauses.length ? whereClauses.join(" AND ") : "p.id IS NOT NULL"}`;
-
-  const dynamicSortSql = generateSortSql(SORT_OPTIONS, queryStringParams ?? {});
-
-  const result = `
-    WITH FilteredProducts AS (
+  const baseProductsSql =
+    source === "v2"
+      ? `
+        SELECT
+            p.id,
+            COALESCE(GROUP_CONCAT(DISTINCT c.name ORDER BY c.name SEPARATOR ', '), '') AS category,
+            p.description,
+            p.price,
+            p.quantity,
+            p.on_sale,
+            p.product_name,
+            p.is_live,
+            p.sale_percent
+        FROM ${productsTable} p
+        LEFT JOIN product_categories_v2 pc ON pc.product_id = p.id
+        LEFT JOIN categories_v2 c ON c.id = pc.category_id
+        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent
+      `
+      : `
         SELECT
             p.id,
             p.category,
@@ -111,8 +100,71 @@ export function GetAllProductsQuery(
             p.product_name,
             p.is_live,
             p.sale_percent
-        FROM products p
-          ${whereSql}
+        FROM ${productsTable} p
+      `;
+
+  const whereClauses: string[] = [];
+  const liveOnly = queryStringParams?.is_live === "true";
+
+  if (liveOnly) {
+    whereClauses.push("fp.is_live = TRUE");
+  }
+
+  const productNameClause = buildSearchClause(
+    "fp",
+    "product_name",
+    queryStringParams?.product_name ?? queryStringParams?.search
+  );
+  if (productNameClause) whereClauses.push(productNameClause);
+
+  const categoryClause = buildTextInClause(
+    "fp",
+    "category",
+    queryStringParams?.category
+  );
+  if (categoryClause) whereClauses.push(categoryClause);
+
+  const onSaleClause = buildBooleanInClause(
+    "fp",
+    "on_sale",
+    queryStringParams?.on_sale
+  );
+  if (onSaleClause) whereClauses.push(onSaleClause);
+
+  const priceMin = parseNumber(queryStringParams?.price_min);
+  const priceMax = parseNumber(queryStringParams?.price_max);
+
+  if (priceMin !== null) {
+    whereClauses.push(`fp.price >= ${priceMin}`);
+  }
+
+  if (priceMax !== null) {
+    whereClauses.push(`fp.price <= ${priceMax}`);
+  }
+
+  const whereSql = `WHERE ${
+    whereClauses.length ? whereClauses.join(" AND ") : "fp.id IS NOT NULL"
+  }`;
+
+  const dynamicSortSql = generateSortSql(SORT_OPTIONS, queryStringParams ?? {});
+
+  const result = `
+    WITH BaseProducts AS (
+        ${baseProductsSql}
+    ),
+    FilteredProducts AS (
+        SELECT
+            fp.id,
+            fp.category,
+            fp.description,
+            fp.price,
+            fp.quantity,
+            fp.on_sale,
+            fp.product_name,
+            fp.is_live,
+            fp.sale_percent
+        FROM BaseProducts fp
+        ${whereSql}
     ),
     ProductCount AS (
         SELECT COUNT(*) AS total_count
@@ -128,33 +180,37 @@ export function GetAllProductsQuery(
             op.*,
             (
               SELECT JSON_ARRAYAGG(pi.image_path)
-              FROM product_images pi
+              FROM ${productImagesTable} pi
               WHERE pi.product_id = op.id
             ) AS images
         FROM OrderedProducts op
     )
     SELECT JSON_OBJECT(
         'total_count', COALESCE(pc.total_count, 0),
-        'data', IFNULL(
-            JSON_ARRAYAGG(
+        'data', COALESCE(
+          (
+            SELECT CAST(
+              JSON_ARRAYAGG(
                 JSON_OBJECT(
-                    'id', pwi.id,
-                    'category', pwi.category,
-                    'description', pwi.description,
-                    'price', pwi.price,
-                    'quantity', pwi.quantity,
-                    'on_sale', pwi.on_sale,
-                    'product_name', pwi.product_name,
-                    'is_live', pwi.is_live,
-                    'sale_percent', pwi.sale_percent,
-                    'images', pwi.images
+                  'id', pwi.id,
+                  'category', pwi.category,
+                  'description', pwi.description,
+                  'price', pwi.price,
+                  'quantity', pwi.quantity,
+                  'on_sale', pwi.on_sale,
+                  'product_name', pwi.product_name,
+                  'is_live', pwi.is_live,
+                  'sale_percent', pwi.sale_percent,
+                  'images', CAST(COALESCE(pwi.images, JSON_ARRAY()) AS CHAR)
                 )
-            ),
-            JSON_ARRAY()
+              ) AS CHAR
+            )
+            FROM ProductsWithImages pwi
+          ),
+          '[]'
         )
     ) AS result
-    FROM ProductCount pc
-    LEFT JOIN ProductsWithImages pwi ON TRUE;
+    FROM ProductCount pc;
   `;
 
   return result;
