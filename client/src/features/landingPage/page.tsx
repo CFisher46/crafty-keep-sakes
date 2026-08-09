@@ -20,7 +20,7 @@ function Home() {
 
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const userDetails = useAppSelector((state) => state.auth.user);
-  const userType = useAppSelector((state) => state.users.selectedUser?.type);
+  const userType = useAppSelector((state) => state.auth.user?.type);
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
 

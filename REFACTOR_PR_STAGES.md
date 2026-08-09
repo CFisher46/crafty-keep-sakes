@@ -52,23 +52,23 @@ Implementation:
 
 - [x] Add `AUTH_SOURCE` mode: `legacy | dual | v2`.
 - [x] Implement login user lookup service that supports both schemas.
-- [ ] Preserve current JWT shape to avoid client breakage.
-- [ ] Add fallback order for dual mode (v2 first, legacy second).
-- [ ] Log auth source in audit-friendly metadata.
+- [x] Preserve current JWT shape to avoid client breakage.
+- [x] Add fallback order for dual mode (v2 first, legacy second).
+- [x] Log auth source in audit-friendly metadata.
 
 Tests:
 
-- [ ] Login success (v2 admin).
-- [ ] Login success (legacy user) in dual mode.
-- [ ] Login failure (bad password).
-- [ ] `/api/auth/me` valid token and missing token.
-- [ ] Logout clears cookie.
+- [x] Login success (v2 admin).
+- [x] Login success (legacy user) in dual mode.
+- [x] Login failure (bad password).
+- [x] `/api/auth/me` valid token and missing token.
+- [x] Logout clears cookie.
 
 Exit Criteria:
 
 - [ ] Manual login works with seeded `users_v2` admin.
 - [ ] Existing legacy login still works in dual mode.
-- [ ] All auth tests green.
+- [x] All auth tests green.
 
 ## [ ] Stage 2 - Parallel API and Client Switchboard
 

@@ -3,6 +3,29 @@ import { User } from '../../types';
 import { createAuditEntry } from '../audits/auditThunks';
 import { buildApiUrl } from '../../api/apiPath';
 
+type RawUserRecord = Partial<User> & {
+  email?: string | null;
+  role_code?: string | null;
+};
+
+const normalizeUserRecord = (user: RawUserRecord): User => ({
+  id: String(user.id ?? ''),
+  email_address: String(user.email_address ?? user.email ?? ''),
+  first_name: String(user.first_name ?? ''),
+  last_name: String(user.last_name ?? ''),
+  address_line1: String(user.address_line1 ?? ''),
+  address_line2: String(user.address_line2 ?? ''),
+  address_line3: String(user.address_line3 ?? ''),
+  town: String(user.town ?? ''),
+  county: String(user.county ?? ''),
+  postcode: String(user.postcode ?? ''),
+  telephone_number: String(user.telephone_number ?? ''),
+  type: String(user.type ?? user.role_code ?? 'customer'),
+  status: String(user.status ?? 'active'),
+  invoice_id: Number(user.invoice_id ?? 0),
+  password: String(user.password ?? ''),
+});
+
 // Helper to get changedBy from state
 const getChangedBy = (state: any) => {
   const loggedInUser = state.auth?.user;
@@ -12,10 +35,14 @@ const getChangedBy = (state: any) => {
 };
 
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
-  const res = await fetch(buildApiUrl('users'));
+  const res = await fetch(buildApiUrl('users'), {
+    credentials: 'include',
+  });
   const data = await res.json();
   const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
-  return parsedData || [];
+  return Array.isArray(parsedData)
+    ? parsedData.map((user) => normalizeUserRecord(user))
+    : [];
 });
 
 export const fetchUserById = createAsyncThunk<User, string>(
@@ -35,7 +62,7 @@ export const fetchUserById = createAsyncThunk<User, string>(
       }
 
       const data = await res.json();
-      return data;
+      return normalizeUserRecord(data);
     } catch (error) {
       console.error('Thunk error:', error);
       return thunkAPI.rejectWithValue('Network or server error');
