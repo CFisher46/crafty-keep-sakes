@@ -5,7 +5,7 @@ export type ApiRouteFlags = Record<ApiRouteDomain, ApiRouteSource>;
 
 const DEFAULT_FLAGS: ApiRouteFlags = {
   auth: 'legacy',
-  products: 'legacy',
+  products: 'v2',
   users: 'v2',
   audit: 'legacy',
 };
