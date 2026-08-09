@@ -12,7 +12,6 @@ import {
   selectAllProducts,
   selectProductsLoading,
 } from '../../store/products/productsSlice';
-import { fetchUserById } from '../../store/users/usersThunks';
 
 function Home() {
   const dispatch = useAppDispatch();
@@ -20,7 +19,7 @@ function Home() {
 
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const userDetails = useAppSelector((state) => state.auth.user);
-  const userType = useAppSelector((state) => state.users.selectedUser?.type);
+  const userType = useAppSelector((state) => state.auth.user?.type);
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
 
@@ -57,12 +56,6 @@ function Home() {
 
     return () => clearInterval(interval);
   }, []);
-
-  useEffect(() => {
-    if (isLoggedIn && userDetails?.id) {
-      dispatch(fetchUserById(userDetails.id)); // Fetch user details to update userType
-    }
-  }, [isLoggedIn, userDetails?.id, dispatch]);
 
   const handleLogout = () => {
     dispatch(performLogout());

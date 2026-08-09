@@ -18,9 +18,7 @@ function NavigationBar({
   const location = useLocation();
 
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
-  const userType = useSelector(
-    (state: RootState) => state.users.selectedUser?.type
-  );
+  const userType = useSelector((state: RootState) => state.auth.user?.type);
 
   const activeRoute = location.pathname;
 

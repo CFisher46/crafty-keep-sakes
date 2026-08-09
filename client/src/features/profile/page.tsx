@@ -1,7 +1,7 @@
 import { Text, Form, Box, TextInput, Grid, Button } from 'grommet';
 import { View, Hide } from 'grommet-icons';
 import { useEffect, useState } from 'react';
-import { fetchUserById } from '../../store/users/usersThunks';
+import { fetchUserById, updateUser } from '../../store/users/usersThunks';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { useAppDispatch } from '../../store/hooks';
@@ -80,6 +80,7 @@ function UsersProfile() {
   const [currentPassword, setCurrentPassword] = useState('');
   //Removed setPasswordError for linting
   const [passwordError] = useState<string | null>(null);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
@@ -106,6 +107,43 @@ function UsersProfile() {
 
   const handleFieldChange = (field: string, value: string) => {
     setUserData((prev) => ({ ...prev, [field]: value }));
+    setSaveMessage(null);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!userData.id) {
+      setSaveMessage('No profile loaded');
+      return;
+    }
+
+    const profileUpdate = {
+      email_address: userData.email_address,
+      first_name: userData.first_name,
+      last_name: userData.last_name,
+      address_line1: userData.address_line1,
+      address_line2: userData.address_line2,
+      address_line3: userData.address_line3,
+      town: userData.town,
+      county: userData.county,
+      postcode: userData.postcode,
+      telephone_number: userData.telephone_number,
+    };
+
+    try {
+      await dispatch(
+        updateUser({
+          id: userData.id,
+          user: profileUpdate,
+          previousUser: selectedUser ?? undefined,
+        })
+      ).unwrap();
+
+      setSaveMessage('Profile saved');
+    } catch (error) {
+      setSaveMessage(
+        error instanceof Error ? error.message : 'Failed to save profile'
+      );
+    }
   };
 
   return (
@@ -185,7 +223,8 @@ function UsersProfile() {
             />
           </Box>
           <Box border round="small" pad="medium" gap="small" background="white">
-            <Text style={labelStyle}>Action buttons?</Text>
+            <Button label="Save Profile" onClick={handleSaveProfile} />
+            {saveMessage && <Text>{saveMessage}</Text>}
           </Box>
         </Box>
       </Grid>

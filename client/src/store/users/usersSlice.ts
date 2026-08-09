@@ -62,6 +62,13 @@ const userSlice = createSlice({
             ...state.list[index],
             ...action.payload
           };
+
+        if (state.selectedUser?.id === action.payload.id) {
+          state.selectedUser = {
+            ...state.selectedUser,
+            ...action.payload,
+          };
+        }
       })
       .addCase(deleteUser.fulfilled, (state, action: PayloadAction<string>) => {
         state.list = state.list.filter((user) => user.id !== action.payload);

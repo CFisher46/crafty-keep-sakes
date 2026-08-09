@@ -105,6 +105,13 @@ router.post('/login', async (req: any, res: any) => {
       telephone_number: user.telephone_number || '',
     };
 
+    console.info('Auth login success', {
+      source: authUser.source,
+      user_id: user.id,
+      email_address: emailAddress,
+      type: roleType,
+    });
+
     const token = jwt.sign(payload, JWT_SECRET, {
       expiresIn: rememberMe ? '30d' : '14d',
     });

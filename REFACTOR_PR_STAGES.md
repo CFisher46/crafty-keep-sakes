@@ -9,6 +9,11 @@ Purpose: split the v2 migration into small, reviewable PRs with explicit test ga
 - Tick the stage checkbox when merged.
 - Keep the "Decision Log" updated for scope changes.
 
+## Decision Log
+
+- 2026-08-09: Image upload tests were isolated to a temp directory in test mode so multer-based product upload coverage no longer pollutes `client/public/images`. This is a Stage 5 support cleanup, not new scope.
+- 2026-08-09: Stage 6 user/profile migration is complete. Admin CRUD now uses `users_v2` + `user_roles_v2`, profile reads/writes use `customer_profiles_v2`, and legacy `users` is no longer part of active auth/profile flows.
+
 ## Stage Overview
 
 | Stage | PR Name | Scope | Risk | Depends On |
@@ -52,23 +57,23 @@ Implementation:
 
 - [x] Add `AUTH_SOURCE` mode: `legacy | dual | v2`.
 - [x] Implement login user lookup service that supports both schemas.
-- [ ] Preserve current JWT shape to avoid client breakage.
-- [ ] Add fallback order for dual mode (v2 first, legacy second).
-- [ ] Log auth source in audit-friendly metadata.
+- [x] Preserve current JWT shape to avoid client breakage.
+- [x] Add fallback order for dual mode (v2 first, legacy second).
+- [x] Log auth source in audit-friendly metadata.
 
 Tests:
 
-- [ ] Login success (v2 admin).
-- [ ] Login success (legacy user) in dual mode.
-- [ ] Login failure (bad password).
-- [ ] `/api/auth/me` valid token and missing token.
-- [ ] Logout clears cookie.
+- [x] Login success (v2 admin).
+- [x] Login success (legacy user) in dual mode.
+- [x] Login failure (bad password).
+- [x] `/api/auth/me` valid token and missing token.
+- [x] Logout clears cookie.
 
 Exit Criteria:
 
 - [ ] Manual login works with seeded `users_v2` admin.
 - [ ] Existing legacy login still works in dual mode.
-- [ ] All auth tests green.
+- [x] All auth tests green.
 
 ## [ ] Stage 2 - Parallel API and Client Switchboard
 
@@ -206,26 +211,26 @@ Exit Criteria:
 
 - [x] Admin product tooling functions end-to-end on v2.
 
-## [ ] Stage 6 - User/Profile Migration
+## [x] Stage 6 - User/Profile Migration
 
 PR Goal: split identity and profile usage to v2 user model.
 
 Implementation:
 
-- [ ] Move admin user list/create/update/delete to `users_v2` + `user_roles_v2`.
-- [ ] Move profile reads/writes to `customer_profiles_v2`.
-- [ ] Keep password hashing in `users_v2.password_hash`.
-- [ ] Apply ownership and admin guards.
+- [x] Move admin user list/create/update/delete to `users_v2` + `user_roles_v2`.
+- [x] Move profile reads/writes to `customer_profiles_v2`.
+- [x] Keep password hashing in `users_v2.password_hash`.
+- [x] Apply ownership and admin guards.
 
 Tests:
 
-- [ ] Admin user CRUD.
-- [ ] Customer self profile read/update.
-- [ ] Customer cross-user access denied.
+- [x] Admin user CRUD.
+- [x] Customer self profile read/update.
+- [x] Customer cross-user access denied.
 
 Exit Criteria:
 
-- [ ] Legacy `users` dependency removed from active auth/profile flows.
+- [x] Legacy `users` dependency removed from active auth/profile flows.
 
 ## [ ] Stage 7 - Basket-Order-Invoice Migration
 
