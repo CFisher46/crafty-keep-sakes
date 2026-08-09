@@ -212,16 +212,16 @@ PR Goal: split identity and profile usage to v2 user model.
 
 Implementation:
 
-- [ ] Move admin user list/create/update/delete to `users_v2` + `user_roles_v2`.
-- [ ] Move profile reads/writes to `customer_profiles_v2`.
-- [ ] Keep password hashing in `users_v2.password_hash`.
-- [ ] Apply ownership and admin guards.
+- [x] Move admin user list/create/update/delete to `users_v2` + `user_roles_v2`.
+- [x] Move profile reads/writes to `customer_profiles_v2`.
+- [x] Keep password hashing in `users_v2.password_hash`.
+- [x] Apply ownership and admin guards.
 
 Tests:
 
-- [ ] Admin user CRUD.
-- [ ] Customer self profile read/update.
-- [ ] Customer cross-user access denied.
+- [x] Admin user CRUD.
+- [x] Customer self profile read/update.
+- [x] Customer cross-user access denied.
 
 Exit Criteria:
 
