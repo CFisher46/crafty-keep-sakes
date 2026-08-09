@@ -4,6 +4,7 @@ import { db } from '../../../ts-common/database';
 import { User } from '../types';
 import { ResultSetHeader } from 'mysql2';
 import { encrypt } from '../../../ts-common/helpers';
+import { buildPartialUserUpdateQuery } from './sql';
 import { verifyAuthToken, requireSelfOrAdmin } from '../../../ts-common/middleware';
 
 const router = express.Router();
@@ -19,7 +20,6 @@ router.put(
   try {
     // Build dynamic SQL query based on provided fields
     const fields = Object.keys(updates);
-    const values: Array<string | number | null> = [];
 
     if (fields.length === 0) {
       res.status(400).json({ error: 'No fields to update' });
@@ -56,19 +56,9 @@ router.put(
       );
     }
 
-    // Build the SET clause with encrypted values
-    const setClause = Object.keys(encryptedUpdates)
-      .map((field) => {
-        const fieldValue = encryptedUpdates[field as keyof User];
-        values.push(fieldValue ?? null);
-        return `${field} = ?`;
-      })
-      .join(', ');
+    const query = buildPartialUserUpdateQuery(encryptedUpdates, id);
 
-    const sql = `UPDATE users SET ${setClause} WHERE id = ?`;
-    values.push(id);
-
-    const [result] = await db.query<ResultSetHeader>(sql, values);
+    const [result] = await db.query<ResultSetHeader>(query.sql, query.values);
 
     res.status(200).json({
       message: 'User updated',

@@ -191,16 +191,16 @@ PR Goal: migrate create/update/image upload to v2 product tables.
 
 Implementation:
 
-- [ ] POST product writes to `products_v2`.
-- [ ] PUT product updates mutable fields only.
-- [ ] Image upload writes to `product_images_v2`.
-- [ ] Enforce admin role guard.
+- [x] POST product writes to `products_v2`.
+- [x] PUT product updates mutable fields only.
+- [x] Image upload writes to `product_images_v2`.
+- [x] Enforce admin role guard.
 
 Tests:
 
-- [ ] Admin create/update/upload success.
-- [ ] Validation failures return `400`.
-- [ ] Non-admin blocked (`403`).
+- [x] Admin create/update/upload success.
+- [x] Validation failures return `400`.
+- [x] Non-admin blocked (`403`).
 
 Exit Criteria:
 
