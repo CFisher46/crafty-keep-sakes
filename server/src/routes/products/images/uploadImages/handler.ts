@@ -4,6 +4,7 @@ import multer from 'multer';
 import path from 'path';
 import { db } from '../../../../ts-common/database';
 import { ADD_IMAGE_TO_PRODUCT_QUERY } from './sql';
+import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
 
 const router = express.Router();
 
@@ -28,34 +29,40 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-router.post('/:id/images/upload', upload.array('images'), async (req, res) => {
-  const { id } = req.params;
-  const files = req.files as Express.Multer.File[] | undefined;
+router.post(
+  '/:id/images/upload',
+  verifyAuthToken,
+  requireRole('admin'),
+  upload.array('images'),
+  async (req, res) => {
+    const { id } = req.params;
+    const files = req.files as Express.Multer.File[] | undefined;
 
-  if (!id) {
-    res.status(400).json({ error: 'Missing product id' });
-    return;
+    if (!id) {
+      res.status(400).json({ error: 'Missing product id' });
+      return;
+    }
+
+    if (!files || files.length === 0) {
+      res.status(400).json({ error: 'No images were uploaded' });
+      return;
+    }
+
+    try {
+      const imagePaths = files.map((file) => `/images/${file.filename}`);
+
+      await Promise.all(
+        imagePaths.map((imagePath) =>
+          db.query(ADD_IMAGE_TO_PRODUCT_QUERY, [id, imagePath])
+        )
+      );
+
+      res.status(201).json({ message: 'Images uploaded', images: imagePaths });
+    } catch (error) {
+      console.error(`Error uploading images for product ${id}:`, error);
+      res.status(500).json({ error: 'Failed to upload product images' });
+    }
   }
-
-  if (!files || files.length === 0) {
-    res.status(400).json({ error: 'No images were uploaded' });
-    return;
-  }
-
-  try {
-    const imagePaths = files.map((file) => `/images/${file.filename}`);
-
-    await Promise.all(
-      imagePaths.map((imagePath) =>
-        db.query(ADD_IMAGE_TO_PRODUCT_QUERY, [id, imagePath])
-      )
-    );
-
-    res.status(201).json({ message: 'Images uploaded', images: imagePaths });
-  } catch (error) {
-    console.error(`Error uploading images for product ${id}:`, error);
-    res.status(500).json({ error: 'Failed to upload product images' });
-  }
-});
+);
 
 export default router;

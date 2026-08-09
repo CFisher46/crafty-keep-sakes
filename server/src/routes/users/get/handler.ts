@@ -2,11 +2,12 @@ import express from 'express';
 import { db } from '../../../ts-common/database';
 import { GetAllUsersQuery } from './sql';
 import { decrypt } from '../../../ts-common/helpers';
+import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
 import { User } from '../types';
 
 const router = express.Router();
 
-router.get('/', async (_req, res) => {
+router.get('/', verifyAuthToken, requireRole('admin'), async (_req, res) => {
   console.log('GET /api/users called');
   try {
     const [rows] = await db.query(GetAllUsersQuery());

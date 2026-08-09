@@ -1,10 +1,15 @@
 import express, { Request, Response } from "express";
 import { db } from "../../../ts-common/database";
 import { DeleteUserQuery } from "./sql";
+import { verifyAuthToken, requireRole } from "../../../ts-common/middleware";
 
 const router = express.Router();
 
-router.delete("/:id", async (req: Request, res: Response) => {
+router.delete(
+  "/:id",
+  verifyAuthToken,
+  requireRole("admin"),
+  async (req: Request, res: Response) => {
   const { id } = req.params;
 
   try {
