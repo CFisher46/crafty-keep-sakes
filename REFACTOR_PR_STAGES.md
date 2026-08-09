@@ -9,6 +9,11 @@ Purpose: split the v2 migration into small, reviewable PRs with explicit test ga
 - Tick the stage checkbox when merged.
 - Keep the "Decision Log" updated for scope changes.
 
+## Decision Log
+
+- 2026-08-09: Image upload tests were isolated to a temp directory in test mode so multer-based product upload coverage no longer pollutes `client/public/images`. This is a Stage 5 support cleanup, not new scope.
+- 2026-08-09: Stage 6 user/profile migration is complete. Admin CRUD now uses `users_v2` + `user_roles_v2`, profile reads/writes use `customer_profiles_v2`, and legacy `users` is no longer part of active auth/profile flows.
+
 ## Stage Overview
 
 | Stage | PR Name | Scope | Risk | Depends On |
@@ -206,7 +211,7 @@ Exit Criteria:
 
 - [x] Admin product tooling functions end-to-end on v2.
 
-## [ ] Stage 6 - User/Profile Migration
+## [x] Stage 6 - User/Profile Migration
 
 PR Goal: split identity and profile usage to v2 user model.
 
