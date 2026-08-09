@@ -109,6 +109,7 @@ export const createProduct = createAsyncThunk(
     try {
       const res = await fetch(buildApiUrl('products'), {
         method: "POST",
+        credentials: 'include',
         headers: {
           "Content-Type": "application/json"
         },
@@ -153,6 +154,7 @@ export const uploadProductImages = createAsyncThunk<
     buildApiUrl('products', `/${productId}/images/upload`),
       {
         method: "POST",
+        credentials: 'include',
         body: formData
       }
     );
@@ -180,6 +182,7 @@ export const updateProduct = createAsyncThunk<
       buildApiUrl('products', `/${id}`),
       {
         method: "PUT",
+        credentials: 'include',
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(product)
       }
