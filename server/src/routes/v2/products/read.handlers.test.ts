@@ -40,6 +40,12 @@ describe("v2 product read routes", () => {
     expect(response.status).toBe(200);
     expect(response.body).toHaveProperty("total_count", 1);
     expect(response.body).toHaveProperty("data");
+    expect(typeof response.body.data).toBe("string");
+
+    const parsedData = JSON.parse(response.body.data);
+    expect(Array.isArray(parsedData)).toBe(true);
+    expect(typeof parsedData[0]).toBe("object");
+    expect(typeof parsedData[0]).not.toBe("string");
 
     const sql = String(mockedDbQuery.mock.calls[0][0]);
     expect(sql).toContain("products_v2");
@@ -68,7 +74,8 @@ describe("v2 product read routes", () => {
     expect(response.status).toBe(200);
 
     const sql = String(mockedDbQuery.mock.calls[0][0]);
-    expect(sql).toContain("fp.category IN ('Crafts')");
+    expect(sql).toContain("EXISTS (");
+    expect(sql).toContain("LOWER(cf.name) IN ('crafts')");
     expect(sql).toContain("fp.on_sale IN (TRUE)");
     expect(sql).toContain("fp.price >= 10");
     expect(sql).toContain("fp.price <= 20");
@@ -125,5 +132,28 @@ describe("v2 product read routes", () => {
     const parsed = JSON.parse(response.body[0].result);
     expect(parsed.total_count).toBe(0);
     expect(JSON.parse(parsed.data)).toEqual([]);
+  });
+
+  it("keeps list contract as stringified array of product objects", async () => {
+    mockedDbQuery.mockResolvedValueOnce([
+      [
+        {
+          result: JSON.stringify({
+            total_count: 1,
+            data: '[{"id":1,"product_name":"Blue Mug","images":"[]"}]',
+          }),
+        },
+      ],
+    ]);
+
+    const response = await request(app).get("/api/v2/products");
+
+    expect(response.status).toBe(200);
+    expect(typeof response.body.data).toBe("string");
+
+    const parsed = JSON.parse(response.body.data);
+    expect(Array.isArray(parsed)).toBe(true);
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]).toHaveProperty("product_name", "Blue Mug");
   });
 });

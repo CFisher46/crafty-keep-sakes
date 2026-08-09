@@ -37,6 +37,19 @@ const buildTextInClause = (alias: string, column: string, value?: string) => {
   return `${alias}.${column} IN (${values.join(", ")})`;
 };
 
+const buildV2CategoryClause = (value?: string) => {
+  const values = splitCsv(value).map((item) => `'${escapeSqlLiteral(item.toLowerCase())}'`);
+  if (!values.length) return "";
+
+  return `EXISTS (
+    SELECT 1
+    FROM product_categories_v2 pcf
+    JOIN categories_v2 cf ON cf.id = pcf.category_id
+    WHERE pcf.product_id = fp.id
+      AND LOWER(cf.name) IN (${values.join(", ")})
+  )`;
+};
+
 const buildSearchClause = (alias: string, column: string, value?: string) => {
   const normalized = String(value ?? "").trim();
   if (!normalized) return "";
@@ -117,11 +130,10 @@ export function GetAllProductsQuery(
   );
   if (productNameClause) whereClauses.push(productNameClause);
 
-  const categoryClause = buildTextInClause(
-    "fp",
-    "category",
-    queryStringParams?.category
-  );
+  const categoryClause =
+    source === "v2"
+      ? buildV2CategoryClause(queryStringParams?.category)
+      : buildTextInClause("fp", "category", queryStringParams?.category);
   if (categoryClause) whereClauses.push(categoryClause);
 
   const onSaleClause = buildBooleanInClause(
