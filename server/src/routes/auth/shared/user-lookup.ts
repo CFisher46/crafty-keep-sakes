@@ -19,6 +19,13 @@ export interface V2AuthUser extends RowDataPacket {
   first_name: string;
   last_name: string;
   role_code: 'admin' | 'customer' | string;
+  address_line1: string | null;
+  address_line2: string | null;
+  address_line3: string | null;
+  town: string | null;
+  county: string | null;
+  postcode: string | null;
+  telephone_number: string | null;
 }
 
 const LEGACY_USER_BY_EMAIL_SQL = `
@@ -36,6 +43,13 @@ const V2_USER_BY_EMAIL_SQL = `
     u.status,
     cp.first_name,
     cp.last_name,
+    cp.address_line1,
+    cp.address_line2,
+    cp.address_line3,
+    cp.town,
+    cp.county,
+    cp.postcode,
+    cp.telephone AS telephone_number,
     COALESCE(r.code, 'customer') AS role_code
   FROM users_v2 u
   LEFT JOIN customer_profiles_v2 cp ON cp.user_id = u.id

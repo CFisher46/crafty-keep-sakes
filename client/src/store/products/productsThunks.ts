@@ -4,6 +4,48 @@ import { Product } from "../../types";
 import { createAuditEntry } from "../audits/auditThunks";
 import { buildApiUrl } from "../../api/apiPath";
 
+const parseProductsPayload = (raw: unknown): Product[] => {
+  const normalizeArray = (input: unknown[]): Product[] => {
+    if (!input.length) {
+      return [];
+    }
+
+    if (typeof input[0] === "string") {
+      // Defend against accidental array-of-JSON-strings payloads.
+      return input
+        .map((item) => {
+          if (typeof item !== "string") {
+            return null;
+          }
+
+          try {
+            return JSON.parse(item);
+          } catch {
+            return null;
+          }
+        })
+        .filter((item): item is Product => Boolean(item));
+    }
+
+    return input as Product[];
+  };
+
+  if (Array.isArray(raw)) {
+    return normalizeArray(raw);
+  }
+
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? normalizeArray(parsed) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
 const getChangedBy = (state: any) => {
   const loggedInUser = state.auth?.user;
   return loggedInUser
@@ -33,8 +75,8 @@ export const fetchAllProducts = createAsyncThunk<Product[]>(
     try {
       const res = await fetch(buildApiUrl('products', `?is_live=true`));
       const data = await res.json();
-      if (data && data.data) {
-        return JSON.parse(data.data);
+      if (data && data.data !== undefined) {
+        return parseProductsPayload(data.data);
       } else {
         throw new Error("Invalid API response structure");
       }
@@ -50,8 +92,8 @@ export const fetchAllProductsForAdmin = createAsyncThunk<Product[]>(
     try {
       const res = await fetch(buildApiUrl('products'));
       const data = await res.json();
-      if (data && data.data) {
-        return JSON.parse(data.data);
+      if (data && data.data !== undefined) {
+        return parseProductsPayload(data.data);
       } else {
         throw new Error("Invalid API response structure");
       }
@@ -192,22 +234,7 @@ export const fetchFilteredProducts = createAsyncThunk(
       );
       if (!res.ok) throw new Error("Failed to fetch products");
       const json = await res.json();
-      const data = json?.data;
-
-      if (Array.isArray(data)) {
-        return data;
-      }
-
-      if (typeof data === "string" && data.trim()) {
-        try {
-          const parsedData = JSON.parse(data);
-          return Array.isArray(parsedData) ? parsedData : [];
-        } catch {
-          return [];
-        }
-      }
-
-      return [];
+      return parseProductsPayload(json?.data);
     } catch (err: any) {
       return rejectWithValue(err.message);
     }

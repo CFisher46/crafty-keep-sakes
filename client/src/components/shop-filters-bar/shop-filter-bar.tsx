@@ -63,18 +63,18 @@ function ShopFilterBar() {
     const boundedPriceMin = clamp(priceMin, domainMin, domainMax);
     const boundedPriceMax = clamp(Math.max(priceMax, boundedPriceMin), domainMin, domainMax);
 
-    const handleApplyFilters = (searchOnly = false) => {
+    const handleApplyFilters = () => {
         const filters: Record<string, string> = { is_live: "true" };
 
-        if (!searchOnly && selectedCategories.length) {
+        if (selectedCategories.length) {
             filters.category = selectedCategories.join(",");
         }
 
-        if (!searchOnly && selectedOnSale === "On Sale") {
+        if (selectedOnSale === "On Sale") {
             filters.on_sale = "true";
         }
 
-        if (!searchOnly && selectedOnSale === "Not On Sale") {
+        if (selectedOnSale === "Not On Sale") {
             filters.on_sale = "false";
         }
 
@@ -82,11 +82,11 @@ function ShopFilterBar() {
             filters.product_name = searchTerm.trim();
         }
 
-        if (!searchOnly && boundedPriceMin > domainMin) {
+        if (boundedPriceMin > domainMin) {
             filters.price_min = String(boundedPriceMin);
         }
 
-        if (!searchOnly && boundedPriceMax < domainMax) {
+        if (boundedPriceMax < domainMax) {
             filters.price_max = String(boundedPriceMax);
         }
 
@@ -118,7 +118,7 @@ function ShopFilterBar() {
                         onChange={(event) => setSearchTerm(event.target.value)}
                         onKeyDown={(event) => {
                             if (event.key === "Enter") {
-                                handleApplyFilters(true);
+                                handleApplyFilters();
                             }
                         }}
                     />
@@ -126,7 +126,7 @@ function ShopFilterBar() {
                 <Button
                     label="Search"
                     style={buttonStyles.default}
-                    onClick={() => handleApplyFilters(true)}
+                    onClick={() => handleApplyFilters()}
                     disabled={loading}
                 />
                 <Button
@@ -137,7 +137,7 @@ function ShopFilterBar() {
                 <Button
                     label="Apply Filters"
                     style={buttonStyles.default}
-                    onClick={() => handleApplyFilters(false)}
+                    onClick={() => handleApplyFilters()}
                     disabled={loading}
                 />
                 <Button

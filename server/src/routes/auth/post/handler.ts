@@ -1,12 +1,44 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { db } from '../../../ts-common/database';
-import { getUserByEmail } from './sql'; // Your SQL query for user lookup
 import { decrypt } from '../../../ts-common/helpers'; // Your decryption function
+import { findAuthUserByEmail } from '../shared/user-lookup';
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
+
+type LegacyUserPayload = {
+  id: number | string;
+  email_address: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  type: string;
+  address_line1?: string;
+  address_line2?: string;
+  address_line3?: string;
+  town?: string;
+  county?: string;
+  postcode?: string;
+  telephone_number?: string;
+};
+
+type V2UserPayload = {
+  id: number | string;
+  email: string;
+  password_hash: string;
+  status: 'active' | 'inactive' | 'locked';
+  first_name: string;
+  last_name: string;
+  role_code: string;
+  address_line1?: string;
+  address_line2?: string;
+  address_line3?: string;
+  town?: string;
+  county?: string;
+  postcode?: string;
+  telephone_number?: string;
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 router.post('/login', async (req: any, res: any) => {
@@ -17,17 +49,25 @@ router.post('/login', async (req: any, res: any) => {
   }
 
   try {
-    const [rows] = await db.query(getUserByEmail(), [email]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const user = (rows as any)[0];
+    const authUser = await findAuthUserByEmail(String(email));
 
-    if (!user) {
+    if (!authUser) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const passwordMatch = await bcrypt.compare(password, user.password);
+    const user = authUser.user as LegacyUserPayload | V2UserPayload;
+    const hashToCompare =
+      authUser.source === 'v2'
+        ? (user as V2UserPayload).password_hash
+        : (user as LegacyUserPayload).password;
+
+    const passwordMatch = await bcrypt.compare(password, hashToCompare);
     if (!passwordMatch) {
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    if (authUser.source === 'v2' && (user as V2UserPayload).status !== 'active') {
+      return res.status(403).json({ error: 'Account inactive' });
     }
 
     // if (!user.is_verified) {
@@ -35,22 +75,34 @@ router.post('/login', async (req: any, res: any) => {
     // }
 
     // Decrypt sensitive fields before creating JWT payload
-    const decryptedFirstName = decrypt(user.first_name);
-    const decryptedLastName = decrypt(user.last_name);
+    const decryptedFirstName =
+      authUser.source === 'legacy' ? decrypt(user.first_name) : user.first_name;
+    const decryptedLastName =
+      authUser.source === 'legacy' ? decrypt(user.last_name) : user.last_name;
+
+    const emailAddress =
+      authUser.source === 'v2'
+        ? (user as V2UserPayload).email
+        : (user as LegacyUserPayload).email_address;
+
+    const roleType =
+      authUser.source === 'v2'
+        ? (user as V2UserPayload).role_code || 'customer'
+        : (user as LegacyUserPayload).type;
 
     const payload = {
       id: user.id,
       first_name: decryptedFirstName,
-      email_address: user.email_address,
-      type: user.type,
+      email_address: emailAddress,
+      type: roleType,
       last_name: decryptedLastName,
-      address_line1: user.address_line1,
-      address_line2: user.address_line2,
-      address_line3: user.address_line3,
-      town: user.town,
-      county: user.county,
-      postcode: user.postcode,
-      telephone_number: user.telephone_number,
+      address_line1: user.address_line1 || '',
+      address_line2: user.address_line2 || '',
+      address_line3: user.address_line3 || '',
+      town: user.town || '',
+      county: user.county || '',
+      postcode: user.postcode || '',
+      telephone_number: user.telephone_number || '',
     };
 
     const token = jwt.sign(payload, JWT_SECRET, {

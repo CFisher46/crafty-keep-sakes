@@ -170,20 +170,20 @@ PR Goal: move product read paths to v2 without changing client contract.
 
 Implementation:
 
-- [ ] Route reads to `products_v2`, `product_images_v2`, and categories relation.
-- [ ] Keep response shape backward compatible.
-- [ ] Verify filter/sort behavior parity.
+- [x] Route reads to `products_v2`, `product_images_v2`, and categories relation.
+- [x] Keep response shape backward compatible.
+- [x] Verify filter/sort behavior parity.
 
 Tests:
 
-- [ ] List live products.
-- [ ] Filter combinations.
-- [ ] Product by id.
-- [ ] Empty and not-found behavior.
+- [x] List live products.
+- [x] Filter combinations.
+- [x] Product by id.
+- [x] Empty and not-found behavior.
 
 Exit Criteria:
 
-- [ ] Shop and landing page render correctly from v2 read paths.
+- [x] Shop and landing page render correctly from v2 read paths.
 
 ## [ ] Stage 5 - Product Write Migration
 
