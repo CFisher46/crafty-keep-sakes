@@ -183,7 +183,7 @@ Tests:
 
 Exit Criteria:
 
-- [ ] Shop and landing page render correctly from v2 read paths.
+- [x] Shop and landing page render correctly from v2 read paths.
 
 ## [ ] Stage 5 - Product Write Migration
 
