@@ -25,10 +25,10 @@ function parseSource(
 
 export function resolveApiRouteFlags(): ApiRouteFlags {
   return {
-    auth: parseSource(process.env.AUTH_API_SOURCE),
-    products: parseSource(process.env.PRODUCTS_API_SOURCE),
-    users: parseSource(process.env.USERS_API_SOURCE, 'v2'),
-    audit: parseSource(process.env.AUDIT_API_SOURCE),
+    auth: parseSource(process.env.AUTH_API_SOURCE, DEFAULT_FLAGS.auth),
+    products: parseSource(process.env.PRODUCTS_API_SOURCE, DEFAULT_FLAGS.products),
+    users: parseSource(process.env.USERS_API_SOURCE, DEFAULT_FLAGS.users),
+    audit: parseSource(process.env.AUDIT_API_SOURCE, DEFAULT_FLAGS.audit),
   };
 }
 

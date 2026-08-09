@@ -117,7 +117,17 @@ describe('app route source selection', () => {
     expect(response.body).toEqual({ source: 'v2-products' });
   });
 
-  it('routes canonical products requests to the legacy products router by default', async () => {
+  it('routes canonical products requests to the v2 products router by default', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/products');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-products' });
+  });
+
+  it('routes canonical products requests to the legacy products router when explicitly set', async () => {
+    process.env.PRODUCTS_API_SOURCE = 'legacy';
     const app = await loadApp();
 
     const response = await request(app).get('/api/products');
