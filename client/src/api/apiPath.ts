@@ -1,7 +1,7 @@
 import { ApiVersion, resolveApiVersion } from './apiVersion';
 import { getDomainFlag } from './domainFlags';
 
-export type ApiDomain = 'auth' | 'products' | 'users' | 'audit';
+export type ApiDomain = 'auth' | 'products' | 'users' | 'audit' | 'basket';
 
 const DOMAIN_PATHS: Record<ApiDomain, Record<ApiVersion, string>> = {
   auth: {
@@ -19,6 +19,10 @@ const DOMAIN_PATHS: Record<ApiDomain, Record<ApiVersion, string>> = {
   audit: {
     v1: '/api/audit',
     v2: '/api/v2/audit',
+  },
+  basket: {
+    v1: '/api/basket',
+    v2: '/api/v2/basket',
   },
 };
 

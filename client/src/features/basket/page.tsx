@@ -1,16 +1,34 @@
 import { Box, Text, Button } from "grommet";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
   clearBasket,
-  removeItemFromBasket,
-  addItemToBasket
+  hydrateBasketFromServer,
 } from "../../store/basket/basketSlice";
+import {
+  checkoutBasket,
+  fetchBasket,
+  removeBasketItem,
+  updateBasketItem,
+} from "../../store/basket/basketThunks";
 import { buttonStyles } from "../../helpers/formatting";
 
 function Basket() {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<any>();
   const { items, totalItems } = useSelector((state: RootState) => state.basket);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadBasket = async () => {
+      const result = await dispatch(fetchBasket());
+      if (fetchBasket.fulfilled.match(result)) {
+        dispatch(hydrateBasketFromServer(result.payload));
+      }
+    };
+
+    loadBasket();
+  }, [dispatch]);
 
   // Calculate the total price for all items
   const totalPrice = items.reduce(
@@ -18,9 +36,45 @@ function Basket() {
     0
   );
 
-  const handleCheckout = () => {
-    dispatch(clearBasket());
-    localStorage.removeItem("basket");
+  const handleBasketQuantity = async (itemId: string, delta: number) => {
+    const nextQuantity = items.find((item) => item.id === itemId)?.quantity ?? 0;
+    const adjustedQuantity = Math.max(0, nextQuantity + delta);
+
+    if (adjustedQuantity <= 0) {
+      const result = await dispatch(removeBasketItem(itemId));
+      if (removeBasketItem.fulfilled.match(result)) {
+        const refreshed = await dispatch(fetchBasket());
+        if (fetchBasket.fulfilled.match(refreshed)) {
+          dispatch(hydrateBasketFromServer(refreshed.payload));
+        }
+      }
+      return;
+    }
+
+    const result = await dispatch(updateBasketItem({ productId: itemId, quantity: adjustedQuantity }));
+    if (updateBasketItem.fulfilled.match(result)) {
+      const refreshed = await dispatch(fetchBasket());
+      if (fetchBasket.fulfilled.match(refreshed)) {
+        dispatch(hydrateBasketFromServer(refreshed.payload));
+      }
+    }
+  };
+
+  const handleCheckout = async () => {
+    const resultAction = await dispatch(checkoutBasket());
+
+    if (checkoutBasket.fulfilled.match(resultAction)) {
+      dispatch(clearBasket());
+      localStorage.removeItem('basket');
+      setCheckoutMessage(`Order placed: ${resultAction.payload.invoice_number}`);
+      const refreshed = await dispatch(fetchBasket());
+      if (fetchBasket.fulfilled.match(refreshed)) {
+        dispatch(hydrateBasketFromServer(refreshed.payload));
+      }
+      return;
+    }
+
+    setCheckoutMessage('Checkout failed. Please try again.');
   };
 
   return (
@@ -96,33 +150,13 @@ function Basket() {
               >
                 <Button
                   label="-"
-                  onClick={() =>
-                    dispatch(
-                      addItemToBasket({
-                        id: item.id,
-                        image: item.image,
-                        product_name: item.product_name,
-                        price: item.price,
-                        quantity: -1
-                      })
-                    )
-                  }
+                  onClick={() => handleBasketQuantity(item.id, -1)}
                   style={buttonStyles.default}
                 />
                 <Text margin={{ horizontal: "small" }}>{item.quantity}</Text>
                 <Button
                   label="+"
-                  onClick={() =>
-                    dispatch(
-                      addItemToBasket({
-                        id: item.id,
-                        image: item.image,
-                        product_name: item.product_name,
-                        price: item.price,
-                        quantity: 1
-                      })
-                    )
-                  }
+                  onClick={() => handleBasketQuantity(item.id, 1)}
                   style={buttonStyles.default}
                 />
               </Box>
@@ -142,7 +176,15 @@ function Basket() {
               {/* Remove Button */}
               <Button
                 label="Remove"
-                onClick={() => dispatch(removeItemFromBasket(item.id))}
+                onClick={async () => {
+                  const result = await dispatch(removeBasketItem(item.id));
+                  if (removeBasketItem.fulfilled.match(result)) {
+                    const refreshed = await dispatch(fetchBasket());
+                    if (fetchBasket.fulfilled.match(refreshed)) {
+                      dispatch(hydrateBasketFromServer(refreshed.payload));
+                    }
+                  }
+                }}
                 style={buttonStyles.default}
               />
             </Box>
@@ -160,6 +202,11 @@ function Basket() {
               style={buttonStyles.default}
             />
           </Box>
+          {checkoutMessage && (
+            <Box pad={{ top: 'small' }}>
+              <Text color="brand">{checkoutMessage}</Text>
+            </Box>
+          )}
         </Box>
       )}
     </Box>

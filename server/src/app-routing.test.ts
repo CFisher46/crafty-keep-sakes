@@ -33,6 +33,14 @@ jest.mock('./routes/audit', () => {
   return router;
 });
 
+jest.mock('./routes/basket', () => {
+  const router = express.Router();
+  router.get('/', (_req: Request, res: Response): void => {
+    res.status(200).json({ source: 'legacy-basket' });
+  });
+  return router;
+});
+
 jest.mock('./routes/v2/products', () => {
   const router = express.Router();
   router.get('/', (_req: Request, res: Response): void => {
@@ -65,6 +73,14 @@ jest.mock('./routes/v2/audit', () => {
   return router;
 });
 
+jest.mock('./routes/v2/basket', () => {
+  const router = express.Router();
+  router.get('/', (_req: Request, res: Response): void => {
+    res.status(200).json({ source: 'v2-basket' });
+  });
+  return router;
+});
+
 const loadApp = async () => {
   const imported = await import('./app');
   return imported.default;
@@ -76,6 +92,7 @@ describe('app route source selection', () => {
     delete process.env.PRODUCTS_API_SOURCE;
     delete process.env.USERS_API_SOURCE;
     delete process.env.AUDIT_API_SOURCE;
+    delete process.env.BASKET_API_SOURCE;
     jest.resetModules();
   });
 
@@ -199,5 +216,33 @@ describe('app route source selection', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ source: 'v2-audit' });
+  });
+
+  it('routes canonical basket requests to the v2 basket router by default', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/basket');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-basket' });
+  });
+
+  it('routes canonical basket requests to the legacy basket router when explicitly set', async () => {
+    process.env.BASKET_API_SOURCE = 'legacy';
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/basket');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'legacy-basket' });
+  });
+
+  it('keeps the direct v2 basket alias available for isolated verification', async () => {
+    const app = await loadApp();
+
+    const response = await request(app).get('/api/v2/basket');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ source: 'v2-basket' });
   });
 });
