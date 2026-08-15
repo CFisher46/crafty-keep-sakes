@@ -5,12 +5,6 @@ import { verifyAuthToken, requireRole } from '../../ts-common/middleware';
 
 const router = express.Router();
 
-type BasketRecord = RowDataPacket & {
-  id: number;
-  user_id: number;
-  status: string;
-};
-
 type BasketItemRecord = RowDataPacket & {
   id: number;
   basket_id: number;
@@ -304,11 +298,35 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
   try {
     const invoiceId = Number(req.params.id);
     const status = String(req.body.invoice_status || '').trim();
+    const allowedStatuses = new Set(['unpaid', 'paid', 'void']);
+    const orderStatusMap: Record<string, string> = {
+      unpaid: 'placed',
+      paid: 'fulfilled',
+      void: 'cancelled',
+    };
 
     if (!status) {
       res.status(400).json({ error: 'Missing invoice_status' });
       return;
     }
+
+    if (!allowedStatuses.has(status)) {
+      res.status(400).json({ error: 'Invalid invoice_status' });
+      return;
+    }
+
+    const [invoiceRows] = await connection.query<RowDataPacket[]>(
+      `SELECT order_id FROM invoices_v2 WHERE id = ? LIMIT 1`,
+      [invoiceId]
+    );
+
+    const invoice = Array.isArray(invoiceRows) && invoiceRows.length > 0 ? invoiceRows[0] : null;
+    if (!invoice) {
+      res.status(404).json({ error: 'Invoice not found' });
+      return;
+    }
+
+    const orderId = Number(invoice.order_id);
 
     const [result] = await connection.query<ResultSetHeader>(
       `UPDATE invoices_v2 SET invoice_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
@@ -319,6 +337,11 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
       res.status(404).json({ error: 'Invoice not found' });
       return;
     }
+
+    await connection.query<ResultSetHeader>(
+      `UPDATE orders_v2 SET order_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [orderStatusMap[status], orderId]
+    );
 
     res.json({ message: 'Invoice updated', affectedRows: result.affectedRows });
   } catch (err) {

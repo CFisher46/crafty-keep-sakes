@@ -88,7 +88,7 @@ function UsersProfile() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [orders, setOrders] = useState<Array<{ id: number; order_status: string; grand_total: number; placed_at: string }>>([]);
+  const [orders, setOrders] = useState<Array<{ id: number; invoice_id?: number | null; order_status: string; grand_total: number; placed_at: string }>>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [invoice, setInvoice] = useState<null | {
     id: number;
@@ -106,6 +106,7 @@ function UsersProfile() {
       line_total: number;
     }>;
   }>(null);
+  const [pendingInvoiceStatus, setPendingInvoiceStatus] = useState<string>('');
   const [invoiceUpdateMessage, setInvoiceUpdateMessage] = useState<string | null>(null);
 
   const inputStyle = { width: '100%' };
@@ -144,16 +145,31 @@ function UsersProfile() {
     loadOrders();
   }, [dispatch, userId]);
 
+  const refreshOrderHistory = async () => {
+    if (!userId) {
+      return;
+    }
+
+    const result = await dispatch(fetchOrderHistory());
+    if (fetchOrderHistory.fulfilled.match(result)) {
+      setOrders(result.payload);
+    }
+  };
+
   useEffect(() => {
     const loadInvoice = async () => {
       if (!selectedInvoiceId) {
         setInvoice(null);
+        setPendingInvoiceStatus('');
+        setInvoiceUpdateMessage(null);
         return;
       }
 
       const result = await dispatch(fetchInvoiceById(selectedInvoiceId));
       if (fetchInvoiceById.fulfilled.match(result)) {
         setInvoice(result.payload);
+        setPendingInvoiceStatus(result.payload.invoice_status);
+        setInvoiceUpdateMessage(null);
       }
     };
 
@@ -165,18 +181,26 @@ function UsersProfile() {
     setSaveMessage(null);
   };
 
-  const handleInvoiceStatusChange = async (status: string) => {
-    if (!selectedInvoiceId) {
+  const handleInvoiceStatusUpdate = async () => {
+    if (!selectedInvoiceId || !pendingInvoiceStatus) {
       return;
     }
 
-    const result = await dispatch(updateInvoiceStatus({ invoiceId: selectedInvoiceId, invoiceStatus: status }));
+    const result = await dispatch(
+      updateInvoiceStatus({
+        invoiceId: selectedInvoiceId,
+        invoiceStatus: pendingInvoiceStatus,
+      })
+    );
+
     if (updateInvoiceStatus.fulfilled.match(result)) {
       setInvoiceUpdateMessage('Invoice status updated');
       const refreshed = await dispatch(fetchInvoiceById(selectedInvoiceId));
       if (fetchInvoiceById.fulfilled.match(refreshed)) {
         setInvoice(refreshed.payload);
+        setPendingInvoiceStatus(refreshed.payload.invoice_status);
       }
+      await refreshOrderHistory();
       return;
     }
 
@@ -259,7 +283,7 @@ function UsersProfile() {
                   <Text>Date: {new Date(order.placed_at).toLocaleString()}</Text>
                   <Button
                     label="View Invoice"
-                    onClick={() => setSelectedInvoiceId(String(order.id))}
+                    onClick={() => setSelectedInvoiceId(String(order.invoice_id ?? order.id))}
                     secondary
                   />
                 </Box>
@@ -289,11 +313,17 @@ function UsersProfile() {
               )}
 
               {(selectedUser?.type === 'admin' || selectedUser?.type === 'Admin') && (
-                <Box margin={{ top: 'small' }}>
+                <Box margin={{ top: 'small' }} gap="xsmall">
                   <Select
-                    options={['unpaid', 'paid', 'overdue']}
-                    value={invoice.invoice_status}
-                    onChange={({ option }) => handleInvoiceStatusChange(option)}
+                    options={['unpaid', 'paid', 'void']}
+                    value={pendingInvoiceStatus || invoice.invoice_status}
+                    onChange={({ option }) => setPendingInvoiceStatus(option)}
+                  />
+                  <Button
+                    label="Confirm Update"
+                    primary
+                    disabled={!pendingInvoiceStatus || pendingInvoiceStatus === invoice.invoice_status}
+                    onClick={handleInvoiceStatusUpdate}
                   />
                   {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
                 </Box>

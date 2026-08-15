@@ -304,8 +304,41 @@ describe('v2 basket routes', () => {
     expect(response.body[1].user_id).toBe(9);
   });
 
+  it('rejects unsupported invoice statuses before hitting the database', async () => {
+    const response = await request(app)
+      .put('/api/v2/basket/invoices/90')
+      .set('Cookie', authCookie(1, 'admin'))
+      .send({ invoice_status: 'overdue' });
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({ error: 'Invalid invoice_status' });
+    expect(mockConnection.query).not.toHaveBeenCalled();
+  });
+
+  it('updates the linked order when an invoice is marked paid', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ order_id: 40 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const response = await request(app)
+      .put('/api/v2/basket/invoices/90')
+      .set('Cookie', authCookie(1, 'admin'))
+      .send({ invoice_status: 'paid' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1 });
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT order_id FROM invoices_v2');
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain('UPDATE invoices_v2');
+    expect(String(mockConnection.query.mock.calls[2][0])).toContain('UPDATE orders_v2');
+    expect(mockConnection.query.mock.calls[2][1]).toEqual(['fulfilled', 40]);
+  });
+
   it('allows an admin to update an invoice status', async () => {
-    mockConnection.query.mockResolvedValueOnce([{ affectedRows: 1 }]);
+    mockConnection.query
+      .mockResolvedValueOnce([[{ order_id: 40 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
 
     const response = await request(app)
       .put('/api/v2/basket/invoices/90')
