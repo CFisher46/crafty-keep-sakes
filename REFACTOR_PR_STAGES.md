@@ -254,10 +254,12 @@ Tests:
 Exit Criteria:
 
 - [x] Checkout no longer depends on legacy invoices path.
+- [x] Order history and invoice details are available in the client profile flow using `/api/v2/basket/orders` and `/api/v2/basket/invoices/:id`.
+- [x] Selected order/invoice rows can be opened, cleared, and updated through the modal workflow.
 
-Remaining client-side gap:
+Current state:
 
-- [ ] Add dedicated order history/invoice detail screens to consume `/api/v2/basket/orders`, `/api/v2/basket/orders/:id`, and `/api/v2/basket/invoices/:id` in the UI.
+- [x] Stage 7 is complete and ready for merge; the implemented profile order history and invoice modal satisfy the user-facing v2 basket flow without requiring a separate standalone page.
 - [ ] Add admin invoice management screen to call the protected `/api/v2/basket/invoices/:id` update route.
 
 ## [ ] Stage 8 - Audit Migration
