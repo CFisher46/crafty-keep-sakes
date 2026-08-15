@@ -88,7 +88,8 @@ function UsersProfile() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [orders, setOrders] = useState<Array<{ id: number; invoice_id?: number | null; order_status: string; grand_total: number; placed_at: string }>>([]);
+  const [orders, setOrders] = useState<Array<{ id: number; invoice_id?: number | null; invoice_number?: string | null; order_status: string; grand_total: number; placed_at: string }>>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [invoice, setInvoice] = useState<null | {
     id: number;
@@ -185,6 +186,19 @@ function UsersProfile() {
     setSelectedInvoiceId(invoiceId);
   };
 
+  const handleOpenSelectedInvoice = () => {
+    if (selectedOrderId === null) {
+      return;
+    }
+
+    const selectedOrder = orders.find((order) => order.id === selectedOrderId);
+    if (!selectedOrder) {
+      return;
+    }
+
+    handleOpenInvoice(String(selectedOrder.invoice_id ?? selectedOrder.id));
+  };
+
   const handleCloseInvoice = () => {
     setSelectedInvoiceId('');
     setInvoice(null);
@@ -256,7 +270,7 @@ function UsersProfile() {
 
   return (
     <Form>
-      <Grid columns={['450px', '400px', '420px']} gap="small">
+      <Box gap="small">
         {invoice && (
           <Layer
             position="center"
@@ -307,103 +321,143 @@ function UsersProfile() {
           </Layer>
         )}
 
-        <Box border round="small" pad="medium" gap="small" background="white">
-          {[
-            { label: 'UserName', field: 'email_address' },
-            { label: 'FirstName', field: 'first_name' },
-            { label: 'LastName', field: 'last_name' },
-            { label: 'Address Line1', field: 'address_line1' },
-            { label: 'Address Line2', field: 'address_line2' },
-            { label: 'Address Line3', field: 'address_line3' },
-            { label: 'Town', field: 'town' },
-            { label: 'County', field: 'county' },
-            { label: 'PostCode', field: 'postcode' },
-          ].map(({ label, field }) => (
-            <InputField
-              key={label}
-              label={label}
-              placeholder={userData[field as keyof typeof userData] || ''}
-              inputStyle={inputStyle}
-              labelStyle={labelStyle}
-              onChange={(value) => handleFieldChange(field, value)}
-              value={userData[field as keyof typeof userData] || ''}
-            />
-          ))}
-        </Box>
-        <Box border round="small" pad="medium" gap="small" background="white">
+        <Grid columns={['450px', '400px', '420px']} gap="small">
+          <Box border round="small" pad="medium" gap="small" background="white">
+            {[
+              { label: 'UserName', field: 'email_address' },
+              { label: 'FirstName', field: 'first_name' },
+              { label: 'LastName', field: 'last_name' },
+              { label: 'Address Line1', field: 'address_line1' },
+              { label: 'Address Line2', field: 'address_line2' },
+              { label: 'Address Line3', field: 'address_line3' },
+              { label: 'Town', field: 'town' },
+              { label: 'County', field: 'county' },
+              { label: 'PostCode', field: 'postcode' },
+            ].map(({ label, field }) => (
+              <InputField
+                key={label}
+                label={label}
+                placeholder={userData[field as keyof typeof userData] || ''}
+                inputStyle={inputStyle}
+                labelStyle={labelStyle}
+                onChange={(value) => handleFieldChange(field, value)}
+                value={userData[field as keyof typeof userData] || ''}
+              />
+            ))}
+          </Box>
+
+          <Box direction="column" gap="small">
+            <Box border round="small" pad="medium" gap="small" background="white">
+              <Text style={labelStyle}>Reset Password</Text>
+              <InputField
+                label="Current Password"
+                value={currentPassword}
+                placeholder="Enter current password"
+                inputStyle={inputStyle}
+                labelStyle={labelStyle}
+                onChange={setCurrentPassword}
+                type="password"
+              />
+              <Button
+                label="Verify Password"
+                // Add password verification logic here
+              />
+              {passwordError && (
+                <Text color="status-critical">{passwordError}</Text>
+              )}
+              <InputField
+                label="New Password"
+                value={userData.new_password || ''}
+                placeholder="Enter new password"
+                inputStyle={inputStyle}
+                labelStyle={labelStyle}
+                onChange={(value) => handleFieldChange('new_password', value)}
+                type={showNewPassword ? 'text' : 'password'}
+                isPassword
+                toggleVisibility={() => setShowNewPassword((prev) => !prev)}
+                isVisible={showNewPassword}
+              />
+              <InputField
+                label="Confirm Password"
+                value={userData.confirm_new_password || ''}
+                placeholder="Confirm new password"
+                inputStyle={inputStyle}
+                labelStyle={labelStyle}
+                onChange={(value) =>
+                  handleFieldChange('confirm_new_password', value)
+                }
+                type={showConfirmPassword ? 'text' : 'password'}
+                isPassword
+                toggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
+                isVisible={showConfirmPassword}
+              />
+            </Box>
+            <Box border round="small" pad="medium" gap="small" background="white">
+              <Button label="Save Profile" onClick={handleSaveProfile} />
+              {saveMessage && <Text>{saveMessage}</Text>}
+            </Box>
+          </Box>
+        </Grid>
+
+        <Box border round="small" pad="medium" gap="small" background="white" margin={{ top: 'small' }}>
           <Text style={labelStyle}>My Orders</Text>
           {orders.length === 0 ? (
             <Text>No orders yet.</Text>
           ) : (
             <Box gap="small">
-              {orders.map((order) => (
-                <Box key={order.id} border pad="small" round="xsmall">
-                  <Text>Order {order.id}</Text>
-                  <Text>Status: {order.order_status}</Text>
-                  <Text>Total: £{Number(order.grand_total).toFixed(2)}</Text>
-                  <Text>Date: {new Date(order.placed_at).toLocaleString()}</Text>
-                  <Button
-                    label="View Invoice"
-                    onClick={() => handleOpenInvoice(String(order.invoice_id ?? order.id))}
-                    secondary
-                  />
-                </Box>
-              ))}
+              <Box border round="xsmall" overflow="auto" style={{ maxHeight: '320px' }}>
+                <table
+                  style={{
+                    width: '100%',
+                    minWidth: '720px',
+                    borderCollapse: 'collapse',
+                    fontSize: '0.9rem',
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: '#F7F7F7', borderBottom: '1px solid #D9D9D9' }}>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Order</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Invoice</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Status</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Total</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => {
+                      const isSelected = selectedOrderId === order.id;
+
+                      return (
+                        <tr
+                          key={order.id}
+                          onClick={() => setSelectedOrderId(order.id)}
+                          style={{
+                            background: isSelected ? '#E8F0FE' : 'transparent',
+                            cursor: 'pointer',
+                            borderBottom: '1px solid #E4E4E4',
+                          }}
+                        >
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{order.id}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{order.invoice_number ?? '—'}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{order.order_status}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>£{Number(order.grand_total).toFixed(2)}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{new Date(order.placed_at).toLocaleDateString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </Box>
+              <Button
+                label="Open Selected Invoice"
+                secondary
+                disabled={selectedOrderId === null}
+                onClick={handleOpenSelectedInvoice}
+              />
             </Box>
           )}
         </Box>
-        <Box direction="column" gap="small">
-          <Box border round="small" pad="medium" gap="small" background="white">
-            <Text style={labelStyle}>Reset Password</Text>
-            <InputField
-              label="Current Password"
-              value={currentPassword}
-              placeholder="Enter current password"
-              inputStyle={inputStyle}
-              labelStyle={labelStyle}
-              onChange={setCurrentPassword}
-              type="password"
-            />
-            <Button
-              label="Verify Password"
-              // Add password verification logic here
-            />
-            {passwordError && (
-              <Text color="status-critical">{passwordError}</Text>
-            )}
-            <InputField
-              label="New Password"
-              value={userData.new_password || ''}
-              placeholder="Enter new password"
-              inputStyle={inputStyle}
-              labelStyle={labelStyle}
-              onChange={(value) => handleFieldChange('new_password', value)}
-              type={showNewPassword ? 'text' : 'password'}
-              isPassword
-              toggleVisibility={() => setShowNewPassword((prev) => !prev)}
-              isVisible={showNewPassword}
-            />
-            <InputField
-              label="Confirm Password"
-              value={userData.confirm_new_password || ''}
-              placeholder="Confirm new password"
-              inputStyle={inputStyle}
-              labelStyle={labelStyle}
-              onChange={(value) =>
-                handleFieldChange('confirm_new_password', value)
-              }
-              type={showConfirmPassword ? 'text' : 'password'}
-              isPassword
-              toggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
-              isVisible={showConfirmPassword}
-            />
-          </Box>
-          <Box border round="small" pad="medium" gap="small" background="white">
-            <Button label="Save Profile" onClick={handleSaveProfile} />
-            {saveMessage && <Text>{saveMessage}</Text>}
-          </Box>
-        </Box>
-      </Grid>
+      </Box>
     </Form>
   );
 }

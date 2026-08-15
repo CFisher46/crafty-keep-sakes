@@ -178,6 +178,8 @@ export const fetchOrderHistory = createAsyncThunk(
         user_id: number;
         order_status: string;
         grand_total: number;
+        invoice_id?: number | null;
+        invoice_number?: string | null;
         placed_at: string;
       }>;
     } catch (error: any) {

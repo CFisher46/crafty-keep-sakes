@@ -168,6 +168,7 @@ describe('v2 basket routes', () => {
           grand_total: '30.00',
           placed_at: '2026-08-15 09:00:00',
           invoice_id: 90,
+          invoice_number: 'INV-123-40',
         },
       ],
     ]);
@@ -184,6 +185,7 @@ describe('v2 basket routes', () => {
         order_status: 'placed',
         grand_total: 30,
         invoice_id: 90,
+        invoice_number: 'INV-123-40',
         placed_at: '2026-08-15 09:00:00',
       },
     ]);

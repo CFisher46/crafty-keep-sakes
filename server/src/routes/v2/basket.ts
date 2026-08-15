@@ -155,12 +155,12 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
     const [rows] = await connection.query<RowDataPacket[]>(
       isAdmin
         ? `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-                 i.id AS invoice_id
+                 i.id AS invoice_id, i.invoice_number
            FROM orders_v2 o
            LEFT JOIN invoices_v2 i ON i.order_id = o.id
            ORDER BY o.placed_at DESC`
         : `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-                 i.id AS invoice_id
+                 i.id AS invoice_id, i.invoice_number
            FROM orders_v2 o
            LEFT JOIN invoices_v2 i ON i.order_id = o.id
            WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
@@ -174,6 +174,7 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
         order_status: row.order_status,
         grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
         invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
+        invoice_number: row.invoice_number || null,
         placed_at: row.placed_at,
       }))
     );
