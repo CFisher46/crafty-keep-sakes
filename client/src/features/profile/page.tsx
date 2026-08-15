@@ -415,12 +415,12 @@ function UsersProfile() {
                   }}
                 >
                   <thead>
-                    <tr style={{ background: '#F7F7F7', borderBottom: '1px solid #D9D9D9' }}>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Order</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Invoice</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Status</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Total</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px' }}>Date</th>
+                    <tr style={{ background: '#EEF3FF', borderBottom: '1px solid #C7D7FF' }}>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Order</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Invoice</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Status</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Total</th>
+                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -430,30 +430,53 @@ function UsersProfile() {
                       return (
                         <tr
                           key={order.id}
-                          onClick={() => setSelectedOrderId(order.id)}
+                          onClick={() =>
+                            setSelectedOrderId((current) =>
+                              current === order.id ? null : order.id
+                            )
+                          }
                           style={{
                             background: isSelected ? '#E8F0FE' : 'transparent',
                             cursor: 'pointer',
                             borderBottom: '1px solid #E4E4E4',
+                            transition: 'background-color 0.15s ease',
+                          }}
+                          onMouseEnter={(event) => {
+                            if (!isSelected) {
+                              event.currentTarget.style.background = '#F5F8FF';
+                            }
+                          }}
+                          onMouseLeave={(event) => {
+                            if (!isSelected) {
+                              event.currentTarget.style.background = 'transparent';
+                            }
                           }}
                         >
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{order.id}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{order.invoice_number ?? '—'}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{order.order_status}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>£{Number(order.grand_total).toFixed(2)}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap' }}>{new Date(order.placed_at).toLocaleDateString()}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.id}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.invoice_number ?? '—'}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.order_status}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>£{Number(order.grand_total).toFixed(2)}</td>
+                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{new Date(order.placed_at).toLocaleDateString()}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </Box>
-              <Button
-                label="Open Selected Invoice"
-                secondary
-                disabled={selectedOrderId === null}
-                onClick={handleOpenSelectedInvoice}
-              />
+              <Box direction="row" gap="small">
+                <Button
+                  label="Open Selected Invoice"
+                  secondary
+                  disabled={selectedOrderId === null}
+                  onClick={handleOpenSelectedInvoice}
+                />
+                <Button
+                  label="Clear Selection"
+                  plain
+                  disabled={selectedOrderId === null}
+                  onClick={() => setSelectedOrderId(null)}
+                />
+              </Box>
             </Box>
           )}
         </Box>
