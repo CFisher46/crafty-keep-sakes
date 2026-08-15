@@ -17,9 +17,15 @@ import { buttonStyles } from "../../helpers/formatting";
 function Basket() {
   const dispatch = useDispatch<any>();
   const { items, totalItems } = useSelector((state: RootState) => state.basket);
+  const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      return;
+    }
+
     const loadBasket = async () => {
       const result = await dispatch(fetchBasket());
       if (fetchBasket.fulfilled.match(result)) {
@@ -28,7 +34,7 @@ function Basket() {
     };
 
     loadBasket();
-  }, [dispatch]);
+  }, [dispatch, isLoggedIn]);
 
   // Calculate the total price for all items
   const totalPrice = items.reduce(
@@ -66,7 +72,8 @@ function Basket() {
     if (checkoutBasket.fulfilled.match(resultAction)) {
       dispatch(clearBasket());
       localStorage.removeItem('basket');
-      setCheckoutMessage(`Order placed: ${resultAction.payload.invoice_number}`);
+      setInvoiceId(String(resultAction.payload.invoice_id ?? resultAction.payload.invoice_number ?? 'N/A'));
+      setCheckoutMessage(`Checkout successful! Invoice ${resultAction.payload.invoice_number} has been created.`);
       const refreshed = await dispatch(fetchBasket());
       if (fetchBasket.fulfilled.match(refreshed)) {
         dispatch(hydrateBasketFromServer(refreshed.payload));
@@ -74,6 +81,7 @@ function Basket() {
       return;
     }
 
+    setInvoiceId(null);
     setCheckoutMessage('Checkout failed. Please try again.');
   };
 
@@ -82,6 +90,23 @@ function Basket() {
       <Text size="large" weight="bold" margin={{ bottom: "medium" }}>
         Shopping Basket
       </Text>
+
+      {checkoutMessage && (
+        <Box
+          pad="small"
+          margin={{ bottom: 'small' }}
+          round="xsmall"
+          background="status-ok"
+        >
+          <Text color="white" weight="bold">{checkoutMessage}</Text>
+          {invoiceId && (
+            <Text size="small" color="white">
+              Invoice ID: {invoiceId}
+            </Text>
+          )}
+        </Box>
+      )}
+
       {items.length === 0 ? (
         <Text>Your basket is empty.</Text>
       ) : (
@@ -202,11 +227,6 @@ function Basket() {
               style={buttonStyles.default}
             />
           </Box>
-          {checkoutMessage && (
-            <Box pad={{ top: 'small' }}>
-              <Text color="brand">{checkoutMessage}</Text>
-            </Box>
-          )}
         </Box>
       )}
     </Box>

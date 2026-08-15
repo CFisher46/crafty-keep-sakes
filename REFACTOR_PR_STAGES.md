@@ -232,27 +232,33 @@ Exit Criteria:
 
 - [x] Legacy `users` dependency removed from active auth/profile flows.
 
-## [ ] Stage 7 - Basket-Order-Invoice Migration
+## [x] Stage 7 - Basket-Order-Invoice Migration
 
 PR Goal: implement transactional checkout model in v2.
 
 Implementation:
 
-- [ ] Add basket endpoints (`baskets_v2`, `basket_items_v2`).
-- [ ] Add checkout flow creating `orders_v2` + `order_items_v2` + `invoices_v2` + `invoice_items_v2`.
-- [ ] Use one DB transaction and rollback on failure.
-- [ ] Add customer ownership constraints and admin invoice read/update controls.
+- [x] Add basket endpoints (`baskets_v2`, `basket_items_v2`).
+- [x] Add checkout flow creating `orders_v2` + `order_items_v2` + `invoices_v2` + `invoice_items_v2`.
+- [x] Use one DB transaction and rollback on failure.
+- [x] Add customer ownership constraints and admin invoice read/update controls.
+- [x] Sync client API routing and basket UI to the v2 basket endpoints.
 
 Tests:
 
-- [ ] Basket add/update/remove.
-- [ ] Checkout success creates all records.
-- [ ] Transaction rollback on forced failure.
-- [ ] Customer can only see own orders/invoices.
+- [x] Basket add/update/remove.
+- [x] Checkout success creates all records.
+- [x] Transaction rollback on forced failure.
+- [x] Customer can only see own orders/invoices.
 
 Exit Criteria:
 
-- [ ] Checkout no longer depends on legacy invoices path.
+- [x] Checkout no longer depends on legacy invoices path.
+
+Remaining client-side gap:
+
+- [ ] Add dedicated order history/invoice detail screens to consume `/api/v2/basket/orders`, `/api/v2/basket/orders/:id`, and `/api/v2/basket/invoices/:id` in the UI.
+- [ ] Add admin invoice management screen to call the protected `/api/v2/basket/invoices/:id` update route.
 
 ## [ ] Stage 8 - Audit Migration
 

@@ -77,6 +77,11 @@ const basketSlice = createSlice({
       action: PayloadAction<{ items?: Array<{ product_id?: number; id?: number; product_name?: string; quantity?: number; unit_price?: number | string; unit_price_snapshot?: number | string; }>; total_items?: number }>
     ) => {
       const items = action.payload.items ?? [];
+
+      if (items.length === 0 && state.items.length > 0) {
+        return;
+      }
+
       state.items = items.map((item) => ({
         id: String(item.product_id ?? item.id ?? ''),
         image: '',

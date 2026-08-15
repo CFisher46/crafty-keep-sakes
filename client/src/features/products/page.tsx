@@ -5,6 +5,7 @@ import ShopFilterBar from '../../components/shop-filters-bar/shop-filter-bar';
 import { useLocation } from 'react-router-dom';
 import { fetchAllProducts, fetchFilteredProducts } from '../../store/products/productsThunks';
 import { addItemToBasket } from '../../store/basket/basketSlice';
+import { addBasketItem } from '../../store/basket/basketThunks';
 import { buttonStyles } from '../../helpers/formatting';
 import CommonModal from '../../components/modals/common-modal';
 import { Product } from '../../types';
@@ -25,6 +26,7 @@ function Shop() {
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
+  const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const location = useLocation();
 
   const visibleProducts = products.filter(
@@ -42,18 +44,21 @@ function Shop() {
     }
   };
 
-  const handleAddToCart = (product: Product) => {
+  const handleAddToCart = async (product: Product) => {
     const productImages = parseProductImages(product.images);
+    const basketItem = {
+      id: product.id,
+      image: productImages[0] || '',
+      product_name: product.product_name,
+      price: product.price,
+      quantity: 1,
+    };
 
-    dispatch(
-      addItemToBasket({
-        id: product.id,
-        image: productImages[0] || '',
-        product_name: product.product_name,
-        price: product.price,
-        quantity: 1,
-      })
-    );
+    if (isLoggedIn) {
+      await dispatch(addBasketItem(basketItem));
+    }
+
+    dispatch(addItemToBasket(basketItem));
   };
 
   useEffect(() => {
