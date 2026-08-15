@@ -1,4 +1,4 @@
-import { Text, Form, Box, TextInput, Grid, Button } from 'grommet';
+import { Text, Form, Box, TextInput, Grid, Button, Select } from 'grommet';
 import { View, Hide } from 'grommet-icons';
 import { useEffect, useState } from 'react';
 import { fetchUserById, updateUser } from '../../store/users/usersThunks';
@@ -6,6 +6,11 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { useAppDispatch } from '../../store/hooks';
 import { useParams } from 'react-router-dom';
+import {
+  fetchInvoiceById,
+  fetchOrderHistory,
+  updateInvoiceStatus,
+} from '../../store/basket/basketThunks';
 
 //import { buttonStyles } from '../../helpers/styles';
 
@@ -83,6 +88,25 @@ function UsersProfile() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [orders, setOrders] = useState<Array<{ id: number; order_status: string; grand_total: number; placed_at: string }>>([]);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
+  const [invoice, setInvoice] = useState<null | {
+    id: number;
+    order_id: number;
+    invoice_number: string;
+    invoice_status: string;
+    total_due: number;
+    issued_at: string;
+    user_id: number;
+    items?: Array<{
+      id: number;
+      description: string;
+      quantity: number;
+      unit_price: number;
+      line_total: number;
+    }>;
+  }>(null);
+  const [invoiceUpdateMessage, setInvoiceUpdateMessage] = useState<string | null>(null);
 
   const inputStyle = { width: '100%' };
   const labelStyle = { width: '100%', textAlign: 'left' as 'left' };
@@ -105,9 +129,58 @@ function UsersProfile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedUser]);
 
+  useEffect(() => {
+    const loadOrders = async () => {
+      if (!userId) {
+        return;
+      }
+
+      const result = await dispatch(fetchOrderHistory());
+      if (fetchOrderHistory.fulfilled.match(result)) {
+        setOrders(result.payload);
+      }
+    };
+
+    loadOrders();
+  }, [dispatch, userId]);
+
+  useEffect(() => {
+    const loadInvoice = async () => {
+      if (!selectedInvoiceId) {
+        setInvoice(null);
+        return;
+      }
+
+      const result = await dispatch(fetchInvoiceById(selectedInvoiceId));
+      if (fetchInvoiceById.fulfilled.match(result)) {
+        setInvoice(result.payload);
+      }
+    };
+
+    loadInvoice();
+  }, [dispatch, selectedInvoiceId]);
+
   const handleFieldChange = (field: string, value: string) => {
     setUserData((prev) => ({ ...prev, [field]: value }));
     setSaveMessage(null);
+  };
+
+  const handleInvoiceStatusChange = async (status: string) => {
+    if (!selectedInvoiceId) {
+      return;
+    }
+
+    const result = await dispatch(updateInvoiceStatus({ invoiceId: selectedInvoiceId, invoiceStatus: status }));
+    if (updateInvoiceStatus.fulfilled.match(result)) {
+      setInvoiceUpdateMessage('Invoice status updated');
+      const refreshed = await dispatch(fetchInvoiceById(selectedInvoiceId));
+      if (fetchInvoiceById.fulfilled.match(refreshed)) {
+        setInvoice(refreshed.payload);
+      }
+      return;
+    }
+
+    setInvoiceUpdateMessage('Unable to update invoice status');
   };
 
   const handleSaveProfile = async () => {
@@ -173,8 +246,60 @@ function UsersProfile() {
           ))}
         </Box>
         <Box border round="small" pad="medium" gap="small" background="white">
-          <Text style={labelStyle}>My Invoices</Text>
-          <TextInput style={inputStyle} />
+          <Text style={labelStyle}>My Orders</Text>
+          {orders.length === 0 ? (
+            <Text>No orders yet.</Text>
+          ) : (
+            <Box gap="small">
+              {orders.map((order) => (
+                <Box key={order.id} border pad="small" round="xsmall">
+                  <Text>Order {order.id}</Text>
+                  <Text>Status: {order.order_status}</Text>
+                  <Text>Total: £{Number(order.grand_total).toFixed(2)}</Text>
+                  <Text>Date: {new Date(order.placed_at).toLocaleString()}</Text>
+                  <Button
+                    label="View Invoice"
+                    onClick={() => setSelectedInvoiceId(String(order.id))}
+                    secondary
+                  />
+                </Box>
+              ))}
+            </Box>
+          )}
+
+          {invoice && (
+            <Box border pad="small" round="xsmall" margin={{ top: 'small' }}>
+              <Text>Invoice #{invoice.invoice_number}</Text>
+              <Text>Status: {invoice.invoice_status}</Text>
+              <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
+              <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
+
+              {invoice.items && invoice.items.length > 0 && (
+                <Box margin={{ top: 'small' }} gap="xsmall">
+                  <Text weight="bold">Items</Text>
+                  {invoice.items.map((item) => (
+                    <Box key={item.id} border pad="xsmall" round="xsmall">
+                      <Text>{item.description}</Text>
+                      <Text>Qty: {item.quantity}</Text>
+                      <Text>Unit: £{Number(item.unit_price).toFixed(2)}</Text>
+                      <Text>Total: £{Number(item.line_total).toFixed(2)}</Text>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              {(selectedUser?.type === 'admin' || selectedUser?.type === 'Admin') && (
+                <Box margin={{ top: 'small' }}>
+                  <Select
+                    options={['unpaid', 'paid', 'overdue']}
+                    value={invoice.invoice_status}
+                    onChange={({ option }) => handleInvoiceStatusChange(option)}
+                  />
+                  {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
+                </Box>
+              )}
+            </Box>
+          )}
         </Box>
         <Box direction="column" gap="small">
           <Box border round="small" pad="medium" gap="small" background="white">

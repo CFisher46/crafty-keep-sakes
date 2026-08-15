@@ -156,10 +156,16 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
 
     const [rows] = await connection.query<RowDataPacket[]>(
       isAdmin
-        ? `SELECT id, user_id, order_status, subtotal, discount_total, tax_total, grand_total, placed_at
-           FROM orders_v2 ORDER BY placed_at DESC`
-        : `SELECT id, user_id, order_status, subtotal, discount_total, tax_total, grand_total, placed_at
-           FROM orders_v2 WHERE user_id = ? ORDER BY placed_at DESC`,
+        ? `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
+                 i.id AS invoice_id
+           FROM orders_v2 o
+           LEFT JOIN invoices_v2 i ON i.order_id = o.id
+           ORDER BY o.placed_at DESC`
+        : `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
+                 i.id AS invoice_id
+           FROM orders_v2 o
+           LEFT JOIN invoices_v2 i ON i.order_id = o.id
+           WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
       isAdmin ? [] : [userId]
     );
 
@@ -169,6 +175,7 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
         user_id: Number(row.user_id),
         order_status: row.order_status,
         grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
+        invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
         placed_at: row.placed_at,
       }))
     );
@@ -239,10 +246,13 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
     const invoiceId = Number(req.params.id);
 
     const [rows] = await connection.query<RowDataPacket[]>(
-      `SELECT i.id, i.order_id, i.invoice_number, i.invoice_status, i.total_due, i.issued_at, o.user_id
+      `SELECT i.id, i.order_id, i.invoice_number, i.invoice_status, i.total_due, i.issued_at, o.user_id,
+              ii.id AS invoice_item_id, ii.description, ii.quantity, ii.unit_price, ii.line_total
        FROM invoices_v2 i
        LEFT JOIN orders_v2 o ON o.id = i.order_id
-       WHERE i.id = ? LIMIT 1`,
+       LEFT JOIN invoice_items_v2 ii ON ii.invoice_id = i.id
+       WHERE i.id = ?
+       ORDER BY ii.id ASC`,
       [invoiceId]
     );
 
@@ -257,6 +267,14 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
       return;
     }
 
+    const items = (Array.isArray(rows) ? rows : []).map((row) => ({
+      id: row.invoice_item_id !== undefined && row.invoice_item_id !== null ? Number(row.invoice_item_id) : null,
+      description: row.description,
+      quantity: Number(row.quantity || 0),
+      unit_price: Number(Number(row.unit_price || 0).toFixed(2)),
+      line_total: Number(Number(row.line_total || 0).toFixed(2)),
+    })).filter((item) => item.id !== null);
+
     res.json({
       id: Number(invoice.id),
       order_id: Number(invoice.order_id),
@@ -265,6 +283,7 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
       total_due: Number(Number(invoice.total_due || 0).toFixed(2)),
       issued_at: invoice.issued_at,
       user_id: Number(invoice.user_id),
+      items,
     });
   } catch (err) {
     console.error('Get V2 Invoice Error:', err);

@@ -159,3 +159,83 @@ export const checkoutBasket = createAsyncThunk(
     }
   }
 );
+
+export const fetchOrderHistory = createAsyncThunk(
+  'basket/fetchOrderHistory',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(buildApiUrl('basket', '/orders'), {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        return rejectWithValue(payload.error || 'Failed to load order history');
+      }
+
+      return (await response.json()) as Array<{
+        id: number;
+        user_id: number;
+        order_status: string;
+        grand_total: number;
+        placed_at: string;
+      }>;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Network error');
+    }
+  }
+);
+
+export const fetchInvoiceById = createAsyncThunk(
+  'basket/fetchInvoiceById',
+  async (invoiceId: string | number, { rejectWithValue }) => {
+    try {
+      const response = await fetch(buildApiUrl('basket', `/invoices/${invoiceId}`), {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        return rejectWithValue(payload.error || 'Failed to load invoice');
+      }
+
+      return (await response.json()) as {
+        id: number;
+        order_id: number;
+        invoice_number: string;
+        invoice_status: string;
+        total_due: number;
+        issued_at: string;
+        user_id: number;
+      };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Network error');
+    }
+  }
+);
+
+export const updateInvoiceStatus = createAsyncThunk(
+  'basket/updateInvoiceStatus',
+  async (
+    { invoiceId, invoiceStatus }: { invoiceId: string | number; invoiceStatus: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await fetch(buildApiUrl('basket', `/invoices/${invoiceId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoice_status: invoiceStatus }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        return rejectWithValue(payload.error || 'Failed to update invoice status');
+      }
+
+      return (await response.json()) as { message: string; affectedRows: number };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Network error');
+    }
+  }
+);

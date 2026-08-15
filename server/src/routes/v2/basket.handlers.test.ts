@@ -158,7 +158,7 @@ describe('v2 basket routes', () => {
     expect(String(mockConnection.query.mock.calls[5][0])).toContain('INSERT INTO invoices_v2');
   });
 
-  it('lists a customers own orders', async () => {
+  it('lists a customers own orders with invoice references', async () => {
     mockConnection.query.mockResolvedValueOnce([
       [
         {
@@ -167,6 +167,7 @@ describe('v2 basket routes', () => {
           order_status: 'placed',
           grand_total: '30.00',
           placed_at: '2026-08-15 09:00:00',
+          invoice_id: 90,
         },
       ],
     ]);
@@ -182,9 +183,76 @@ describe('v2 basket routes', () => {
         user_id: 7,
         order_status: 'placed',
         grand_total: 30,
+        invoice_id: 90,
         placed_at: '2026-08-15 09:00:00',
       },
     ]);
+  });
+
+  it('includes invoice items and totals when fetching an invoice', async () => {
+    mockConnection.query.mockResolvedValueOnce([
+      [
+        {
+          id: 90,
+          order_id: 40,
+          invoice_number: 'INV-123-40',
+          invoice_status: 'unpaid',
+          total_due: '30.00',
+          issued_at: '2026-08-15 09:05:00',
+          user_id: 7,
+          invoice_item_id: 1,
+          description: 'Tea Set',
+          quantity: 2,
+          unit_price: '12.50',
+          line_total: '25.00',
+        },
+        {
+          id: 90,
+          order_id: 40,
+          invoice_number: 'INV-123-40',
+          invoice_status: 'unpaid',
+          total_due: '30.00',
+          issued_at: '2026-08-15 09:05:00',
+          user_id: 7,
+          invoice_item_id: 2,
+          description: 'Coffee Beans',
+          quantity: 1,
+          unit_price: '5.00',
+          line_total: '5.00',
+        },
+      ],
+    ]);
+
+    const response = await request(app)
+      .get('/api/v2/basket/invoices/90')
+      .set('Cookie', authCookie(7, 'customer'));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: 90,
+      order_id: 40,
+      invoice_number: 'INV-123-40',
+      invoice_status: 'unpaid',
+      total_due: 30,
+      issued_at: '2026-08-15 09:05:00',
+      user_id: 7,
+      items: [
+        {
+          id: 1,
+          description: 'Tea Set',
+          quantity: 2,
+          unit_price: 12.5,
+          line_total: 25,
+        },
+        {
+          id: 2,
+          description: 'Coffee Beans',
+          quantity: 1,
+          unit_price: 5,
+          line_total: 5,
+        },
+      ],
+    });
   });
 
   it('blocks a customer from viewing another users invoice', async () => {
