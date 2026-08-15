@@ -23,6 +23,8 @@ const normalizeOptionalText = (value: unknown): string | null => {
 };
 
 router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log('POST /api/v2/users');
+
   const user = req.body as Partial<User>;
 
   if (!user.email_address || !user.password || !user.first_name || !user.last_name) {

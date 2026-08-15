@@ -1,4 +1,4 @@
-import { Text, Form, Box, TextInput, Grid, Button, Select } from 'grommet';
+import { Text, Form, Box, TextInput, Grid, Button, Select, Layer } from 'grommet';
 import { View, Hide } from 'grommet-icons';
 import { useEffect, useState } from 'react';
 import { fetchUserById, updateUser } from '../../store/users/usersThunks';
@@ -181,6 +181,17 @@ function UsersProfile() {
     setSaveMessage(null);
   };
 
+  const handleOpenInvoice = (invoiceId: string) => {
+    setSelectedInvoiceId(invoiceId);
+  };
+
+  const handleCloseInvoice = () => {
+    setSelectedInvoiceId('');
+    setInvoice(null);
+    setPendingInvoiceStatus('');
+    setInvoiceUpdateMessage(null);
+  };
+
   const handleInvoiceStatusUpdate = async () => {
     if (!selectedInvoiceId || !pendingInvoiceStatus) {
       return;
@@ -246,6 +257,56 @@ function UsersProfile() {
   return (
     <Form>
       <Grid columns={['450px', '400px', '420px']} gap="small">
+        {invoice && (
+          <Layer
+            position="center"
+            onEsc={handleCloseInvoice}
+            onClickOutside={handleCloseInvoice}
+            modal
+          >
+            <Box pad="medium" width="large" gap="small">
+              <Box direction="row" justify="between" align="center">
+                <Text>Invoice #{invoice.invoice_number}</Text>
+                <Button label="Close" secondary onClick={handleCloseInvoice} />
+              </Box>
+              <Text>Status: {invoice.invoice_status}</Text>
+              <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
+              <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
+
+              {invoice.items && invoice.items.length > 0 && (
+                <Box margin={{ top: 'small' }} gap="xsmall">
+                  <Text weight="bold">Items</Text>
+                  {invoice.items.map((item) => (
+                    <Box key={item.id} border pad="xsmall" round="xsmall">
+                      <Text>{item.description}</Text>
+                      <Text>Qty: {item.quantity}</Text>
+                      <Text>Unit: £{Number(item.unit_price).toFixed(2)}</Text>
+                      <Text>Total: £{Number(item.line_total).toFixed(2)}</Text>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+
+              {(selectedUser?.type === 'admin' || selectedUser?.type === 'Admin') && (
+                <Box margin={{ top: 'small' }} gap="xsmall">
+                  <Select
+                    options={['unpaid', 'paid', 'void']}
+                    value={pendingInvoiceStatus || invoice.invoice_status}
+                    onChange={({ option }) => setPendingInvoiceStatus(option)}
+                  />
+                  <Button
+                    label="Confirm Update"
+                    primary
+                    disabled={!pendingInvoiceStatus || pendingInvoiceStatus === invoice.invoice_status}
+                    onClick={handleInvoiceStatusUpdate}
+                  />
+                  {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
+                </Box>
+              )}
+            </Box>
+          </Layer>
+        )}
+
         <Box border round="small" pad="medium" gap="small" background="white">
           {[
             { label: 'UserName', field: 'email_address' },
@@ -283,51 +344,11 @@ function UsersProfile() {
                   <Text>Date: {new Date(order.placed_at).toLocaleString()}</Text>
                   <Button
                     label="View Invoice"
-                    onClick={() => setSelectedInvoiceId(String(order.invoice_id ?? order.id))}
+                    onClick={() => handleOpenInvoice(String(order.invoice_id ?? order.id))}
                     secondary
                   />
                 </Box>
               ))}
-            </Box>
-          )}
-
-          {invoice && (
-            <Box border pad="small" round="xsmall" margin={{ top: 'small' }}>
-              <Text>Invoice #{invoice.invoice_number}</Text>
-              <Text>Status: {invoice.invoice_status}</Text>
-              <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
-              <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
-
-              {invoice.items && invoice.items.length > 0 && (
-                <Box margin={{ top: 'small' }} gap="xsmall">
-                  <Text weight="bold">Items</Text>
-                  {invoice.items.map((item) => (
-                    <Box key={item.id} border pad="xsmall" round="xsmall">
-                      <Text>{item.description}</Text>
-                      <Text>Qty: {item.quantity}</Text>
-                      <Text>Unit: £{Number(item.unit_price).toFixed(2)}</Text>
-                      <Text>Total: £{Number(item.line_total).toFixed(2)}</Text>
-                    </Box>
-                  ))}
-                </Box>
-              )}
-
-              {(selectedUser?.type === 'admin' || selectedUser?.type === 'Admin') && (
-                <Box margin={{ top: 'small' }} gap="xsmall">
-                  <Select
-                    options={['unpaid', 'paid', 'void']}
-                    value={pendingInvoiceStatus || invoice.invoice_status}
-                    onChange={({ option }) => setPendingInvoiceStatus(option)}
-                  />
-                  <Button
-                    label="Confirm Update"
-                    primary
-                    disabled={!pendingInvoiceStatus || pendingInvoiceStatus === invoice.invoice_status}
-                    onClick={handleInvoiceStatusUpdate}
-                  />
-                  {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
-                </Box>
-              )}
             </Box>
           )}
         </Box>

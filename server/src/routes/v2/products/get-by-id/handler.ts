@@ -4,7 +4,7 @@ import { GetSpecificProductsQuery } from "../../../products/get-by-id/sql";
 
 const router = express.Router();
 
-router.get("/:id", async (req: Request, res: Response) => {
+router.get("/:id", async (req: Request, res: Response) => {  console.log(`GET /api/v2/products/${req.params.id}`);
   const { id } = req.params;
 
   try {

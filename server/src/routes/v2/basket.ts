@@ -114,6 +114,8 @@ const mapBasketItem = (item: BasketItemRecord) => ({
 });
 
 router.get('/', verifyAuthToken, async (req, res) => {
+  console.log('GET /api/v2/basket');
+
   const connection = await db.getConnection();
 
   try {
@@ -142,6 +144,8 @@ router.get('/', verifyAuthToken, async (req, res) => {
 });
 
 router.get('/orders', verifyAuthToken, async (req, res) => {
+  console.log('GET /api/v2/basket/orders');
+
   const connection = await db.getConnection();
 
   try {
@@ -187,6 +191,8 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
 });
 
 router.get('/orders/:id', verifyAuthToken, async (req, res) => {
+  console.log(`GET /api/v2/basket/orders/${req.params.id}`);
+
   const connection = await db.getConnection();
 
   try {
@@ -232,6 +238,8 @@ router.get('/orders/:id', verifyAuthToken, async (req, res) => {
 });
 
 router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
+  console.log(`GET /api/v2/basket/invoices/${req.params.id}`);
+
   const connection = await db.getConnection();
 
   try {
@@ -293,6 +301,8 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
 });
 
 router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log(`PUT /api/v2/basket/invoices/${req.params.id}`);
+
   const connection = await db.getConnection();
 
   try {
@@ -353,6 +363,8 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
 });
 
 router.post('/items', verifyAuthToken, async (req, res) => {
+  console.log('POST /api/v2/basket/items');
+
   const connection = await db.getConnection();
 
   try {
@@ -422,6 +434,8 @@ router.post('/items', verifyAuthToken, async (req, res) => {
 });
 
 router.put('/items/:productId', verifyAuthToken, async (req, res) => {
+  console.log(`PUT /api/v2/basket/items/${req.params.productId}`);
+
   const connection = await db.getConnection();
 
   try {
@@ -470,6 +484,8 @@ router.put('/items/:productId', verifyAuthToken, async (req, res) => {
 });
 
 router.delete('/items/:productId', verifyAuthToken, async (req, res) => {
+  console.log(`DELETE /api/v2/basket/items/${req.params.productId}`);
+
   const connection = await db.getConnection();
 
   try {
@@ -502,6 +518,8 @@ router.delete('/items/:productId', verifyAuthToken, async (req, res) => {
 });
 
 router.post('/checkout', verifyAuthToken, async (req, res) => {
+  console.log('POST /api/v2/basket/checkout');
+
   const connection = await db.getConnection();
 
   try {

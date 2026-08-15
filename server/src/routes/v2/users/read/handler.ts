@@ -32,6 +32,8 @@ const mapUserRow = (user: V2UserRow) => ({
 });
 
 router.get('/', verifyAuthToken, requireRole('admin'), async (_req, res) => {
+  console.log('GET /api/v2/users');
+
   try {
     const [rows] = await db.query(buildAllUsersQuery());
     const users = Array.isArray(rows)
@@ -46,6 +48,8 @@ router.get('/', verifyAuthToken, requireRole('admin'), async (_req, res) => {
 });
 
 router.get('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
+  console.log(`GET /api/v2/users/${req.params.id}`);
+
   const { id } = req.params;
 
   try {
