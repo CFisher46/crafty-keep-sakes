@@ -10,7 +10,7 @@ describe('api route switchboard', () => {
     delete process.env.REACT_APP_API_AUDIT_VERSION;
   });
 
-  it('defaults canonical domains with users on the v2 route', () => {
+  it('defaults canonical domains with users and basket on the v2 route', () => {
     process.env.REACT_APP_API_URL = 'https://example.test';
 
     expect(getDomainFlag('auth')).toBe('legacy');
@@ -19,6 +19,9 @@ describe('api route switchboard', () => {
 
     expect(getDomainFlag('users')).toBe('v2');
     expect(buildApiUrl('users', '/1')).toBe('https://example.test/api/v2/users/1');
+
+    expect(getDomainFlag('basket')).toBe('v2');
+    expect(buildApiUrl('basket', '/items')).toBe('https://example.test/api/v2/basket/items');
   });
 
   it('routes a configured domain to the v2 path without code changes', () => {

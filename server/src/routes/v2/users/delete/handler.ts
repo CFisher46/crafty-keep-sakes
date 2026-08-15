@@ -6,6 +6,8 @@ import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
 const router = express.Router();
 
 router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log(`DELETE /api/v2/users/${req.params.id}`);
+
   const { id } = req.params;
   const connection = await db.getConnection();
 

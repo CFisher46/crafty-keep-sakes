@@ -81,6 +81,8 @@ const parseCategories = (categoryValue: string): string[] => {
 };
 
 router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log('POST /api/v2/products');
+
   const connection = await db.getConnection();
 
   try {

@@ -85,6 +85,8 @@ const resolveProductId = async (
 };
 
 router.put('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log(`PUT /api/v2/products/${req.params.id}`);
+
   const idOrSku = String(req.params.id || '').trim();
   const updates = req.body as Partial<Product>;
 

@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 
-interface BasketItem {
+export interface BasketItem {
   id: string;
   image: string;
   product_name: string;
@@ -8,7 +8,7 @@ interface BasketItem {
   quantity: number;
 }
 
-interface BasketState {
+export interface BasketState {
   items: BasketItem[];
   totalItems: number;
 }
@@ -71,10 +71,30 @@ const basketSlice = createSlice({
       state.items = [];
       state.totalItems = 0;
       saveBasketToLocalStorage(state);
+    },
+    hydrateBasketFromServer: (
+      state,
+      action: PayloadAction<{ items?: Array<{ product_id?: number; id?: number; product_name?: string; quantity?: number; unit_price?: number | string; unit_price_snapshot?: number | string; }>; total_items?: number }>
+    ) => {
+      const items = action.payload.items ?? [];
+
+      if (items.length === 0 && state.items.length > 0) {
+        return;
+      }
+
+      state.items = items.map((item) => ({
+        id: String(item.product_id ?? item.id ?? ''),
+        image: '',
+        product_name: item.product_name ?? 'Product',
+        price: Number(item.unit_price ?? item.unit_price_snapshot ?? 0),
+        quantity: Number(item.quantity ?? 0),
+      }));
+      state.totalItems = action.payload.total_items ?? state.items.reduce((sum, item) => sum + item.quantity, 0);
+      saveBasketToLocalStorage(state);
     }
   }
 });
 
-export const { addItemToBasket, removeItemFromBasket, clearBasket } =
+export const { addItemToBasket, removeItemFromBasket, clearBasket, hydrateBasketFromServer } =
   basketSlice.actions;
 export default basketSlice.reducer;

@@ -39,6 +39,8 @@ router.post(
   requireRole('admin'),
   upload.array('images'),
   async (req, res) => {
+    console.log(`POST /api/v2/products/${req.params.id}/images/upload`);
+
     const idOrSku = String(req.params.id || '').trim();
     const files = req.files as Express.Multer.File[] | undefined;
 
