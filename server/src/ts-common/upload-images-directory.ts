@@ -11,7 +11,7 @@ export function getProductImagesDirectory(): string {
   const imagesDirectory =
     process.env.NODE_ENV === 'test'
       ? TEST_IMAGES_DIRECTORY
-      : path.join(__dirname, '../../../../client/public/images');
+      : path.resolve(__dirname, '../../../client/public/images');
 
   if (!fs.existsSync(imagesDirectory)) {
     fs.mkdirSync(imagesDirectory, { recursive: true });
