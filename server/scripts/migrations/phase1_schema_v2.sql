@@ -242,6 +242,56 @@ CREATE TABLE IF NOT EXISTS audit_events_v2 (
   CONSTRAINT fk_audit_events_v2_actor FOREIGN KEY (actor_user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS blog_posts_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  title VARCHAR(255) NOT NULL,
+  summary VARCHAR(500) NULL,
+  content TEXT NOT NULL,
+  author_id BIGINT UNSIGNED NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_blog_posts_v2_author (author_id, created_at),
+  CONSTRAINT fk_blog_posts_v2_author FOREIGN KEY (author_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS blog_post_images_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  post_id BIGINT UNSIGNED NOT NULL,
+  image_url VARCHAR(1024) NOT NULL,
+  sort_order INT NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_blog_post_images_v2_post_sort (post_id, sort_order),
+  CONSTRAINT fk_blog_post_images_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS blog_post_comments_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  post_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  comment TEXT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_blog_post_comments_v2_post (post_id, created_at),
+  KEY idx_blog_post_comments_v2_user (user_id),
+  CONSTRAINT fk_blog_post_comments_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_blog_post_comments_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS blog_post_reactions_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  post_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  reaction_type ENUM('like', 'dislike') NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_blog_post_reactions_v2_post_user (post_id, user_id),
+  KEY idx_blog_post_reactions_v2_post (post_id, reaction_type),
+  CONSTRAINT fk_blog_post_reactions_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_blog_post_reactions_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 INSERT INTO roles_v2 (code, description)
 VALUES
   ('admin', 'Administrative user with platform-wide access'),

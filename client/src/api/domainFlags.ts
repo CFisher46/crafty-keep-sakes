@@ -8,6 +8,7 @@ const DEFAULT_DOMAIN_FLAGS: DomainFlagMap = {
   users: 'v2',
   audit: 'legacy',
   basket: 'v2',
+  blog: 'v2',
 };
 
 function readFlag(
@@ -30,6 +31,7 @@ export function resolveDomainFlags(): DomainFlagMap {
     users: readFlag(process.env.REACT_APP_API_USERS_VERSION, 'v2'),
     audit: readFlag(process.env.REACT_APP_API_AUDIT_VERSION),
     basket: readFlag(process.env.REACT_APP_API_BASKET_VERSION, 'v2'),
+    blog: readFlag(process.env.REACT_APP_API_BLOG_VERSION, 'v2'),
   };
 }
 
