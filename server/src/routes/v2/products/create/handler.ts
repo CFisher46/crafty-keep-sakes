@@ -1,7 +1,7 @@
 import express from 'express';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
-import { Product } from '../../../products/types';
+import { Product } from '../../../../ts-common/product-types';
 import { createProductV2Query } from './sql';
 import {
   INSERT_PRODUCT_CATEGORY_LINK_QUERY,

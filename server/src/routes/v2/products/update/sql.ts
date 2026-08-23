@@ -1,4 +1,4 @@
-import { Product } from '../../../products/types';
+import { Product } from '../../../../ts-common/product-types';
 
 type MutableProductField =
   | 'product_name'

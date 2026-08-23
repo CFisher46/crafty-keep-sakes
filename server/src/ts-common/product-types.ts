@@ -1,4 +1,4 @@
-import { SortOpts, FilterOpts } from '../../ts-common/types';
+import { SortOpts, FilterOpts } from './types';
 
 export type Product = {
   id: string;
@@ -17,6 +17,7 @@ interface SortParams {
   id: string;
   product_name: string;
 }
+
 interface FilterParams {
   is_live: boolean;
   on_sale: boolean;
@@ -24,5 +25,6 @@ interface FilterParams {
   product_name: string;
   price: number;
 }
+
 export type SortOptions = SortOpts<SortParams>;
 export type FilterOptions = FilterOpts<FilterParams>;
