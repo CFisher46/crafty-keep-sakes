@@ -296,7 +296,7 @@ function UsersProfile() {
               <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
               {invoice.billing_address && (
                 <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
-                  <Text weight="bold">Billing address</Text>
+                  <Text weight="bold">Delivery address</Text>
                   <Text>{invoice.billing_address.address_line1 || '—'}</Text>
                   {invoice.billing_address.address_line2 && <Text>{invoice.billing_address.address_line2}</Text>}
                   {invoice.billing_address.address_line3 && <Text>{invoice.billing_address.address_line3}</Text>}
