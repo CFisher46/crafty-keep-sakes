@@ -286,14 +286,23 @@ Exit Criteria:
 
 PR Goal: add exhaustive API coverage so breakages are caught early as migration complexity grows.
 
+Current progress:
+
+- [x] Build an endpoint inventory file grouped by domain and role.
+- [x] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
+- [x] Add request validation tests for malformed payloads and missing fields (`400`).
+- [x] Add data contract tests for critical responses to prevent schema drift.
+- [x] Add smoke test bundle for canary deploy and rollback validation.
+- [x] Add CI reporting for endpoint coverage trend (minimum threshold gate).
+
 Implementation:
 
-- [ ] Build an endpoint inventory file grouped by domain and role.
-- [ ] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
-- [ ] Add request validation tests for malformed payloads and missing fields (`400`).
-- [ ] Add data contract tests for critical responses to prevent schema drift.
-- [ ] Add smoke test bundle for canary deploy and rollback validation.
-- [ ] Add CI reporting for endpoint coverage trend (minimum threshold gate).
+- [x] Build an endpoint inventory file grouped by domain and role.
+- [x] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
+- [x] Add request validation tests for malformed payloads and missing fields (`400`).
+- [x] Add data contract tests for critical responses to prevent schema drift.
+- [x] Add smoke test bundle for canary deploy and rollback validation.
+- [x] Add CI reporting for endpoint coverage trend (minimum threshold gate).
 
 Tests:
 
@@ -306,9 +315,9 @@ Tests:
 
 Exit Criteria:
 
-- [ ] Endpoint auth matrix covered for all active routes.
-- [ ] Critical endpoint contract snapshots/baselines recorded.
-- [ ] CI fails on regression in endpoint authorization or contract checks.
+- [x] Endpoint auth matrix covered for all active routes.
+- [x] Critical endpoint contract snapshots/baselines recorded.
+- [x] CI fails on regression in endpoint authorization or contract checks.
 
 ## [ ] Stage 10 - Legacy Decommission
 
