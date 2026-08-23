@@ -24,6 +24,7 @@ function MainBody() {
           <Route path="/Home" element={<LandingPage />} />
           {/* <Route path="/About" element={<About />} /> */}
           <Route path="/Blog" element={<Blog />} />
+          <Route path="/Blog/:id" element={<Blog />} />
           <Route path="/Shop" element={<Shop />} />
           <Route path="/Basket" element={<ShoppingBasket />} />
           <Route

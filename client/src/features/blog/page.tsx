@@ -1,6 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, Button, FormField, Text, TextArea, TextInput, Image, Layer, Card, Grid } from 'grommet';
+import {
+  Box,
+  Button,
+  FormField,
+  Text,
+  TextArea,
+  TextInput,
+  Image,
+  Card,
+  Grid,
+  Table,
+  TableBody,
+  TableCell,
+  TableHeader,
+  TableRow,
+  Layer,
+} from 'grommet';
 import { useSelector } from 'react-redux';
+import { useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../../store';
 import { buildApiUrl } from '../../api/apiPath';
 
@@ -39,6 +56,8 @@ const emptyPostForm = {
 };
 
 function BlogPage() {
+  const navigate = useNavigate();
+  const { id } = useParams();
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const user = useSelector((state: RootState) => state.auth.user);
   const isAdmin = user?.type?.toLowerCase() === 'admin';
@@ -49,7 +68,15 @@ function BlogPage() {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const selectedPostId = id ? Number(id) : null;
+  const selectedPost = useMemo(
+    () => posts.find((post) => post.id === selectedPostId) ?? null,
+    [posts, selectedPostId]
+  );
 
   const loadPosts = async () => {
     setLoading(true);
@@ -108,6 +135,7 @@ function BlogPage() {
 
       setPostForm(emptyPostForm);
       setSelectedImages([]);
+      setShowCreateModal(false);
       await loadPosts();
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : 'Unable to create blog post');
@@ -181,137 +209,280 @@ function BlogPage() {
   };
 
   const pageTitle = useMemo(() => (isAdmin ? 'Blog admin' : 'Blog'), [isAdmin]);
+  const openImageModal = (imageUrl: string) => setEnlargedImage(imageUrl);
 
   return (
     <Box pad="medium" gap="medium">
-      <Text size="xlarge" weight="bold">{pageTitle}</Text>
-
-      {error && (
-        <Box pad="small" background="status-error" round="xsmall">
-          <Text color="white">{error}</Text>
-        </Box>
-      )}
-
-      {isAdmin && (
-        <Card pad="medium" background="light-1" round="small" elevation="small">
-          <Text size="large" weight="bold">Create a new blog post</Text>
-          <Box gap="small" margin={{ top: 'small' }}>
-            <FormField label="Title">
-              <TextInput
-                value={postForm.title}
-                onChange={(event) => setPostForm((current) => ({ ...current, title: event.target.value }))}
-              />
-            </FormField>
-
-            <FormField label="Summary">
-              <TextInput
-                value={postForm.summary}
-                onChange={(event) => setPostForm((current) => ({ ...current, summary: event.target.value }))}
-              />
-            </FormField>
-
-            <FormField label="Content">
-              <TextArea
-                value={postForm.content}
-                onChange={(event) => setPostForm((current) => ({ ...current, content: event.target.value }))}
-                rows={6}
-              />
-            </FormField>
-
-            <FormField label="Images">
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={(event) => setSelectedImages(Array.from(event.target.files || []))}
-              />
-            </FormField>
-
-            <Button
-              label={submitting ? 'Publishing...' : 'Publish blog post'}
-              primary
-              disabled={submitting}
-              onClick={handleCreatePost}
+      {enlargedImage && (
+        <Layer
+          onEsc={() => setEnlargedImage(null)}
+          onClickOutside={() => setEnlargedImage(null)}
+          position="center"
+          full={false}
+        >
+          <Box
+            pad="small"
+            align="center"
+            gap="small"
+            style={{
+              maxWidth: '700px',
+              maxHeight: '80vh',
+              width: 'min(700px, 80vw)',
+              overflow: 'auto',
+              background: '#fff',
+            }}
+          >
+            <Box alignSelf="end">
+              <Button label="Close" onClick={() => setEnlargedImage(null)} />
+            </Box>
+            <Image
+              src={enlargedImage}
+              alt="Enlarged blog post"
+              fit="contain"
+              style={{
+                display: 'block',
+                width: '100%',
+                maxWidth: '680px',
+                maxHeight: '75vh',
+                height: 'auto',
+                objectFit: 'contain',
+              }}
             />
           </Box>
-        </Card>
+        </Layer>
       )}
 
-      {loading ? (
-        <Text>Loading blog posts...</Text>
-      ) : (
-        <Box gap="medium">
-          {posts.map((post) => (
-            <Card key={post.id} pad="medium" background="white" round="small" elevation="small">
-              <Box gap="small">
-                <Text size="large" weight="bold">{post.title}</Text>
-                <Text size="small" color="dark-3">
-                  By {post.author_name || 'Unknown author'} · {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
-                </Text>
-                {post.summary && <Text>{post.summary}</Text>}
-                <Text>{post.content}</Text>
+      {selectedPostId && selectedPost ? (
+        <Box pad="medium" gap="medium">
+          <Button label="Back to all blogs" onClick={() => navigate('/Blog')} alignSelf="start" />
 
-                {post.images?.length > 0 && (
-                  <Grid columns={{ count: Math.min(post.images.length, 3), size: 'small' }} gap="small">
-                    {post.images.map((image, index) => (
-                      <Box key={`${image.image_url}-${index}`} height="180px" overflow="hidden" round="xsmall">
-                        <Image src={image.image_url} alt={`${post.title} image ${index + 1}`} fit="cover" />
-                      </Box>
-                    ))}
-                  </Grid>
-                )}
+          <Card pad="medium" background="white" round="small" elevation="small">
+            <Box gap="small">
+              <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
+              <Text size="small" color="dark-3">
+                By {selectedPost.author_name || 'Unknown author'} ·{' '}
+                {selectedPost.created_at ? new Date(selectedPost.created_at).toLocaleDateString() : 'Recently'}
+              </Text>
 
-                <Box direction="row" gap="small" align="center">
-                  <Button
-                    label={`Like (${post.reaction_counts?.likes || 0})`}
-                    onClick={() => handleReaction(post.id, 'like')}
-                    disabled={!isLoggedIn || submitting}
-                  />
-                  <Button
-                    label={`Dislike (${post.reaction_counts?.dislikes || 0})`}
-                    onClick={() => handleReaction(post.id, 'dislike')}
-                    disabled={!isLoggedIn || submitting}
-                  />
+              {selectedPost.summary && <Text>{selectedPost.summary}</Text>}
+              <Text>{selectedPost.content}</Text>
+
+              {selectedPost.images?.length > 0 && (
+                <Box direction="row" wrap gap="4px" align="center">
+                  {selectedPost.images.map((image, index) => (
+                    <Box
+                      key={`${image.image_url}-${index}`}
+                      width="48px"
+                      height="48px"
+                      overflow="hidden"
+                      round="xsmall"
+                      onClick={() => openImageModal(image.image_url)}
+                      style={{
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'transform 0.2s ease-in-out',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                        pointerEvents: 'auto',
+                        margin: 0,
+                        flex: '0 0 auto',
+                        display: 'inline-block',
+                      }}
+                    >
+                      <Image
+                        src={image.image_url}
+                        alt={`${selectedPost.title} image ${index + 1}`}
+                        fit="cover"
+                        onClick={() => openImageModal(image.image_url)}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          cursor: 'pointer',
+                          display: 'block',
+                        }}
+                      />
+                    </Box>
+                  ))}
                 </Box>
+              )}
 
-                <Box gap="small" pad={{ top: 'small' }}>
-                  <Text weight="bold">Comments</Text>
-                  {post.comments?.length ? (
-                    post.comments.map((comment, index) => (
-                      <Box key={`${comment.id ?? index}`} pad="small" background="light-2" round="xsmall">
-                        <Text size="small" weight="bold">{comment.user_name || 'User'}</Text>
-                        <Text size="small">{comment.comment}</Text>
-                      </Box>
-                    ))
-                  ) : (
-                    <Text size="small" color="dark-3">No comments yet.</Text>
-                  )}
-                </Box>
+              <Box direction="row" gap="small" align="center">
+                <Button
+                  label={`Like (${selectedPost.reaction_counts?.likes || 0})`}
+                  onClick={() => handleReaction(selectedPost.id, 'like')}
+                  disabled={!isLoggedIn || submitting}
+                />
+                <Button
+                  label={`Dislike (${selectedPost.reaction_counts?.dislikes || 0})`}
+                  onClick={() => handleReaction(selectedPost.id, 'dislike')}
+                  disabled={!isLoggedIn || submitting}
+                />
+              </Box>
 
-                {isLoggedIn ? (
-                  <Box direction="row" gap="small" align="center" margin={{ top: 'small' }}>
-                    <TextInput
-                      placeholder="Add a comment"
-                      value={commentDrafts[post.id] || ''}
-                      onChange={(event) =>
-                        setCommentDrafts((current) => ({
-                          ...current,
-                          [post.id]: event.target.value,
-                        }))
-                      }
-                    />
-                    <Button
-                      label="Post comment"
-                      onClick={() => handleCommentSubmit(post.id)}
-                      disabled={submitting}
-                    />
-                  </Box>
+              <Box gap="small" pad={{ top: 'small' }}>
+                <Text weight="bold">Comments</Text>
+                {selectedPost.comments?.length ? (
+                  selectedPost.comments.map((comment, index) => (
+                    <Box key={`${comment.id ?? index}`} pad="small" background="light-2" round="xsmall">
+                      <Text size="small" weight="bold">{comment.user_name || 'User'}</Text>
+                      <Text size="small">{comment.comment}</Text>
+                    </Box>
+                  ))
                 ) : (
-                  <Text size="small" color="dark-3">Sign in to comment and react on this post.</Text>
+                  <Text size="small" color="dark-3">No comments yet.</Text>
                 )}
               </Box>
+
+              {isLoggedIn ? (
+                <Box direction="row" gap="small" align="center" margin={{ top: 'small' }}>
+                  <TextInput
+                    placeholder="Add a comment"
+                    value={commentDrafts[selectedPost.id] || ''}
+                    onChange={(event) =>
+                      setCommentDrafts((current) => ({
+                        ...current,
+                        [selectedPost.id]: event.target.value,
+                      }))
+                    }
+                  />
+                  <Button
+                    label="Post comment"
+                    onClick={() => handleCommentSubmit(selectedPost.id)}
+                    disabled={submitting}
+                  />
+                </Box>
+              ) : (
+                <Text size="small" color="dark-3">Sign in to comment and react on this post.</Text>
+              )}
+            </Box>
+          </Card>
+        </Box>
+      ) : (
+        <Box pad="medium" gap="medium">
+          <Text size="xlarge" weight="bold">{pageTitle}</Text>
+
+          {error && (
+            <Box pad="small" background="status-error" round="xsmall">
+              <Text color="white">{error}</Text>
+            </Box>
+          )}
+
+          {isAdmin && (
+            <Box align="start">
+              <Button label="Create blog post" primary onClick={() => setShowCreateModal(true)} />
+            </Box>
+          )}
+
+          {showCreateModal && (
+            <Layer
+              onEsc={() => setShowCreateModal(false)}
+              onClickOutside={() => setShowCreateModal(false)}
+              position="center"
+            >
+              <Box pad="medium" width="large" gap="small">
+                <Text size="large" weight="bold">Create a new blog post</Text>
+
+                <FormField label="Title">
+                  <TextInput
+                    value={postForm.title}
+                    onChange={(event) => setPostForm((current) => ({ ...current, title: event.target.value }))}
+                  />
+                </FormField>
+
+                <FormField label="Summary">
+                  <TextInput
+                    value={postForm.summary}
+                    onChange={(event) => setPostForm((current) => ({ ...current, summary: event.target.value }))}
+                  />
+                </FormField>
+
+                <FormField label="Content">
+                  <TextArea
+                    value={postForm.content}
+                    onChange={(event) => setPostForm((current) => ({ ...current, content: event.target.value }))}
+                    rows={6}
+                  />
+                </FormField>
+
+                <FormField label="Images">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(event) => {
+                      const nextFiles = Array.from(event.target.files || []);
+                      setSelectedImages((current) => [...current, ...nextFiles]);
+                      event.target.value = '';
+                    }}
+                  />
+                  {selectedImages.length > 0 && (
+                    <Box pad={{ top: 'xsmall' }} gap="xxsmall">
+                      <Text size="small" weight="bold">Selected images ({selectedImages.length})</Text>
+                      {selectedImages.map((image, index) => (
+                        <Text key={`${image.name}-${index}`} size="small" color="dark-3">
+                          • {image.name}
+                        </Text>
+                      ))}
+                    </Box>
+                  )}
+                </FormField>
+
+                <Box direction="row" gap="small" justify="end">
+                  <Button label="Cancel" onClick={() => setShowCreateModal(false)} />
+                  <Button
+                    label={submitting ? 'Publishing...' : 'Publish blog post'}
+                    primary
+                    disabled={submitting}
+                    onClick={handleCreatePost}
+                  />
+                </Box>
+              </Box>
+            </Layer>
+          )}
+
+          {loading ? (
+            <Text>Loading blog posts...</Text>
+          ) : (
+            <Card pad="small" background="white" round="small" elevation="small">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableCell scope="col">Title</TableCell>
+                    <TableCell scope="col">Posted</TableCell>
+                    <TableCell scope="col">Likes</TableCell>
+                    <TableCell scope="col">Dislikes</TableCell>
+                    <TableCell scope="col">Comments</TableCell>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {posts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5}>
+                        <Text color="dark-3">No blog posts yet.</Text>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    posts.map((post) => (
+                      <TableRow
+                        key={post.id}
+                        onClick={() => navigate(`/Blog/${post.id}`)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Text weight="bold">{post.title}</Text>
+                        </TableCell>
+                        <TableCell>
+                          {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
+                        </TableCell>
+                        <TableCell>{post.reaction_counts?.likes || 0}</TableCell>
+                        <TableCell>{post.reaction_counts?.dislikes || 0}</TableCell>
+                        <TableCell>{post.comments?.length || 0}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </Card>
-          ))}
+          )}
         </Box>
       )}
     </Box>
