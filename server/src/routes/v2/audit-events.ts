@@ -28,7 +28,10 @@ const serializeJson = (value: Record<string, unknown> | null | undefined) => {
 };
 
 type QueryRunner = {
-  query: (...args: unknown[]) => Promise<unknown[]> | unknown[];
+  query: (
+    sql: string,
+    values?: unknown[] | Record<string, unknown>
+  ) => Promise<unknown> | unknown;
 };
 
 export async function insertAuditEvent(
@@ -36,7 +39,7 @@ export async function insertAuditEvent(
   payload: AuditEventPayload
 ) {
   const target = connection ?? db;
-  const [result] = await target.query(
+  const queryResult = (await target.query(
     `INSERT INTO audit_events_v2 (
       actor_user_id,
       actor_role,
@@ -58,7 +61,9 @@ export async function insertAuditEvent(
       serializeJson(payload.oldValuesJson),
       serializeJson(payload.newValuesJson),
     ]
-  );
+  )) as unknown[];
 
-  return result.insertId;
+  const [result] = queryResult;
+  const insertResult = result as { insertId?: number | string };
+  return insertResult.insertId;
 }

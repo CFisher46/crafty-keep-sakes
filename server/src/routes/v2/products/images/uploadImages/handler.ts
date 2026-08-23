@@ -11,6 +11,7 @@ import { RESOLVE_PRODUCT_ID_QUERY } from '../../shared/sql';
 import {
   verifyAuthToken,
   requireRole,
+  getRequestUser,
 } from '../../../../../ts-common/middleware';
 import { getProductImagesDirectory } from '../../../../../ts-common/upload-images-directory';
 import { insertAuditEvent } from '../../../audit-events';

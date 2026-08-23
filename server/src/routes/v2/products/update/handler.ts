@@ -16,6 +16,7 @@ import {
 import {
   verifyAuthToken,
   requireRole,
+  getRequestUser,
 } from '../../../../ts-common/middleware';
 import { insertAuditEvent } from '../../audit-events';
 

@@ -1,7 +1,11 @@
 import express from 'express';
 import { ResultSetHeader } from 'mysql2';
 import { db } from '../../../../ts-common/database';
-import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from '../../../../ts-common/middleware';
 import { insertAuditEvent } from '../../audit-events';
 
 const router = express.Router();

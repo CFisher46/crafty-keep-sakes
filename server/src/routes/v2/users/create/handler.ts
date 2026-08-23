@@ -3,7 +3,11 @@ import bcrypt from 'bcryptjs';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
 import { User } from '../../../users/types';
-import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from '../../../../ts-common/middleware';
 import { INSERT_USER_ACCOUNT_QUERY } from './sql';
 import {
   INSERT_USER_ROLE_QUERY,
