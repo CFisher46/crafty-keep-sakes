@@ -152,7 +152,6 @@ function Basket() {
             </Text>
             <Button
               label="Use saved delivery address"
-              secondary
               onClick={() => {
                 if (authUser) {
                   setDeliveryAddress({
@@ -165,6 +164,7 @@ function Basket() {
                   });
                 }
               }}
+              style={buttonStyles.default}
             />
             <TextInput
               value={deliveryAddress.address_line1}
@@ -199,8 +199,8 @@ function Basket() {
               placeholder="Postcode"
             />
             <Box direction="row" justify="end" gap="small">
-              <Button label="Cancel" secondary onClick={() => setShowCheckoutModal(false)} />
-              <Button label="Confirm checkout" primary onClick={handleCheckout} />
+              <Button label="Cancel" onClick={() => setShowCheckoutModal(false)} style={buttonStyles.default} />
+              <Button label="Confirm checkout" onClick={handleCheckout} style={buttonStyles.default} />
             </Box>
           </Box>
         </Layer>

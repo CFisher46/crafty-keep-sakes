@@ -364,7 +364,7 @@ function UsersProfile() {
             <Box pad="medium" width="large" gap="small">
               <Box direction="row" justify="between" align="center">
                 <Text>Invoice #{invoice.invoice_number}</Text>
-                <Button label="Close" secondary onClick={handleCloseInvoice} />
+                <Button label="Close" onClick={handleCloseInvoice} style={buttonStyles.default} />
               </Box>
               <Text>Status: {invoice.invoice_status}</Text>
               <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
@@ -403,7 +403,6 @@ function UsersProfile() {
                   />
                   <Button
                     label="Confirm Update"
-                    primary
                     disabled={!pendingInvoiceStatus || pendingInvoiceStatus === invoice.invoice_status}
                     onClick={handleInvoiceStatusUpdate}
                     style={buttonStyles.default}
@@ -461,6 +460,7 @@ function UsersProfile() {
                 label="Verify Password"
                 onClick={handleVerifyCurrentPassword}
                 disabled={!currentPassword.trim()}
+                style={buttonStyles.default}
               />
               {passwordVerifiedMessage && (
                 <Text color="status-ok">{passwordVerifiedMessage}</Text>
@@ -500,7 +500,7 @@ function UsersProfile() {
               />
             </Box>
             <Box border round="small" pad="medium" gap="small" background="white">
-              <Button label="Save Changes" onClick={handleSaveProfile} />
+              <Button label="Save Changes" onClick={handleSaveProfile} style={buttonStyles.default} />
               {saveMessage && <Text>{saveMessage}</Text>}
             </Box>
           </Box>
@@ -529,15 +529,15 @@ function UsersProfile() {
                   </Box>
                   <Button
                     label="Open Selected Invoice"
-                    secondary
                     disabled={selectedOrderId === null}
                     onClick={handleOpenSelectedInvoice}
+                    style={buttonStyles.default}
                   />
                   <Button
                     label="Clear Selection"
-                    plain
                     disabled={selectedOrderId === null}
                     onClick={() => setSelectedOrderId(null)}
+                    style={buttonStyles.default}
                   />
                 </Box>
               </Box>

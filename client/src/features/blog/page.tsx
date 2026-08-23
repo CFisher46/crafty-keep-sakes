@@ -19,6 +19,7 @@ import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../../store';
 import { buildApiUrl } from '../../api/apiPath';
+import { buttonStyles } from '../../helpers/formatting';
 
 type BlogImage = {
   id?: number;
@@ -232,7 +233,7 @@ function BlogPage() {
             }}
           >
             <Box alignSelf="end">
-              <Button label="Close" onClick={() => setEnlargedImage(null)} />
+              <Button label="Close" onClick={() => setEnlargedImage(null)} style={buttonStyles.default} />
             </Box>
             <Image
               src={enlargedImage}
@@ -253,7 +254,7 @@ function BlogPage() {
 
       {selectedPostId && selectedPost ? (
         <Box pad="medium" gap="medium">
-          <Button label="Back to all blogs" onClick={() => navigate('/Blog')} alignSelf="start" />
+          <Button label="Back to all blogs" onClick={() => navigate('/Blog')} alignSelf="start" style={buttonStyles.default} />
 
           <Card pad="medium" background="white" round="small" elevation="small">
             <Box gap="small">
@@ -309,11 +310,13 @@ function BlogPage() {
                   label={`Like (${selectedPost.reaction_counts?.likes || 0})`}
                   onClick={() => handleReaction(selectedPost.id, 'like')}
                   disabled={!isLoggedIn || submitting}
+                  style={buttonStyles.default}
                 />
                 <Button
                   label={`Dislike (${selectedPost.reaction_counts?.dislikes || 0})`}
                   onClick={() => handleReaction(selectedPost.id, 'dislike')}
                   disabled={!isLoggedIn || submitting}
+                  style={buttonStyles.default}
                 />
               </Box>
 
@@ -352,6 +355,7 @@ function BlogPage() {
                     label="Post comment"
                     onClick={() => handleCommentSubmit(selectedPost.id)}
                     disabled={submitting}
+                    style={buttonStyles.default}
                   />
                 </Box>
               ) : (
@@ -372,7 +376,7 @@ function BlogPage() {
 
           {isAdmin && (
             <Box align="start">
-              <Button label="Create blog post" primary onClick={() => setShowCreateModal(true)} />
+              <Button label="Create blog post" onClick={() => setShowCreateModal(true)} style={buttonStyles.default} />
             </Box>
           )}
 
@@ -431,12 +435,12 @@ function BlogPage() {
                 </FormField>
 
                 <Box direction="row" gap="small" justify="end">
-                  <Button label="Cancel" onClick={() => setShowCreateModal(false)} />
+                  <Button label="Cancel" onClick={() => setShowCreateModal(false)} style={buttonStyles.default} />
                   <Button
                     label={submitting ? 'Publishing...' : 'Publish blog post'}
-                    primary
                     disabled={submitting}
                     onClick={handleCreatePost}
+                    style={buttonStyles.default}
                   />
                 </Box>
               </Box>

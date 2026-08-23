@@ -142,8 +142,7 @@ function DeleteExistingUser(fetchedUserData: User) {
               <Button
                 label="Confirm Delete"
                 onClick={handleConfirmDelete}
-                color="status-critical"
-                primary
+                style={buttonStyles.default}
               />
             </Box>
           </Box>
