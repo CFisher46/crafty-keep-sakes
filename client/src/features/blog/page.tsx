@@ -321,8 +321,13 @@ function BlogPage() {
                 <Text weight="bold">Comments</Text>
                 {selectedPost.comments?.length ? (
                   selectedPost.comments.map((comment, index) => (
-                    <Box key={`${comment.id ?? index}`} pad="small" background="light-2" round="xsmall">
-                      <Text size="small" weight="bold">{comment.user_name || 'User'}</Text>
+                    <Box key={`${comment.id ?? index}`} pad="small" background="light-2" round="xsmall" gap="xsmall">
+                      <Box direction="row" justify="between" align="center" gap="small">
+                        <Text size="small" weight="bold">{comment.user_name || 'User'}</Text>
+                        <Text size="xsmall" color="dark-3">
+                          {comment.created_at ? new Date(comment.created_at).toLocaleString() : 'Just now'}
+                        </Text>
+                      </Box>
                       <Text size="small">{comment.comment}</Text>
                     </Box>
                   ))
