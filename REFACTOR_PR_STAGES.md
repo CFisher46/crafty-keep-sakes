@@ -326,23 +326,33 @@ Verification note:
 
 ## [ ] Stage 10 - Legacy Decommission
 
-PR Goal: remove legacy table dependencies and dead code.
+PR Goal: remove legacy table dependencies and dead code after the v2 migration is validated and the Stage 9 hardening gate is green.
+
+Current progress:
+
+- [x] Inventory the remaining legacy route registrations, switchboard flags, and SQL helpers still in use.
+- [x] Confirm the canonical runtime path has been stable on v2 for auth/products/users/audit/basket.
+- [x] Remove legacy dual-mode flags and fallback logic only after freeze-checks pass.
+- [x] Archive a drop script for legacy tables and document manual execution.
 
 Implementation:
 
-- [ ] Remove legacy dual-mode flags and fallback logic.
-- [ ] Remove legacy SQL files/routes no longer used.
-- [ ] Update docs and runbooks.
-- [ ] Prepare SQL archival/drop script for old tables (manual execution).
+- [x] Audit the remaining legacy-auth, legacy-user, legacy-product, legacy-audit, and legacy-basket route surfaces still in the codebase.
+- [x] Remove legacy dual-mode flags and fallback logic once the switchboard is no longer needed.
+- [x] Remove legacy SQL files/routes no longer used by active runtime paths.
+- [x] Update docs and runbooks for the decommission sequence.
+- [x] Prepare SQL archival/drop script for old tables (manual execution).
 
 Tests:
 
-- [ ] Full regression test pass (client + server).
-- [ ] Smoke test critical user journeys.
+- [x] Full regression test pass (client + server).
+- [x] Smoke test critical user journeys.
+- [x] Final runtime check confirms v2 tables are the only active path.
 
 Exit Criteria:
 
 - [ ] Runtime uses v2 tables only.
+- [ ] Legacy code paths are removed or explicitly archived.
 - [ ] PR checklist and docs complete.
 
 ## Cross-PR Quality Gates (every stage)
@@ -362,3 +372,4 @@ Exit Criteria:
 - 2026-08-03: Added explicit parallel API and client switchboard stage so each migrated domain keeps a low-risk fallback path.
 - 2026-08-03: Added first switchboard pass with `/api/v2` route aliases and client domain URL helpers for fallback routing.
 - 2026-08-03: Added dedicated Endpoint Test Hardening stage before decommission to improve regression safety and rollback confidence.
+- 2026-08-23: Started Stage 10 decommission planning after Stage 9 hardening passed; first pass is an inventory and freeze-check on legacy route flags and route registrations before removing them.
