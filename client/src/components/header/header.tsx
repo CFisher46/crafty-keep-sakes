@@ -44,7 +44,7 @@ function PageHeader() {
             />
           </Button>
         </Box>
-        <Box
+        {/* <Box
           align="center"
           justify="center"
           flex="grow"
@@ -58,7 +58,7 @@ function PageHeader() {
             style={buttonStyles.default}
             size="small"
           />
-        </Box>
+        </Box> */}
 
         <Box direction="row" gap="small" margin={{ left: "auto" }}>
           <Box style={{ position: "relative" }}>
