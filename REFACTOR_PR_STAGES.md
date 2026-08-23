@@ -324,7 +324,7 @@ Verification note:
 - [x] Verified via the Stage 9 hardening bundle in `server/src/endpoint-inventory.test.ts` and the app-routing + route-level v2 suites.
 - [x] Verified the coverage gate with `npx jest --coverage --runInBand --passWithNoTests` remains above the configured thresholds for CI.
 
-## [ ] Stage 10 - Legacy Decommission
+## [x] Stage 10 - Legacy Decommission
 
 PR Goal: remove legacy table dependencies and dead code after the v2 migration is validated and the Stage 9 hardening gate is green.
 
@@ -334,6 +334,7 @@ Current progress:
 - [x] Confirm the canonical runtime path has been stable on v2 for auth/products/users/audit/basket.
 - [x] Remove legacy dual-mode flags and fallback logic only after freeze-checks pass.
 - [x] Archive a drop script for legacy tables and document manual execution.
+- [x] Execute the archive SQL during the maintenance window and confirm the app remains green.
 
 Implementation:
 
@@ -342,6 +343,7 @@ Implementation:
 - [x] Remove legacy SQL files/routes no longer used by active runtime paths.
 - [x] Update docs and runbooks for the decommission sequence.
 - [x] Prepare SQL archival/drop script for old tables (manual execution).
+- [x] Apply archival rename for legacy tables to preserve rollback safety.
 
 Tests:
 
@@ -351,10 +353,13 @@ Tests:
 
 Exit Criteria:
 
-- [ ] Runtime uses v2 tables only.
-- [ ] Legacy code paths are removed or explicitly archived.
-- [ ] PR checklist and docs complete.
+- [x] Runtime uses v2 tables only.
+- [x] Legacy code paths are removed or explicitly archived.
+- [x] PR checklist and docs complete.
 
+Note:
+
+- The archive step is non-destructive and intentionally preserves rollback safety. A later, separate drop step should only happen after a review confirms no active legacy reads/writes remain.
 ## Cross-PR Quality Gates (every stage)
 
 - [ ] Client lint: `cd client && npm run lint`
@@ -373,3 +378,4 @@ Exit Criteria:
 - 2026-08-03: Added first switchboard pass with `/api/v2` route aliases and client domain URL helpers for fallback routing.
 - 2026-08-03: Added dedicated Endpoint Test Hardening stage before decommission to improve regression safety and rollback confidence.
 - 2026-08-23: Started Stage 10 decommission planning after Stage 9 hardening passed; first pass is an inventory and freeze-check on legacy route flags and route registrations before removing them.
+- 2026-08-23: Completed Stage 10 archive phase: legacy route folders removed, code paths migrated to v2-only runtime, and archive SQL executed successfully with server regressions still passing.
