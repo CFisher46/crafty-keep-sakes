@@ -13,6 +13,7 @@ import {
   requireRole,
 } from '../../../../../ts-common/middleware';
 import { getProductImagesDirectory } from '../../../../../ts-common/upload-images-directory';
+import { insertAuditEvent } from '../../../audit-events';
 
 const router = express.Router();
 
@@ -84,6 +85,30 @@ router.post(
           )
         )
       );
+
+      const actorUser = (req as any).user;
+      const actorUserId =
+        actorUser && typeof actorUser === 'object' && 'id' in actorUser
+          ? Number(actorUser.id)
+          : null;
+      const actorRole =
+        actorUser && typeof actorUser === 'object' && 'type' in actorUser
+          ? String(actorUser.type)
+          : null;
+
+      await insertAuditEvent(connection, {
+        actorUserId,
+        actorRole,
+        actionType: 'UPDATE',
+        resourceType: 'products_v2',
+        resourceId: productId,
+        sourceEndpoint: `POST /api/v2/products/${idOrSku}/images/upload`,
+        oldValuesJson: null,
+        newValuesJson: {
+          product_id: productId,
+          uploaded_images: imagePaths,
+        },
+      });
 
       res.status(201).json({ message: 'Images uploaded', images: imagePaths });
     } catch (error) {

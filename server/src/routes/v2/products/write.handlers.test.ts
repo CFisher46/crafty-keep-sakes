@@ -160,7 +160,8 @@ describe('v2 product write routes', () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ id: 101 }]])
       .mockResolvedValueOnce([[{ max_sort: -1 }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 902 }]);
 
     const response = await request(app)
       .post('/api/v2/products/101/images/upload')
@@ -172,6 +173,8 @@ describe('v2 product write routes', () => {
     expect(Array.isArray(response.body.images)).toBe(true);
 
     const insertSql = String(mockConnection.query.mock.calls[2][0]);
+    const auditSql = String(mockConnection.query.mock.calls[3][0]);
     expect(insertSql).toContain('INSERT INTO product_images_v2');
+    expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 });

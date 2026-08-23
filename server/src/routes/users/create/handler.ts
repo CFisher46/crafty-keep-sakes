@@ -6,6 +6,7 @@ import { createUserQuery } from '../create/sql';
 import { ResultSetHeader } from 'mysql2';
 import { encrypt } from '../../../ts-common/helpers';
 import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
+import { insertAuditEvent } from '../../v2/audit-events';
 
 const router = express.Router();
 
@@ -34,6 +35,32 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
 
     const { sql, values } = createUserQuery(newUser);
     const [result] = await db.query<ResultSetHeader>(sql, values);
+
+    const actorUser = (req as any).user;
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(null, {
+      actorUserId,
+      actorRole,
+      actionType: 'CREATE',
+      resourceType: 'users_legacy',
+      resourceId: result.insertId,
+      sourceEndpoint: 'POST /api/users',
+      oldValuesJson: null,
+      newValuesJson: {
+        id: result.insertId,
+        email_address: user.email_address,
+        status: user.status ?? null,
+      },
+    });
+
     res.status(201).json({
       message: 'User created',
       insertId: result.insertId,

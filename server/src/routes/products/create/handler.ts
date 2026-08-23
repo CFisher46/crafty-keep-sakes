@@ -4,6 +4,7 @@ import { Product } from '../types';
 import { createProductQuery } from './sql';
 import { ResultSetHeader } from 'mysql2';
 import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
+import { insertAuditEvent } from '../../v2/audit-events';
 
 const router = express.Router();
 
@@ -62,6 +63,35 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
     const product = normalizeProduct(req.body as Partial<Product>);
     const { sql, values } = createProductQuery(product);
     const [result] = await db.query<ResultSetHeader>(sql, values);
+
+    const actorUser = (req as any).user;
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(null, {
+      actorUserId,
+      actorRole,
+      actionType: 'CREATE',
+      resourceType: 'products_legacy',
+      resourceId: result.insertId,
+      sourceEndpoint: 'POST /api/products',
+      oldValuesJson: null,
+      newValuesJson: {
+        id: result.insertId,
+        product_name: product.product_name,
+        category: product.category,
+        price: product.price,
+        quantity: product.quantity,
+        is_live: product.is_live,
+      },
+    });
+
     res.status(201).json({
       message: 'Product created',
       insertId: result.insertId,
