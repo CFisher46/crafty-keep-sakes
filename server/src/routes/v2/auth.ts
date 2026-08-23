@@ -103,6 +103,47 @@ async function queryV2UserByEmail(email: string): Promise<V2UserPayload | null> 
   return rows[0] ?? null;
 }
 
+const LEGACY_USER_BY_ID_SQL = `
+  SELECT id, email_address, password, first_name, last_name, type
+  FROM users
+  WHERE id = ?
+  LIMIT 1
+`;
+
+const V2_USER_BY_ID_SQL = `
+  SELECT
+    u.id,
+    u.email,
+    u.password_hash,
+    u.status,
+    cp.first_name,
+    cp.last_name,
+    cp.address_line1,
+    cp.address_line2,
+    cp.address_line3,
+    cp.town,
+    cp.county,
+    cp.postcode,
+    cp.telephone AS telephone_number,
+    COALESCE(r.code, 'customer') AS role_code
+  FROM users_v2 u
+  LEFT JOIN customer_profiles_v2 cp ON cp.user_id = u.id
+  LEFT JOIN user_roles_v2 ur ON ur.user_id = u.id
+  LEFT JOIN roles_v2 r ON r.id = ur.role_id
+  WHERE u.id = ?
+  LIMIT 1
+`;
+
+async function queryLegacyUserById(id: string | number): Promise<LegacyUserPayload | null> {
+  const [rows] = await db.query<LegacyUserPayload[]>(LEGACY_USER_BY_ID_SQL, [id]);
+  return rows[0] ?? null;
+}
+
+async function queryV2UserById(id: string | number): Promise<V2UserPayload | null> {
+  const [rows] = await db.query<V2UserPayload[]>(V2_USER_BY_ID_SQL, [id]);
+  return rows[0] ?? null;
+}
+
 function getSourceOrder(source: AuthSource): Array<'legacy' | 'v2'> {
   if (source === 'legacy') {
     return ['legacy'];
@@ -131,6 +172,30 @@ async function findAuthUserByEmail(
     }
 
     const legacyUser = await queryLegacyUserByEmail(email);
+    if (legacyUser) {
+      return { source: 'legacy', user: legacyUser };
+    }
+  }
+
+  return null;
+}
+
+async function findAuthUserById(
+  id: string | number,
+  source = resolveAuthSource()
+): Promise<AuthLookupResult> {
+  const sourceOrder = getSourceOrder(source);
+
+  for (const currentSource of sourceOrder) {
+    if (currentSource === 'v2') {
+      const v2User = await queryV2UserById(id);
+      if (v2User) {
+        return { source: 'v2', user: v2User };
+      }
+      continue;
+    }
+
+    const legacyUser = await queryLegacyUserById(id);
     if (legacyUser) {
       return { source: 'legacy', user: legacyUser };
     }
@@ -260,6 +325,41 @@ const meHandler: RequestHandler = (req, res): void => {
   })();
 };
 
+const verifyPasswordHandler: RequestHandler = async (req, res): Promise<void> => {
+  const { userId, currentPassword } = req.body as {
+    userId?: string | number;
+    currentPassword?: string;
+  };
+
+  if (!userId || !currentPassword) {
+    res.status(400).json({ error: 'Missing userId or currentPassword' });
+    return;
+  }
+
+  try {
+    const authUser = await findAuthUserById(String(userId));
+
+    if (!authUser) {
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
+    const user = authUser.user as LegacyUserPayload | V2UserPayload;
+    const hashToCompare =
+      authUser.source === 'v2'
+        ? (user as V2UserPayload).password_hash
+        : (user as LegacyUserPayload).password;
+
+    const valid = await bcrypt.compare(String(currentPassword), hashToCompare);
+    res.json({ valid });
+    return;
+  } catch (err) {
+    console.error('Verify password error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+    return;
+  }
+};
+
 const logoutHandler: RequestHandler = (_req, res): void => {
   res.clearCookie('auth_token', {
     httpOnly: true,
@@ -272,6 +372,7 @@ const logoutHandler: RequestHandler = (_req, res): void => {
 
 router.post('/login', loginHandler);
 router.get('/me', meHandler);
+router.post('/verify-password', verifyPasswordHandler);
 router.post('/logout', logoutHandler);
 
 export default router;
