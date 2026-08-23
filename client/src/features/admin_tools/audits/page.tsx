@@ -16,6 +16,95 @@ import {
 
 const PAGE_SIZE = 5;
 
+type AuditRow = Audit & {
+  old_values_json?: unknown;
+  new_values_json?: unknown;
+};
+
+const getChangedJsonKeys = (currentValue: unknown, previousValue: unknown): Set<string> => {
+  const changedKeys = new Set<string>();
+
+  const parseJson = (value: unknown) => {
+    if (typeof value !== 'string') {
+      return value;
+    }
+
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  };
+
+  const currentObject = parseJson(currentValue);
+  const previousObject = parseJson(previousValue);
+
+  if (
+    !currentObject ||
+    typeof currentObject !== 'object' ||
+    Array.isArray(currentObject)
+  ) {
+    return changedKeys;
+  }
+
+  if (!previousObject || typeof previousObject !== 'object' || Array.isArray(previousObject)) {
+    Object.keys(currentObject).forEach((key) => changedKeys.add(key));
+    return changedKeys;
+  }
+
+  Object.keys(currentObject).forEach((key) => {
+    const currentEntry = (currentObject as Record<string, unknown>)[key];
+    const previousEntry = (previousObject as Record<string, unknown>)[key];
+
+    if (JSON.stringify(currentEntry) !== JSON.stringify(previousEntry)) {
+      changedKeys.add(key);
+    }
+  });
+
+  return changedKeys;
+};
+
+const renderJsonCell = (
+  value: unknown,
+  previousValue?: unknown,
+  highlightChanges = false
+) => {
+  if (value === null || value === undefined || value === '') {
+    return <Text size="small">—</Text>;
+  }
+
+  const textValue = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+  const changedKeys = highlightChanges ? getChangedJsonKeys(value, previousValue ?? null) : new Set();
+
+  try {
+    const parsedValue = JSON.parse(textValue);
+
+    if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+      return <Text size="small">{textValue}</Text>;
+    }
+
+    return (
+      <Box gap="xxsmall" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+        {Object.entries(parsedValue).map(([key, entryValue]) => {
+          const isChanged = highlightChanges && changedKeys.has(key);
+          return (
+            <Text
+              key={key}
+              size="small"
+              weight={isChanged ? 'bold' : undefined}
+              color={isChanged ? 'status-critical' : undefined}
+            >
+              {`"${key}": ${JSON.stringify(entryValue)}`}
+            </Text>
+          );
+        })}
+      </Box>
+    );
+  } catch {
+    return <Text size="small">{textValue}</Text>;
+  }
+};
+
 export const AuditLogs = () => {
   const dispatch = useAppDispatch();
   const logs = useAppSelector((state) => state.audit.logs);
@@ -189,7 +278,7 @@ export const AuditLogs = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {auditLogs.map((log: Audit, index) => (
+                {auditLogs.map((log: AuditRow, index) => (
                   <TableRow key={`audit-row-${index}`}>
                     {columnHeaders.map((header) => (
                       <TableCell
@@ -202,9 +291,19 @@ export const AuditLogs = () => {
                           overflowWrap: 'anywhere',
                         }}
                       >
-                        <Text size="small">
-                          {log[header as keyof Audit]?.toString() || ''}
-                        </Text>
+                        {header.toString().includes('json')
+                          ? renderJsonCell(
+                              log[header as keyof AuditRow],
+                              header.toString().includes('new')
+                                ? log.old_values_json
+                                : undefined,
+                              header.toString().includes('new')
+                            )
+                          : (
+                              <Text size="small">
+                                {log[header as keyof AuditRow]?.toString() || ''}
+                              </Text>
+                            )}
                       </TableCell>
                     ))}
                   </TableRow>
