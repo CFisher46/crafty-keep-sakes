@@ -74,7 +74,7 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
 
     await connection.query(INSERT_USER_ROLE_QUERY, [userId, roleId]);
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

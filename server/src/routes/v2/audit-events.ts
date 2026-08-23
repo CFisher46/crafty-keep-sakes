@@ -1,4 +1,3 @@
-import { ResultSetHeader } from 'mysql2';
 import { db } from '../../ts-common/database';
 
 export type AuditEventAction =
@@ -28,8 +27,12 @@ const serializeJson = (value: Record<string, unknown> | null | undefined) => {
   return JSON.stringify(value);
 };
 
+type QueryRunner = {
+  query: (...args: unknown[]) => Promise<unknown[]> | unknown[];
+};
+
 export async function insertAuditEvent(
-  connection: { query: Function } | null,
+  connection: QueryRunner | null,
   payload: AuditEventPayload
 ) {
   const target = connection ?? db;

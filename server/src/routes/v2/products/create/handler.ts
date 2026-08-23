@@ -117,7 +117,7 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
       await connection.query(INSERT_PRODUCT_CATEGORY_LINK_QUERY, [productId, categoryId]);
     }
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

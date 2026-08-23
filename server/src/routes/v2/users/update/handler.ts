@@ -6,6 +6,7 @@ import { User } from '../../../users/types';
 import {
   verifyAuthToken,
   requireSelfOrAdmin,
+  getRequestUser,
 } from '../../../../ts-common/middleware';
 import {
   DELETE_USER_ROLE_QUERY,
@@ -113,7 +114,7 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
       await connection.query(INSERT_USER_ROLE_QUERY, [id, roleId]);
     }
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

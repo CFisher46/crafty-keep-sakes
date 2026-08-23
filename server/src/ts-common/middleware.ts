@@ -3,17 +3,18 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-dev-secret";
 
-type AuthenticatedUser = {
+export type AuthenticatedUser = {
   id?: string | number;
   type?: string;
   role_code?: string;
+  [key: string]: unknown;
 };
 
 type RequestWithUser = Request & {
   user?: AuthenticatedUser | string;
 };
 
-function getUserFromRequest(req: Request): AuthenticatedUser | null {
+export function getRequestUser(req: Request): AuthenticatedUser | null {
   const user = (req as RequestWithUser).user;
 
   if (!user || typeof user === "string") {
@@ -21,6 +22,10 @@ function getUserFromRequest(req: Request): AuthenticatedUser | null {
   }
 
   return user;
+}
+
+function getUserFromRequest(req: Request): AuthenticatedUser | null {
+  return getRequestUser(req);
 }
 
 function getUserRole(user: AuthenticatedUser): string {

@@ -5,7 +5,11 @@ import { User } from '../types';
 import { createUserQuery } from '../create/sql';
 import { ResultSetHeader } from 'mysql2';
 import { encrypt } from '../../../ts-common/helpers';
-import { verifyAuthToken, requireRole } from '../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from '../../../ts-common/middleware';
 import { insertAuditEvent } from '../../v2/audit-events';
 
 const router = express.Router();
@@ -36,7 +40,7 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
     const { sql, values } = createUserQuery(newUser);
     const [result] = await db.query<ResultSetHeader>(sql, values);
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

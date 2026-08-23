@@ -4,21 +4,23 @@ import jwt from "jsonwebtoken";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your-dev-secret";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-router.get("/me", async (req: any, res: any) => {
-  const token = req.cookies.auth_token; // or req.headers.authorization
+type AuthenticatedTokenUser = jwt.JwtPayload & {
+  type?: string;
+};
+
+router.get("/me", async (req: express.Request, res: express.Response) => {
+  const token = req.cookies.auth_token;
 
   if (!token) return res.status(401).json({ message: "No token provided" });
 
   try {
-    const user = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+    const user = jwt.verify(token, JWT_SECRET) as AuthenticatedTokenUser;
     res.json({
       user: {
         ...(user as object),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: (user as any).type
+        type: user.type,
       },
-      authenticated: true
+      authenticated: true,
     });
   } catch (err) {
     console.error("Token verification error:", err);

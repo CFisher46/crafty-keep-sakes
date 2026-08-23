@@ -26,7 +26,7 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
       return;
     }
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

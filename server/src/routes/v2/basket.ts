@@ -355,7 +355,7 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
       [orderStatusMap[status], orderId]
     );
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)
@@ -622,7 +622,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       [basketId]
     );
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

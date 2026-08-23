@@ -1,7 +1,11 @@
 import express, { Request, Response } from "express";
 import { db } from "../../../ts-common/database";
 import { DeleteUserQuery } from "./sql";
-import { verifyAuthToken, requireRole } from "../../../ts-common/middleware";
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from "../../../ts-common/middleware";
 import { insertAuditEvent } from '../../v2/audit-events';
 
 const router = express.Router();
@@ -16,7 +20,7 @@ router.delete(
   try {
     const [result] = await db.query(DeleteUserQuery(id));
 
-    const actorUser = (req as any).user;
+    const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)

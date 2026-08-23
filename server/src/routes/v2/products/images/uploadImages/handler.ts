@@ -86,7 +86,7 @@ router.post(
         )
       );
 
-      const actorUser = (req as any).user;
+      const actorUser = getRequestUser(req);
       const actorUserId =
         actorUser && typeof actorUser === 'object' && 'id' in actorUser
           ? Number(actorUser.id)

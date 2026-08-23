@@ -3,7 +3,11 @@ import multer from 'multer';
 import path from 'path';
 import { db } from '../../../../ts-common/database';
 import { ADD_IMAGE_TO_PRODUCT_QUERY } from './sql';
-import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from '../../../../ts-common/middleware';
 import { getProductImagesDirectory } from '../../../../ts-common/upload-images-directory';
 import { insertAuditEvent } from '../../../v2/audit-events';
 
@@ -54,7 +58,7 @@ router.post(
         )
       );
 
-      const actorUser = (req as any).user;
+      const actorUser = getRequestUser(req);
       const actorUserId =
         actorUser && typeof actorUser === 'object' && 'id' in actorUser
           ? Number(actorUser.id)
