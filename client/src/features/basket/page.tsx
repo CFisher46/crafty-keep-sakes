@@ -3,8 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
+  addItemToBasket,
   clearBasket,
   hydrateBasketFromServer,
+  removeItemFromBasket,
 } from "../../store/basket/basketSlice";
 import {
   DeliveryAddress,
@@ -74,7 +76,17 @@ function Basket() {
   );
 
   const handleBasketQuantity = async (itemId: string, delta: number) => {
-    const nextQuantity = items.find((item) => item.id === itemId)?.quantity ?? 0;
+    const existingItem = items.find((item) => item.id === itemId);
+
+    // Guests have no server-side basket, so update local state only
+    if (!isLoggedIn) {
+      if (existingItem) {
+        dispatch(addItemToBasket({ ...existingItem, quantity: delta }));
+      }
+      return;
+    }
+
+    const nextQuantity = existingItem?.quantity ?? 0;
     const adjustedQuantity = Math.max(0, nextQuantity + delta);
 
     if (adjustedQuantity <= 0) {
@@ -321,6 +333,11 @@ function Basket() {
               <Button
                 label="Remove"
                 onClick={async () => {
+                  if (!isLoggedIn) {
+                    dispatch(removeItemFromBasket(item.id));
+                    return;
+                  }
+
                   const result = await dispatch(removeBasketItem(item.id));
                   if (removeBasketItem.fulfilled.match(result)) {
                     const refreshed = await dispatch(fetchBasket());
