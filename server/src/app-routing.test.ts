@@ -200,13 +200,13 @@ describe('app route source selection', () => {
     expect(response.body).toEqual({ source: 'v2-audit' });
   });
 
-  it('routes canonical audit requests to the legacy audit router by default', async () => {
+  it('routes canonical audit requests to the v2 audit router by default', async () => {
     const app = await loadApp();
 
     const response = await request(app).get('/api/audit');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ source: 'legacy-audit' });
+    expect(response.body).toEqual({ source: 'v2-audit' });
   });
 
   it('keeps the direct v2 audit alias available for isolated verification', async () => {
@@ -216,6 +216,23 @@ describe('app route source selection', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ source: 'v2-audit' });
+  });
+
+  it('does not expose a public v2 audit write endpoint', async () => {
+    const app = await loadApp();
+
+    const response = await request(app)
+      .post('/api/v2/audit')
+      .send({
+        user: 'customer-1',
+        field_changed: 'email_address',
+        changed_by: 'system',
+        action_type: 'UPDATE',
+        log_dttm: '2026-08-23T00:00:00.000Z',
+        api_source: 'v2',
+      });
+
+    expect(response.status).toBe(404);
   });
 
   it('routes canonical basket requests to the v2 basket router by default', async () => {

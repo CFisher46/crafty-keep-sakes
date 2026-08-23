@@ -1,7 +1,12 @@
 import express from 'express';
 import { ResultSetHeader } from 'mysql2';
 import { db } from '../../../../ts-common/database';
-import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from '../../../../ts-common/middleware';
+import { insertAuditEvent } from '../../audit-events';
 
 const router = express.Router();
 
@@ -24,6 +29,29 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
       res.status(404).json({ error: 'User not found' });
       return;
     }
+
+    const actorUser = getRequestUser(req);
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(connection, {
+      actorUserId,
+      actorRole,
+      actionType: 'DELETE',
+      resourceType: 'users_v2',
+      resourceId: id,
+      sourceEndpoint: `DELETE /api/v2/users/${id}`,
+      oldValuesJson: {
+        id,
+      },
+      newValuesJson: null,
+    });
 
     await connection.commit();
 

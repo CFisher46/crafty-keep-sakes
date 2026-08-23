@@ -5,7 +5,12 @@ import { User } from '../types';
 import { ResultSetHeader } from 'mysql2';
 import { encrypt } from '../../../ts-common/helpers';
 import { buildPartialUserUpdateQuery } from './sql';
-import { verifyAuthToken, requireSelfOrAdmin } from '../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireSelfOrAdmin,
+  getRequestUser,
+} from '../../../ts-common/middleware';
+import { insertAuditEvent } from '../../v2/audit-events';
 
 const router = express.Router();
 
@@ -59,6 +64,30 @@ router.put(
     const query = buildPartialUserUpdateQuery(encryptedUpdates, id);
 
     const [result] = await db.query<ResultSetHeader>(query.sql, query.values);
+
+    const actorUser = getRequestUser(req);
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(null, {
+      actorUserId,
+      actorRole,
+      actionType: 'UPDATE',
+      resourceType: 'users_legacy',
+      resourceId: id,
+      sourceEndpoint: `PUT /api/users/${id}`,
+      oldValuesJson: null,
+      newValuesJson: {
+        id,
+        ...updates,
+      },
+    });
 
     res.status(200).json({
       message: 'User updated',

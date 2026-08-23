@@ -58,7 +58,8 @@ describe('v2 product write routes', () => {
       .mockResolvedValueOnce([{ insertId: 101 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([[{ id: 7 }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 900 }]);
 
     const response = await request(app)
       .post('/api/v2/products')
@@ -82,7 +83,9 @@ describe('v2 product write routes', () => {
     });
 
     const firstSql = String(mockConnection.query.mock.calls[0][0]);
+    const auditSql = String(mockConnection.query.mock.calls[4][0]);
     expect(firstSql).toContain('INSERT INTO products_v2');
+    expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
   it('returns 400 for invalid create payload', async () => {
@@ -108,7 +111,8 @@ describe('v2 product write routes', () => {
   it('updates mutable fields in v2 as admin', async () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ id: 101 }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 901 }]);
 
     const response = await request(app)
       .put('/api/v2/products/101')
@@ -125,7 +129,9 @@ describe('v2 product write routes', () => {
     });
 
     const updateSql = String(mockConnection.query.mock.calls[1][0]);
+    const auditSql = String(mockConnection.query.mock.calls[2][0]);
     expect(updateSql).toContain('UPDATE products_v2');
+    expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
   it('returns 404 when updating unknown product', async () => {
@@ -154,7 +160,8 @@ describe('v2 product write routes', () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ id: 101 }]])
       .mockResolvedValueOnce([[{ max_sort: -1 }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 902 }]);
 
     const response = await request(app)
       .post('/api/v2/products/101/images/upload')
@@ -166,6 +173,8 @@ describe('v2 product write routes', () => {
     expect(Array.isArray(response.body.images)).toBe(true);
 
     const insertSql = String(mockConnection.query.mock.calls[2][0]);
+    const auditSql = String(mockConnection.query.mock.calls[3][0]);
     expect(insertSql).toContain('INSERT INTO product_images_v2');
+    expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 });

@@ -4,26 +4,33 @@ import jwt from "jsonwebtoken";
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "your-dev-secret";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-router.get("/me", async (req: any, res: any) => {
-  const token = req.cookies.auth_token; // or req.headers.authorization
+type AuthenticatedTokenUser = jwt.JwtPayload & {
+  type?: string;
+};
 
-  if (!token) return res.status(401).json({ message: "No token provided" });
+router.get("/me", (req, res) => {
+  void (async () => {
+    const token = req.cookies.auth_token;
 
-  try {
-    const user = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
-    res.json({
-      user: {
-        ...(user as object),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: (user as any).type
-      },
-      authenticated: true
-    });
-  } catch (err) {
-    console.error("Token verification error:", err);
-    res.status(401).json({ message: "Invalid token" });
-  }
+    if (!token) {
+      res.status(401).json({ message: "No token provided" });
+      return;
+    }
+
+    try {
+      const user = jwt.verify(token, JWT_SECRET) as AuthenticatedTokenUser;
+      res.json({
+        user: {
+          ...(user as object),
+          type: user.type,
+        },
+        authenticated: true,
+      });
+    } catch (err) {
+      console.error("Token verification error:", err);
+      res.status(401).json({ message: "Invalid token" });
+    }
+  })();
 });
 
 export default router;

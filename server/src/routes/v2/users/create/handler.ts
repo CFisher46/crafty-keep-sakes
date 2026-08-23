@@ -3,13 +3,18 @@ import bcrypt from 'bcryptjs';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
 import { User } from '../../../users/types';
-import { verifyAuthToken, requireRole } from '../../../../ts-common/middleware';
+import {
+  verifyAuthToken,
+  requireRole,
+  getRequestUser,
+} from '../../../../ts-common/middleware';
 import { INSERT_USER_ACCOUNT_QUERY } from './sql';
 import {
   INSERT_USER_ROLE_QUERY,
   SELECT_ROLE_ID_BY_CODE_QUERY,
   UPSERT_CUSTOMER_PROFILE_QUERY,
 } from '../shared/sql';
+import { insertAuditEvent } from '../../audit-events';
 
 const router = express.Router();
 
@@ -72,6 +77,32 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
     }
 
     await connection.query(INSERT_USER_ROLE_QUERY, [userId, roleId]);
+
+    const actorUser = getRequestUser(req);
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(connection, {
+      actorUserId,
+      actorRole,
+      actionType: 'CREATE',
+      resourceType: 'users_v2',
+      resourceId: userId,
+      sourceEndpoint: 'POST /api/v2/users',
+      oldValuesJson: null,
+      newValuesJson: {
+        id: userId,
+        email_address: user.email_address,
+        type: roleCode,
+        status,
+      },
+    });
 
     await connection.commit();
 

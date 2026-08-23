@@ -7,7 +7,7 @@ const DEFAULT_FLAGS: ApiRouteFlags = {
   auth: 'legacy',
   products: 'v2',
   users: 'v2',
-  audit: 'legacy',
+  audit: 'v2',
   basket: 'v2',
 };
 

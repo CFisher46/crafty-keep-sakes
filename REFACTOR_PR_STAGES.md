@@ -262,25 +262,25 @@ Current state:
 - [x] Stage 7 is complete and ready for merge; the implemented profile order history and invoice modal satisfy the user-facing v2 basket flow without requiring a separate standalone page.
 - [ ] Add admin invoice management screen to call the protected `/api/v2/basket/invoices/:id` update route.
 
-## [ ] Stage 8 - Audit Migration
+## [x] Stage 8 - Audit Migration
 
 PR Goal: move to append-only audit events with controlled read access.
 
 Implementation:
 
-- [ ] Migrate writes to `audit_events_v2` from service layer.
-- [ ] Remove public audit write route.
-- [ ] Admin-only read route with filter/pagination.
+- [x] Migrate writes to `audit_events_v2` from service layer.
+- [x] Remove public audit write route.
+- [x] Admin-only read route with filter/pagination.
 
 Tests:
 
-- [ ] Important mutations emit audit rows.
-- [ ] Audit endpoint requires admin.
-- [ ] Audit rows are append-only.
+- [x] Important mutations emit audit rows.
+- [x] Audit endpoint requires admin.
+- [x] Audit rows are append-only.
 
 Exit Criteria:
 
-- [ ] Legacy audit table not used by active routes.
+- [x] Legacy audit table not used by active routes.
 
 ## [ ] Stage 9 - Endpoint Test Hardening
 
