@@ -36,6 +36,38 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
   const connection = await db.getConnection();
 
   try {
+    const [existingUserRows] = await connection.query<RowDataPacket[]>(
+      `SELECT
+         u.id,
+         u.email,
+         u.status,
+         cp.first_name,
+         cp.last_name,
+         cp.telephone AS telephone_number,
+         cp.address_line1,
+         cp.address_line2,
+         cp.address_line3,
+         cp.town,
+         cp.county,
+         cp.postcode,
+         COALESCE(r.code, 'customer') AS role_code
+       FROM users_v2 u
+       LEFT JOIN customer_profiles_v2 cp ON cp.user_id = u.id
+       LEFT JOIN user_roles_v2 ur ON ur.user_id = u.id
+       LEFT JOIN roles_v2 r ON r.id = ur.role_id
+       WHERE u.id = ?
+       LIMIT 1`,
+      [id]
+    );
+
+    const previousUser = Array.isArray(existingUserRows) ? existingUserRows[0] ?? null : null;
+
+    if (!previousUser) {
+      await connection.rollback();
+      res.status(404).json({ error: 'User not found' });
+      return;
+    }
+
     const accountUpdates: Array<[string, string | number | null]> = [];
 
     if (updates.email_address !== undefined) {
@@ -84,18 +116,20 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
     }
 
     if (hasProfileUpdates) {
-      await connection.query(UPSERT_CUSTOMER_PROFILE_QUERY, [
+      const profileValues = [
         id,
-        normalizeOptionalText(updates.first_name),
-        normalizeOptionalText(updates.last_name),
-        normalizeOptionalText(updates.telephone_number),
-        normalizeOptionalText(updates.address_line1),
-        normalizeOptionalText(updates.address_line2),
-        normalizeOptionalText(updates.address_line3),
-        normalizeOptionalText(updates.town),
-        normalizeOptionalText(updates.county),
-        normalizeOptionalText(updates.postcode),
-      ]);
+        normalizeOptionalText(updates.first_name ?? previousUser.first_name),
+        normalizeOptionalText(updates.last_name ?? previousUser.last_name),
+        normalizeOptionalText(updates.telephone_number ?? previousUser.telephone_number),
+        normalizeOptionalText(updates.address_line1 ?? previousUser.address_line1),
+        normalizeOptionalText(updates.address_line2 ?? previousUser.address_line2),
+        normalizeOptionalText(updates.address_line3 ?? previousUser.address_line3),
+        normalizeOptionalText(updates.town ?? previousUser.town),
+        normalizeOptionalText(updates.county ?? previousUser.county),
+        normalizeOptionalText(updates.postcode ?? previousUser.postcode),
+      ];
+
+      await connection.query(UPSERT_CUSTOMER_PROFILE_QUERY, profileValues);
     }
 
     if (hasRoleUpdate) {
@@ -124,6 +158,22 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
         ? String(actorUser.type)
         : null;
 
+    const nextUserState = {
+      id,
+      email_address: updates.email_address ?? previousUser?.email ?? null,
+      status: updates.status ?? previousUser?.status ?? null,
+      type: updates.type ?? previousUser?.role_code ?? null,
+      first_name: updates.first_name ?? previousUser?.first_name ?? null,
+      last_name: updates.last_name ?? previousUser?.last_name ?? null,
+      telephone_number: updates.telephone_number ?? previousUser?.telephone_number ?? null,
+      address_line1: updates.address_line1 ?? previousUser?.address_line1 ?? null,
+      address_line2: updates.address_line2 ?? previousUser?.address_line2 ?? null,
+      address_line3: updates.address_line3 ?? previousUser?.address_line3 ?? null,
+      town: updates.town ?? previousUser?.town ?? null,
+      county: updates.county ?? previousUser?.county ?? null,
+      postcode: updates.postcode ?? previousUser?.postcode ?? null,
+    };
+
     await insertAuditEvent(connection, {
       actorUserId,
       actorRole,
@@ -131,15 +181,24 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
       resourceType: 'users_v2',
       resourceId: id,
       sourceEndpoint: `PUT /api/v2/users/${id}`,
-      oldValuesJson: null,
-      newValuesJson: {
-        id,
-        email_address: updates.email_address ?? null,
-        status: updates.status ?? null,
-        type: updates.type ?? null,
-        first_name: updates.first_name ?? null,
-        last_name: updates.last_name ?? null,
-      },
+      oldValuesJson: previousUser
+        ? {
+            id: Number(previousUser.id),
+            email_address: previousUser.email ?? null,
+            status: previousUser.status ?? null,
+            type: previousUser.role_code ?? null,
+            first_name: previousUser.first_name ?? null,
+            last_name: previousUser.last_name ?? null,
+            telephone_number: previousUser.telephone_number ?? null,
+            address_line1: previousUser.address_line1 ?? null,
+            address_line2: previousUser.address_line2 ?? null,
+            address_line3: previousUser.address_line3 ?? null,
+            town: previousUser.town ?? null,
+            county: previousUser.county ?? null,
+            postcode: previousUser.postcode ?? null,
+          }
+        : null,
+      newValuesJson: nextUserState,
     });
 
     await connection.commit();

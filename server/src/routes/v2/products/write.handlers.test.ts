@@ -111,6 +111,18 @@ describe('v2 product write routes', () => {
   it('updates mutable fields in v2 as admin', async () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ id: 101 }]])
+      .mockResolvedValueOnce([[
+        {
+          id: 101,
+          product_name: 'Original Product',
+          description: 'Original description',
+          price: 120,
+          quantity: 2,
+          on_sale: 0,
+          is_live: 1,
+          sale_percent: 5,
+        },
+      ]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 901 }]);
 
@@ -128,10 +140,58 @@ describe('v2 product write routes', () => {
       affectedRows: 1,
     });
 
-    const updateSql = String(mockConnection.query.mock.calls[1][0]);
-    const auditSql = String(mockConnection.query.mock.calls[2][0]);
+    const updateSql = String(mockConnection.query.mock.calls[2][0]);
+    const auditSql = String(mockConnection.query.mock.calls[3][0]);
     expect(updateSql).toContain('UPDATE products_v2');
     expect(auditSql).toContain('INSERT INTO audit_events_v2');
+  });
+
+  it('records old and new values in the audit payload for product updates', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 101 }]])
+      .mockResolvedValueOnce([
+        [{
+          id: 101,
+          product_name: 'Original Product',
+          description: 'Original description',
+          price: 120,
+          quantity: 2,
+          on_sale: 0,
+          is_live: 1,
+          sale_percent: 5,
+        }],
+      ])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 901 }]);
+
+    const response = await request(app)
+      .put('/api/v2/products/101')
+      .set('Cookie', authCookie('admin'))
+      .send({
+        product_name: 'Updated Product',
+        price: 250,
+      });
+
+    expect(response.status).toBe(200);
+
+    const auditValues = mockConnection.query.mock.calls[3][1] as Array<unknown>;
+    expect(auditValues[6]).not.toBeNull();
+    expect(JSON.parse(String(auditValues[6]))).toMatchObject({
+      id: 101,
+      product_name: 'Original Product',
+      description: 'Original description',
+      price: 120,
+      quantity: 2,
+      on_sale: 0,
+      is_live: 1,
+      sale_percent: 5,
+    });
+
+    expect(JSON.parse(String(auditValues[7]))).toMatchObject({
+      id: 101,
+      product_name: 'Updated Product',
+      price: 250,
+    });
   });
 
   it('returns 404 when updating unknown product', async () => {

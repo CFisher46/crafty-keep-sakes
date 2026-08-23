@@ -1,8 +1,8 @@
-import { Box, Text, Select, Button, TextInput, Grid } from 'grommet';
+import { Box, Text, Select, Button, TextInput, Grid, FileInput } from 'grommet';
 import { Product } from '../../../types';
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../store/hooks';
-import { fetchAllProductsForAdmin, updateProduct } from '../../../store/products/productsThunks';
+import { fetchAllProductsForAdmin, updateProduct, uploadProductImages } from '../../../store/products/productsThunks';
 import { buttonStyles } from '../../../helpers/formatting';
 
 const UpdateProduct = () => {
@@ -11,6 +11,8 @@ const UpdateProduct = () => {
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editedProduct, setEditedProduct] = useState<Product | null>(null);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [fileInputResetKey, setFileInputResetKey] = useState(0);
 
   const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
   const numericFields = new Set<keyof Product>(['price', 'quantity', 'sale_percent']);
@@ -64,17 +66,50 @@ const UpdateProduct = () => {
 
   const handleSave = async () => {
     if (!editedProduct || !selectedProduct) return;
+
+    const changedFields: Record<string, unknown> = {};
+
+    Object.entries(editedProduct).forEach(([key, value]) => {
+      const typedKey = key as keyof Product;
+
+      if (typedKey === 'images') {
+        return;
+      }
+
+      if (value !== selectedProduct[typedKey]) {
+        changedFields[String(typedKey)] = value;
+      }
+    });
+
+    if (Object.keys(changedFields).length === 0 && selectedImages.length === 0) {
+      return;
+    }
+
     try {
-      await dispatch(
-        updateProduct({
-          id: selectedProduct.id,
-          product: editedProduct,
-          previousProduct: selectedProduct,
-        })
-      ).unwrap();
+      if (Object.keys(changedFields).length > 0) {
+        await dispatch(
+          updateProduct({
+            id: selectedProduct.id,
+            product: changedFields,
+            previousProduct: selectedProduct,
+          })
+        ).unwrap();
+      }
+
+      if (selectedImages.length > 0) {
+        await dispatch(
+          uploadProductImages({
+            productId: selectedProduct.id,
+            files: selectedImages,
+          })
+        ).unwrap();
+      }
+
       setSelectedProduct(null);
       setEditedProduct(null);
       setSelectedProductId('');
+      setSelectedImages([]);
+      setFileInputResetKey((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to update product:', err);
     }
@@ -86,7 +121,10 @@ const UpdateProduct = () => {
       {!selectedProduct ? (
         <Box pad="medium" direction="row" gap="small" align="center">
           <Select
-            options={productList.map((p) => ({ label: p.id, value: p.id }))}
+            options={productList.map((p) => ({
+              label: `${p.id} — ${p.product_name || 'Unnamed product'}${p.category ? ` (${p.category})` : ''}`,
+              value: p.id,
+            }))}
             labelKey="label"
             valueKey={{ key: 'value', reduce: true }}
             value={selectedProductId}
@@ -103,6 +141,37 @@ const UpdateProduct = () => {
         </Box>
       ) : (
         <Box gap="medium">
+          <Box pad="small" border="top" margin={{ bottom: 'small' }}>
+            <Text size="small" weight="bold" margin={{ bottom: 'xsmall' }}>
+              Current product images
+            </Text>
+            {selectedProduct.images ? (
+              <Box direction="row" wrap gap="small">
+                {selectedProduct.images.split(',').filter(Boolean).map((image, index) => (
+                  <Box key={`${image}-${index}`} border round="xsmall" pad="xsmall">
+                    <Text size="small">{image.trim()}</Text>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <Text size="small">No images currently attached.</Text>
+            )}
+          </Box>
+
+          <Box pad="small" margin={{ bottom: 'small' }}>
+            <Text size="small" weight="bold" margin={{ bottom: 'xsmall' }}>
+              Add new product images
+            </Text>
+            <FileInput
+              key={fileInputResetKey}
+              name="product-images"
+              multiple
+              onChange={(event) => {
+                const files = event.target.files ? Array.from(event.target.files) : [];
+                setSelectedImages(files);
+              }}
+            />
+          </Box>
           <Grid columns={['1/2', '1/2']} gap="small">
             {editedProduct &&
               Object.entries(editedProduct)
@@ -146,6 +215,8 @@ const UpdateProduct = () => {
                 setSelectedProduct(null);
                 setEditedProduct(null);
                 setSelectedProductId('');
+                setSelectedImages([]);
+                setFileInputResetKey((prev) => prev + 1);
               }}
             />
           </Box>

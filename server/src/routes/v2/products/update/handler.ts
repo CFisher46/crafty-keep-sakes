@@ -119,6 +119,16 @@ router.put('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
       return;
     }
 
+    const [existingProductRows] = await connection.query<RowDataPacket[]>(
+      `SELECT id, product_name, description, price, quantity, on_sale, is_live, sale_percent
+       FROM products_v2
+       WHERE id = ?
+       LIMIT 1`,
+      [productId]
+    );
+
+    const previousProduct = existingProductRows[0] ?? null;
+
     let affectedRows = 0;
 
     if (fields.length) {
@@ -174,7 +184,18 @@ router.put('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
       resourceType: 'products_v2',
       resourceId: productId,
       sourceEndpoint: `PUT /api/v2/products/${idOrSku}`,
-      oldValuesJson: null,
+      oldValuesJson: previousProduct
+        ? {
+            id: Number(previousProduct.id),
+            product_name: previousProduct.product_name ?? null,
+            description: previousProduct.description ?? null,
+            price: previousProduct.price ?? null,
+            quantity: previousProduct.quantity ?? null,
+            on_sale: previousProduct.on_sale ?? null,
+            is_live: previousProduct.is_live ?? null,
+            sale_percent: previousProduct.sale_percent ?? null,
+          }
+        : null,
       newValuesJson: {
         id: productId,
         ...updates,
