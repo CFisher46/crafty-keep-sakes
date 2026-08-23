@@ -350,7 +350,7 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
       total_due: Number(Number(invoice.total_due || 0).toFixed(2)),
       issued_at: invoice.issued_at,
       user_id: Number(invoice.user_id),
-      billing_address: {
+      delivery_address: {
         address_line1: invoice.billing_address_line1 || '',
         address_line2: invoice.billing_address_line2 || '',
         address_line3: invoice.billing_address_line3 || '',
@@ -632,9 +632,11 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       throw new Error('Basket is empty');
     }
 
-    const suppliedBillingAddress = normalizeBillingAddress(req.body?.billing_address ?? null);
-    const resolvedBillingAddress = Object.values(suppliedBillingAddress).some(Boolean)
-      ? suppliedBillingAddress
+    const suppliedDeliveryAddress = normalizeBillingAddress(
+      req.body?.delivery_address ?? req.body?.billing_address ?? null
+    );
+    const resolvedDeliveryAddress = Object.values(suppliedDeliveryAddress).some(Boolean)
+      ? suppliedDeliveryAddress
       : await getProfileBillingAddress(connection, userId);
 
     await ensureInvoiceBillingColumns(connection);
@@ -681,12 +683,12 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         orderId,
         invoiceNumber,
         grandTotal,
-        resolvedBillingAddress.address_line1,
-        resolvedBillingAddress.address_line2,
-        resolvedBillingAddress.address_line3,
-        resolvedBillingAddress.town,
-        resolvedBillingAddress.county,
-        resolvedBillingAddress.postcode,
+        resolvedDeliveryAddress.address_line1,
+        resolvedDeliveryAddress.address_line2,
+        resolvedDeliveryAddress.address_line3,
+        resolvedDeliveryAddress.town,
+        resolvedDeliveryAddress.county,
+        resolvedDeliveryAddress.postcode,
       ]
     );
 
@@ -739,7 +741,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         invoice_number: invoiceNumber,
         total_due: grandTotal,
         order_status: 'placed',
-        billing_address: resolvedBillingAddress,
+        delivery_address: resolvedDeliveryAddress,
       },
     });
 
@@ -752,7 +754,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       invoice_id: invoiceId,
       invoice_number: invoiceNumber,
       total_due: grandTotal,
-      billing_address: resolvedBillingAddress,
+      delivery_address: resolvedDeliveryAddress,
     });
   } catch (err) {
     await connection.rollback();

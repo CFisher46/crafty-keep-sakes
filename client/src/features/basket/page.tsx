@@ -7,7 +7,7 @@ import {
   hydrateBasketFromServer,
 } from "../../store/basket/basketSlice";
 import {
-  BillingAddress,
+  DeliveryAddress,
   checkoutBasket,
   fetchBasket,
   removeBasketItem,
@@ -23,7 +23,7 @@ function Basket() {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const emptyAddress: BillingAddress = {
+  const emptyAddress: DeliveryAddress = {
     address_line1: '',
     address_line2: '',
     address_line3: '',
@@ -31,15 +31,15 @@ function Basket() {
     county: '',
     postcode: '',
   };
-  const [billingAddress, setBillingAddress] = useState<BillingAddress>(emptyAddress); 
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(emptyAddress);
 
   useEffect(() => {
     if (!authUser) {
-      setBillingAddress(emptyAddress);
+      setDeliveryAddress(emptyAddress);
       return;
     }
 
-    setBillingAddress({
+    setDeliveryAddress({
       address_line1: authUser.address_line1 || '',
       address_line2: authUser.address_line2 || '',
       address_line3: authUser.address_line3 || '',
@@ -95,7 +95,7 @@ function Basket() {
   };
 
   const handleCheckout = async () => {
-    const resultAction = await dispatch(checkoutBasket(billingAddress));
+    const resultAction = await dispatch(checkoutBasket(deliveryAddress));
 
     if (checkoutBasket.fulfilled.match(resultAction)) {
       const payload = resultAction.payload as {
@@ -129,8 +129,8 @@ function Basket() {
     setShowCheckoutModal(true);
   };
 
-  const updateBillingField = (field: keyof BillingAddress, value: string) => {
-    setBillingAddress((current) => ({ ...current, [field]: value }));
+  const updateDeliveryField = (field: keyof DeliveryAddress, value: string) => {
+    setDeliveryAddress((current) => ({ ...current, [field]: value }));
   };
 
   return (
@@ -143,16 +143,16 @@ function Basket() {
           modal
         >
           <Box pad="medium" width="large" gap="small">
-            <Text weight="bold" size="large">Billing address</Text>
+            <Text weight="bold" size="large">Delivery address</Text>
             <Text size="small">
-              Choose the address to store on the invoice or update it before checkout.
+              Choose the delivery address to store on the invoice or update it before checkout.
             </Text>
             <Button
-              label="Use saved address"
+              label="Use saved delivery address"
               secondary
               onClick={() => {
                 if (authUser) {
-                  setBillingAddress({
+                  setDeliveryAddress({
                     address_line1: authUser.address_line1 || '',
                     address_line2: authUser.address_line2 || '',
                     address_line3: authUser.address_line3 || '',
@@ -164,35 +164,35 @@ function Basket() {
               }}
             />
             <TextInput
-              value={billingAddress.address_line1}
-              onChange={(event) => updateBillingField('address_line1', event.target.value)}
+              value={deliveryAddress.address_line1}
+              onChange={(event) => updateDeliveryField('address_line1', event.target.value)}
               placeholder="Address line 1"
             />
             <TextInput
-              value={billingAddress.address_line2}
-              onChange={(event) => updateBillingField('address_line2', event.target.value)}
+              value={deliveryAddress.address_line2}
+              onChange={(event) => updateDeliveryField('address_line2', event.target.value)}
               placeholder="Address line 2"
             />
             <TextInput
-              value={billingAddress.address_line3}
-              onChange={(event) => updateBillingField('address_line3', event.target.value)}
+              value={deliveryAddress.address_line3}
+              onChange={(event) => updateDeliveryField('address_line3', event.target.value)}
               placeholder="Address line 3"
             />
             <Box direction="row" gap="small">
               <TextInput
-                value={billingAddress.town}
-                onChange={(event) => updateBillingField('town', event.target.value)}
+                value={deliveryAddress.town}
+                onChange={(event) => updateDeliveryField('town', event.target.value)}
                 placeholder="Town"
               />
               <TextInput
-                value={billingAddress.county}
-                onChange={(event) => updateBillingField('county', event.target.value)}
+                value={deliveryAddress.county}
+                onChange={(event) => updateDeliveryField('county', event.target.value)}
                 placeholder="County"
               />
             </Box>
             <TextInput
-              value={billingAddress.postcode}
-              onChange={(event) => updateBillingField('postcode', event.target.value)}
+              value={deliveryAddress.postcode}
+              onChange={(event) => updateDeliveryField('postcode', event.target.value)}
               placeholder="Postcode"
             />
             <Box direction="row" justify="end" gap="small">

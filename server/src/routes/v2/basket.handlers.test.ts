@@ -143,7 +143,7 @@ describe('v2 basket routes', () => {
       .post('/api/v2/basket/checkout')
       .set('Cookie', authCookie(7, 'customer'))
       .send({
-        billing_address: {
+        delivery_address: {
           address_line1: '1 Test Street',
           address_line2: 'Bristol',
           address_line3: '',
@@ -161,7 +161,7 @@ describe('v2 basket routes', () => {
       invoice_id: 90,
       invoice_number: expect.stringMatching(/^INV-/),
       total_due: 30,
-      billing_address: {
+      delivery_address: {
         address_line1: '1 Test Street',
         address_line2: 'Bristol',
         address_line3: '',
@@ -183,7 +183,7 @@ describe('v2 basket routes', () => {
     expect(JSON.parse(auditInsertCall[1][7])).toMatchObject({
       order_id: 40,
       invoice_id: 90,
-      billing_address: {
+      delivery_address: {
         address_line1: '1 Test Street',
         address_line2: 'Bristol',
         address_line3: '',
@@ -222,7 +222,7 @@ describe('v2 basket routes', () => {
       .post('/api/v2/basket/checkout')
       .set('Cookie', authCookie(7, 'customer'))
       .send({
-        billing_address: {
+        delivery_address: {
           address_line1: '61 Salisbury Avenue',
           address_line2: '',
           address_line3: '',
@@ -330,7 +330,7 @@ describe('v2 basket routes', () => {
       total_due: 30,
       issued_at: '2026-08-15 09:05:00',
       user_id: 7,
-      billing_address: {
+      delivery_address: {
         address_line1: '1 Test Street',
         address_line2: 'Bristol',
         address_line3: '',

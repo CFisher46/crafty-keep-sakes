@@ -99,7 +99,7 @@ function UsersProfile() {
     total_due: number;
     issued_at: string;
     user_id: number;
-    billing_address?: {
+    delivery_address?: {
       address_line1: string;
       address_line2: string;
       address_line3: string;
@@ -294,14 +294,14 @@ function UsersProfile() {
               <Text>Status: {invoice.invoice_status}</Text>
               <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
               <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
-              {invoice.billing_address && (
+              {invoice.delivery_address && (
                 <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
                   <Text weight="bold">Delivery address</Text>
-                  <Text>{invoice.billing_address.address_line1 || '—'}</Text>
-                  {invoice.billing_address.address_line2 && <Text>{invoice.billing_address.address_line2}</Text>}
-                  {invoice.billing_address.address_line3 && <Text>{invoice.billing_address.address_line3}</Text>}
-                  <Text>{[invoice.billing_address.town, invoice.billing_address.county].filter(Boolean).join(', ') || '—'}</Text>
-                  <Text>{invoice.billing_address.postcode || '—'}</Text>
+                  <Text>{invoice.delivery_address.address_line1 || '—'}</Text>
+                  {invoice.delivery_address.address_line2 && <Text>{invoice.delivery_address.address_line2}</Text>}
+                  {invoice.delivery_address.address_line3 && <Text>{invoice.delivery_address.address_line3}</Text>}
+                  <Text>{[invoice.delivery_address.town, invoice.delivery_address.county].filter(Boolean).join(', ') || '—'}</Text>
+                  <Text>{invoice.delivery_address.postcode || '—'}</Text>
                 </Box>
               )}
 
