@@ -9,5 +9,16 @@ module.exports = {
   transform: {
     ...tsJestTransformCfg
   },
-  testPathIgnorePatterns: ["/node_modules/", "/dist/"]
+  testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+  collectCoverageFrom: ["src/**/*.ts"],
+  coverageReporters: ["text-summary", "lcov", "json-summary"],
+  coveragePathIgnorePatterns: ["/node_modules/", "/dist/"],
+  coverageThreshold: {
+    global: {
+      statements: 60,
+      branches: 40,
+      functions: 50,
+      lines: 60,
+    },
+  },
 };

@@ -282,33 +282,47 @@ Exit Criteria:
 
 - [x] Legacy audit table not used by active routes.
 
-## [ ] Stage 9 - Endpoint Test Hardening
+## [x] Stage 9 - Endpoint Test Hardening
 
 PR Goal: add exhaustive API coverage so breakages are caught early as migration complexity grows.
 
+Current progress:
+
+- [x] Build an endpoint inventory file grouped by domain and role.
+- [x] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
+- [x] Add request validation tests for malformed payloads and missing fields (`400`).
+- [x] Add data contract tests for critical responses to prevent schema drift.
+- [x] Add smoke test bundle for canary deploy and rollback validation.
+- [x] Add CI reporting for endpoint coverage trend (minimum threshold gate).
+
 Implementation:
 
-- [ ] Build an endpoint inventory file grouped by domain and role.
-- [ ] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
-- [ ] Add request validation tests for malformed payloads and missing fields (`400`).
-- [ ] Add data contract tests for critical responses to prevent schema drift.
-- [ ] Add smoke test bundle for canary deploy and rollback validation.
-- [ ] Add CI reporting for endpoint coverage trend (minimum threshold gate).
+- [x] Build an endpoint inventory file grouped by domain and role.
+- [x] Add integration tests for all auth outcomes per endpoint (`200`, `401`, `403`).
+- [x] Add request validation tests for malformed payloads and missing fields (`400`).
+- [x] Add data contract tests for critical responses to prevent schema drift.
+- [x] Add smoke test bundle for canary deploy and rollback validation.
+- [x] Add CI reporting for endpoint coverage trend (minimum threshold gate).
 
 Tests:
 
-- [ ] Auth endpoints: login, me, logout, invalid credentials, expired/invalid token.
-- [ ] Users endpoints: admin allowed, non-admin denied, owner checks enforced.
-- [ ] Products endpoints: public reads, admin-only writes, validation failures.
-- [ ] Audit endpoints: admin-read only, no public write.
-- [ ] Invoice/order endpoints: ownership checks and admin overrides.
-- [ ] Route source tests: canonical and `/api/v2` parity for each domain.
+- [x] Auth endpoints: login, me, logout, invalid credentials, expired/invalid token.
+- [x] Users endpoints: admin allowed, non-admin denied, owner checks enforced.
+- [x] Products endpoints: public reads, admin-only writes, validation failures.
+- [x] Audit endpoints: admin-read only, no public write.
+- [x] Invoice/order endpoints: ownership checks and admin overrides.
+- [x] Route source tests: canonical and `/api/v2` parity for each domain.
 
 Exit Criteria:
 
-- [ ] Endpoint auth matrix covered for all active routes.
-- [ ] Critical endpoint contract snapshots/baselines recorded.
-- [ ] CI fails on regression in endpoint authorization or contract checks.
+- [x] Endpoint auth matrix covered for all active routes.
+- [x] Critical endpoint contract snapshots/baselines recorded.
+- [x] CI fails on regression in endpoint authorization or contract checks.
+
+Verification note:
+
+- [x] Verified via the Stage 9 hardening bundle in `server/src/endpoint-inventory.test.ts` and the app-routing + route-level v2 suites.
+- [x] Verified the coverage gate with `npx jest --coverage --runInBand --passWithNoTests` remains above the configured thresholds for CI.
 
 ## [ ] Stage 10 - Legacy Decommission
 

@@ -1,4 +1,4 @@
-import { fetchAllUsers, fetchUserById } from './usersThunks';
+import { createUser, fetchAllUsers, fetchUserById } from './usersThunks';
 
 describe('users thunks', () => {
   beforeEach(() => {
@@ -117,5 +117,20 @@ describe('users thunks', () => {
       invoice_id: 0,
       password: '',
     });
+  });
+
+  it('surfaces backend validation errors when user creation fails', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Missing required user fields' }),
+    });
+
+    const dispatch = jest.fn();
+    const getState = jest.fn();
+
+    const result = await createUser({})(dispatch, getState, undefined);
+
+    expect(result.type).toBe('users/create/rejected');
+    expect(result.payload).toBe('Missing required user fields');
   });
 });
