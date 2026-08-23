@@ -132,13 +132,36 @@ export const removeBasketItem = createAsyncThunk(
   }
 );
 
-export const checkoutBasket = createAsyncThunk(
+export type BillingAddress = {
+  address_line1: string;
+  address_line2: string;
+  address_line3: string;
+  town: string;
+  county: string;
+  postcode: string;
+};
+
+export const checkoutBasket = createAsyncThunk<
+  {
+    message: string;
+    basket_id: number;
+    order_id: number;
+    invoice_id: number;
+    invoice_number: string;
+    total_due: number;
+    billing_address?: BillingAddress;
+  },
+  BillingAddress | undefined,
+  { rejectValue: string }
+>(
   'basket/checkoutBasket',
-  async (_, { rejectWithValue }) => {
+  async (billingAddress, { rejectWithValue }) => {
     try {
       const response = await fetch(buildApiUrl('basket', '/checkout'), {
         method: 'POST',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(billingAddress ? { billing_address: billingAddress } : {}),
       });
 
       if (!response.ok) {
@@ -153,6 +176,7 @@ export const checkoutBasket = createAsyncThunk(
         invoice_id: number;
         invoice_number: string;
         total_due: number;
+        billing_address?: BillingAddress;
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
@@ -209,6 +233,7 @@ export const fetchInvoiceById = createAsyncThunk(
         total_due: number;
         issued_at: string;
         user_id: number;
+        billing_address?: BillingAddress;
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
