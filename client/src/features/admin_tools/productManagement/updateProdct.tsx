@@ -132,7 +132,6 @@ const UpdateProduct = () => {
             placeholder="Select a product..."
           />
           <Button
-            primary
             label="Load Product Details"
             onClick={() => handlerLoadProductDetails(selectedProductId)}
             disabled={!selectedProductId}
@@ -218,6 +217,7 @@ const UpdateProduct = () => {
                 setSelectedImages([]);
                 setFileInputResetKey((prev) => prev + 1);
               }}
+              style={buttonStyles.default}
             />
           </Box>
         </Box>

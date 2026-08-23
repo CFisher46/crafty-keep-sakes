@@ -13,6 +13,7 @@ import {
   Button,
   SelectMultiple,
 } from 'grommet';
+import { buttonStyles } from '../../../helpers/formatting';
 
 const PAGE_SIZE = 5;
 
@@ -242,6 +243,7 @@ export const AuditLogs = () => {
             label="Clear Filters"
             onClick={clearFilters}
             disabled={!hasActiveFilters}
+            style={buttonStyles.default}
           />
         </Box>
       </Box>
@@ -317,7 +319,7 @@ export const AuditLogs = () => {
               Page {page} of {totalPages}
             </Text>
             <Box direction="row" gap="small" wrap>
-              <Button label="Previous" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} />
+              <Button label="Previous" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} style={buttonStyles.default} />
               {pageNumbers.map((pageNumber, index) =>
                 pageNumber === 'ellipsis' ? (
                   <Text key={`ellipsis-${index}`} size="small" color="dark-3">
@@ -328,12 +330,12 @@ export const AuditLogs = () => {
                     key={pageNumber}
                     label={String(pageNumber)}
                     onClick={() => setPage(pageNumber)}
-                    primary={pageNumber === page}
                     size="small"
+                    style={buttonStyles.default}
                   />
                 )
               )}
-              <Button label="Next" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} />
+              <Button label="Next" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} style={buttonStyles.default} />
             </Box>
           </Box>
         </Box>

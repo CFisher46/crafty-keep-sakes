@@ -1,10 +1,12 @@
 import { Box, Text, Button, Layer, TextInput } from "grommet";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
+  addItemToBasket,
   clearBasket,
   hydrateBasketFromServer,
+  removeItemFromBasket,
 } from "../../store/basket/basketSlice";
 import {
   DeliveryAddress,
@@ -23,14 +25,17 @@ function Basket() {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const emptyAddress: DeliveryAddress = {
-    address_line1: '',
-    address_line2: '',
-    address_line3: '',
-    town: '',
-    county: '',
-    postcode: '',
-  };
+  const emptyAddress = useMemo<DeliveryAddress>(
+    () => ({
+      address_line1: '',
+      address_line2: '',
+      address_line3: '',
+      town: '',
+      county: '',
+      postcode: '',
+    }),
+    []
+  );
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(emptyAddress);
 
   useEffect(() => {
@@ -47,7 +52,7 @@ function Basket() {
       county: authUser.county || '',
       postcode: authUser.postcode || '',
     });
-  }, [authUser]);
+  }, [authUser, emptyAddress]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -71,7 +76,17 @@ function Basket() {
   );
 
   const handleBasketQuantity = async (itemId: string, delta: number) => {
-    const nextQuantity = items.find((item) => item.id === itemId)?.quantity ?? 0;
+    const existingItem = items.find((item) => item.id === itemId);
+
+    // Guests have no server-side basket, so update local state only
+    if (!isLoggedIn) {
+      if (existingItem) {
+        dispatch(addItemToBasket({ ...existingItem, quantity: delta }));
+      }
+      return;
+    }
+
+    const nextQuantity = existingItem?.quantity ?? 0;
     const adjustedQuantity = Math.max(0, nextQuantity + delta);
 
     if (adjustedQuantity <= 0) {
@@ -149,7 +164,6 @@ function Basket() {
             </Text>
             <Button
               label="Use saved delivery address"
-              secondary
               onClick={() => {
                 if (authUser) {
                   setDeliveryAddress({
@@ -162,6 +176,7 @@ function Basket() {
                   });
                 }
               }}
+              style={buttonStyles.default}
             />
             <TextInput
               value={deliveryAddress.address_line1}
@@ -196,8 +211,8 @@ function Basket() {
               placeholder="Postcode"
             />
             <Box direction="row" justify="end" gap="small">
-              <Button label="Cancel" secondary onClick={() => setShowCheckoutModal(false)} />
-              <Button label="Confirm checkout" primary onClick={handleCheckout} />
+              <Button label="Cancel" onClick={() => setShowCheckoutModal(false)} style={buttonStyles.default} />
+              <Button label="Confirm checkout" onClick={handleCheckout} style={buttonStyles.default} />
             </Box>
           </Box>
         </Layer>
@@ -318,6 +333,11 @@ function Basket() {
               <Button
                 label="Remove"
                 onClick={async () => {
+                  if (!isLoggedIn) {
+                    dispatch(removeItemFromBasket(item.id));
+                    return;
+                  }
+
                   const result = await dispatch(removeBasketItem(item.id));
                   if (removeBasketItem.fulfilled.match(result)) {
                     const refreshed = await dispatch(fetchBasket());

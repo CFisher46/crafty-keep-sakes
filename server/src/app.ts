@@ -9,6 +9,7 @@ import v2ProductsRouter from "./routes/v2/products";
 import v2UsersRouter from "./routes/v2/users";
 import v2AuditRouter from "./routes/v2/audit";
 import v2BasketRouter from "./routes/v2/basket";
+import v2BlogRouter from "./routes/v2/blog";
 
 dotenv.config();
 
@@ -34,6 +35,8 @@ export function createApp() {
   app.use("/api/v2/audit", v2AuditRouter);
   app.use("/api/basket", v2BasketRouter);
   app.use("/api/v2/basket", v2BasketRouter);
+  app.use("/api/blog", v2BlogRouter);
+  app.use("/api/v2/blog", v2BlogRouter);
 
   app.use(
     "/images",

@@ -5,7 +5,7 @@ import Shop from "../../features/products/page";
 import ShoppingBasket from "../../features/basket/page";
 // import About from '../../pages/about/aboutUs';
 // import Shop from '../../pages/shop/shop';
-// import Blog from '../../pages/blog/blog';
+import Blog from '../../features/blog/page';
 import Profile from "../../features/profile/page";
 import Admin from "../../features/admin_tools/page";
 import Login from "../../components/login/login";
@@ -22,8 +22,9 @@ function MainBody() {
         <Routes key={location.pathname}>
           <Route path="/" element={<Navigate to="/Home" />} />
           <Route path="/Home" element={<LandingPage />} />
-          {/* <Route path="/About" element={<About />} />
-          <Route path="/Blog" element={<Blog />} /> */}
+          {/* <Route path="/About" element={<About />} /> */}
+          <Route path="/Blog" element={<Blog />} />
+          <Route path="/Blog/:id" element={<Blog />} />
           <Route path="/Shop" element={<Shop />} />
           <Route path="/Basket" element={<ShoppingBasket />} />
           <Route

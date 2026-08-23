@@ -33,7 +33,7 @@ describe('v2 audit read routes', () => {
     expect(response.body).toEqual({ error: 'Not authenticated' });
   });
 
-  it('defaults to the latest 10 audit rows when no page size is supplied', async () => {
+  it('defaults to the latest 5 audit rows when no page size is supplied', async () => {
     mockedDbQuery
       .mockResolvedValueOnce([[{ total_count: 1 }]])
       .mockResolvedValueOnce([
@@ -60,7 +60,7 @@ describe('v2 audit read routes', () => {
     expect(Array.isArray(response.body.data)).toBe(true);
     expect(response.body.data).toHaveLength(1);
 
-    expect(mockedDbQuery.mock.calls[1][1]).toEqual([10, 0]);
+    expect(mockedDbQuery.mock.calls[1][1]).toEqual([5, 0]);
   });
 
   it('applies filters and pagination for admin audit reads', async () => {

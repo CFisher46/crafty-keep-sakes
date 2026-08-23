@@ -25,7 +25,6 @@ const CksButton: React.FC<CksButtonProps> = ({
       type={type}
       onClick={onClick}
       disabled={!status}
-      primary={true}
       style={buttonStyles.default}
     />
   );

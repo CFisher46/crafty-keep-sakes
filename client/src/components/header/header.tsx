@@ -44,22 +44,6 @@ function PageHeader() {
             />
           </Button>
         </Box>
-        <Box
-          align="center"
-          justify="center"
-          flex="grow"
-          direction="row"
-          gap="xsmall"
-        >
-          <SearchBar />
-          <Button
-            label="Search"
-            onClick={() => console.log("Search clicked")}
-            style={buttonStyles.default}
-            size="small"
-          />
-        </Box>
-
         <Box direction="row" gap="small" margin={{ left: "auto" }}>
           <Box style={{ position: "relative" }}>
             <Button
