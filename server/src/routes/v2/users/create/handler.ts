@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
-import { User } from '../../../users/types';
+import { User } from '../../../../ts-common/user-types';
 import {
   verifyAuthToken,
   requireRole,

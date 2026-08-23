@@ -1,4 +1,4 @@
-import { Product } from '../../../products/types';
+import { Product } from '../../../../ts-common/product-types';
 
 export function createProductV2Query(product: Product, sku: string) {
   return {

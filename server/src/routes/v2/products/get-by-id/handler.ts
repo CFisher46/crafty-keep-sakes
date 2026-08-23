@@ -1,6 +1,6 @@
 import express, { Request, Response } from "express";
 import { db } from "../../../../ts-common/database";
-import { GetSpecificProductsQuery } from "../../../products/get-by-id/sql";
+import { GetSpecificProductsQuery } from "../../../../ts-common/product-queries";
 
 const router = express.Router();
 
