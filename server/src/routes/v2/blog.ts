@@ -84,13 +84,14 @@ router.get('/posts', async (_req, res) => {
       ORDER BY bp.created_at DESC`
     );
 
-    const posts = Array.isArray(postsRows) ? postsRows : [];
+    const posts = Array.isArray(postsRows) ? (postsRows as BlogPostRecord[]) : [];
 
     const withDetails = await Promise.all(
-      posts.map(async (post: BlogPostRecord) => {
+      posts.map(async (post) => {
+        const postRecord = post as BlogPostRecord;
         const [imagesRows] = await db.query(
           'SELECT id, image_url, sort_order FROM blog_post_images_v2 WHERE post_id = ? ORDER BY sort_order ASC, id ASC',
-          [post.id]
+          [postRecord.id]
         );
 
         const [commentsRows] = await db.query(
@@ -104,24 +105,24 @@ router.get('/posts', async (_req, res) => {
           LEFT JOIN customer_profiles_v2 cp ON cp.user_id = bc.user_id
           WHERE bc.post_id = ?
           ORDER BY bc.created_at DESC`,
-          [post.id]
+          [postRecord.id]
         );
 
         const [likeRows] = await db.query(
           'SELECT COUNT(*) AS count FROM blog_post_reactions_v2 WHERE post_id = ? AND reaction_type = ' + "'like'",
-          [post.id]
+          [postRecord.id]
         );
 
         const [dislikeRows] = await db.query(
           'SELECT COUNT(*) AS count FROM blog_post_reactions_v2 WHERE post_id = ? AND reaction_type = ' + "'dislike'",
-          [post.id]
+          [postRecord.id]
         );
 
         const likeCount = Number((Array.isArray(likeRows) ? (likeRows[0] as CountRow | undefined) : undefined)?.count ?? 0);
         const dislikeCount = Number((Array.isArray(dislikeRows) ? (dislikeRows[0] as CountRow | undefined) : undefined)?.count ?? 0);
 
         return {
-          ...post,
+          ...postRecord,
           images: Array.isArray(imagesRows) ? imagesRows : [],
           comments: Array.isArray(commentsRows) ? commentsRows : [],
           reaction_counts: {
