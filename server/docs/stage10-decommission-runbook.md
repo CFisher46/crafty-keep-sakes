@@ -14,7 +14,13 @@ Before any archive or drop operation:
 ## Archive plan
 Use the SQL script at `server/scripts/archive-legacy-tables.sql` during a maintenance window.
 
-This script performs a non-destructive archive step by renaming legacy tables to `_legacy_archive` names. Only after a validation review and rollback confirmation should the archive tables be dropped.
+This script performs a non-destructive archive step by renaming legacy tables to `_legacy_archive` names. The archive remains in place until the full UI end-to-end runthrough is complete and the v2 path is validated in production-like conditions.
+
+Current operational policy:
+
+- Keep the archived legacy tables available for a rollback window after the v2-only runtime is live.
+- Do not drop the archive names until the UI end-to-end flow has been exercised across the main journeys and a final review confirms there are no remaining legacy reads or writes.
+- Once that final review passes, run the DROP statements in the archive script and keep a backup/snapshot for rollback safety.
 
 ## Drop plan
 Once the team confirms there are no remaining legacy reads or writes:
@@ -25,4 +31,4 @@ Once the team confirms there are no remaining legacy reads or writes:
 4. Keep a backup or snapshot for any rollback requirement.
 
 ## Rollback note
-If a rollback is required, restore the legacy archive names back to their original names and redeploy the previous runtime build.
+If a rollback is required, restore the legacy archive names back to their original names and redeploy the previous runtime build. Until the full UI end-to-end runthrough is complete, the archive should remain present as a safety net.
