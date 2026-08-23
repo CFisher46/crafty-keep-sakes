@@ -29,7 +29,30 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-const normalizePostPayload = (body: any) => {
+type BlogPostPayload = {
+  title?: unknown;
+  summary?: unknown;
+  content?: unknown;
+};
+
+type BlogPostRecord = {
+  id: number;
+  title: string;
+  summary: string;
+  content: string;
+  author_id?: number;
+  created_at?: string;
+};
+
+type CountRow = {
+  count?: number | string;
+};
+
+type InsertResult = {
+  insertId?: number;
+};
+
+const normalizePostPayload = (body: BlogPostPayload | undefined) => {
   const title = String(body?.title ?? '').trim();
   const summary = String(body?.summary ?? '').trim();
   const content = String(body?.content ?? '').trim();
@@ -64,7 +87,7 @@ router.get('/posts', async (_req, res) => {
     const posts = Array.isArray(postsRows) ? postsRows : [];
 
     const withDetails = await Promise.all(
-      posts.map(async (post: any) => {
+      posts.map(async (post: BlogPostRecord) => {
         const [imagesRows] = await db.query(
           'SELECT id, image_url, sort_order FROM blog_post_images_v2 WHERE post_id = ? ORDER BY sort_order ASC, id ASC',
           [post.id]
@@ -94,13 +117,16 @@ router.get('/posts', async (_req, res) => {
           [post.id]
         );
 
+        const likeCount = Number((Array.isArray(likeRows) ? (likeRows[0] as CountRow | undefined) : undefined)?.count ?? 0);
+        const dislikeCount = Number((Array.isArray(dislikeRows) ? (dislikeRows[0] as CountRow | undefined) : undefined)?.count ?? 0);
+
         return {
           ...post,
           images: Array.isArray(imagesRows) ? imagesRows : [],
           comments: Array.isArray(commentsRows) ? commentsRows : [],
           reaction_counts: {
-            likes: Number((likeRows as any[])[0]?.count ?? 0),
-            dislikes: Number((dislikeRows as any[])[0]?.count ?? 0),
+            likes: likeCount,
+            dislikes: dislikeCount,
           },
         };
       })
@@ -125,7 +151,7 @@ router.post('/posts', verifyAuthToken, requireRole('admin'), upload.array('image
       [payload.title, payload.summary, payload.content, Number(getRequestUser(req)?.id ?? 0)]
     );
 
-    const postId = (insertResult as any).insertId;
+    const postId = (insertResult as InsertResult | undefined)?.insertId ?? 0;
 
     if (files.length) {
       await Promise.all(
@@ -143,7 +169,7 @@ router.post('/posts', verifyAuthToken, requireRole('admin'), upload.array('image
       [postId]
     );
 
-    const post = Array.isArray(postRows) && postRows.length ? (postRows[0] as any) : null;
+    const post = Array.isArray(postRows) && postRows.length ? (postRows[0] as BlogPostRecord | undefined) : null;
     const responsePost = {
       ...(post ?? {}),
       id: post?.id ?? postId,
@@ -193,7 +219,7 @@ router.post('/posts/:id/comments', verifyAuthToken, async (req, res) => {
     res.status(201).json({
       message: 'Comment added',
       comment: {
-        id: (insertResult as any).insertId,
+        id: (insertResult as InsertResult | undefined)?.insertId,
         post_id: postId,
         user_id: Number(user?.id ?? 0),
         comment: message,
@@ -226,7 +252,8 @@ router.post('/posts/:id/reactions', verifyAuthToken, async (req, res) => {
       [postId, Number(user?.id ?? 0)]
     );
 
-    const existingRowsList = Array.isArray(existingRows) ? (existingRows as any[]) : [];
+    type ExistingReactionRow = { id?: number; reaction_type?: string };
+    const existingRowsList = Array.isArray(existingRows) ? (existingRows as ExistingReactionRow[]) : [];
     const existing = existingRowsList[0] ?? null;
 
     if (existing && existing.reaction_type === reactionType) {
