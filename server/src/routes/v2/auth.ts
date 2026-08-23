@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { RequestHandler } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { RowDataPacket } from 'mysql2';
@@ -139,18 +139,26 @@ async function findAuthUserByEmail(
   return null;
 }
 
-router.post('/login', async (req: any, res: any) => {
-  const { email, password, rememberMe } = req.body;
+type LoginRequestBody = {
+  email?: string;
+  password?: string;
+  rememberMe?: boolean;
+};
+
+const loginHandler: RequestHandler = async (req, res): Promise<void> => {
+  const { email, password, rememberMe } = req.body as LoginRequestBody;
 
   if (!email || !password) {
-    return res.status(400).json({ error: 'Missing email or password' });
+    res.status(400).json({ error: 'Missing email or password' });
+    return;
   }
 
   try {
     const authUser = await findAuthUserByEmail(String(email));
 
     if (!authUser) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     const user = authUser.user as LegacyUserPayload | V2UserPayload;
@@ -161,11 +169,13 @@ router.post('/login', async (req: any, res: any) => {
 
     const passwordMatch = await bcrypt.compare(password, hashToCompare);
     if (!passwordMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
     if (authUser.source === 'v2' && (user as V2UserPayload).status !== 'active') {
-      return res.status(403).json({ error: 'Account inactive' });
+      res.status(403).json({ error: 'Account inactive' });
+      return;
     }
 
     const decryptedFirstName =
@@ -216,14 +226,16 @@ router.post('/login', async (req: any, res: any) => {
       maxAge: rememberMe ? 1000 * 60 * 60 * 24 * 30 : 1000 * 60 * 60 * 24 * 14,
     });
 
-    return res.json({ message: 'Login successful', user: payload });
+    res.json({ message: 'Login successful', user: payload });
+    return;
   } catch (err) {
     console.error('Login error:', err);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
+    return;
   }
-});
+};
 
-router.get('/me', (req, res) => {
+const meHandler: RequestHandler = (req, res): void => {
   void (async () => {
     const token = req.cookies.auth_token;
 
@@ -246,16 +258,20 @@ router.get('/me', (req, res) => {
       res.status(401).json({ message: 'Invalid token' });
     }
   })();
-});
+};
 
-router.post('/logout', async (req: any, res: any) => {
+const logoutHandler: RequestHandler = (_req, res): void => {
   res.clearCookie('auth_token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
   });
 
-  return res.status(200).json({ message: 'Logged out successfully' });
-});
+  res.status(200).json({ message: 'Logged out successfully' });
+};
+
+router.post('/login', loginHandler);
+router.get('/me', meHandler);
+router.post('/logout', logoutHandler);
 
 export default router;
