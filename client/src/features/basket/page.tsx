@@ -1,5 +1,5 @@
 import { Box, Text, Button, Layer, TextInput } from "grommet";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
 import {
@@ -23,14 +23,17 @@ function Basket() {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
-  const emptyAddress: DeliveryAddress = {
-    address_line1: '',
-    address_line2: '',
-    address_line3: '',
-    town: '',
-    county: '',
-    postcode: '',
-  };
+  const emptyAddress = useMemo<DeliveryAddress>(
+    () => ({
+      address_line1: '',
+      address_line2: '',
+      address_line3: '',
+      town: '',
+      county: '',
+      postcode: '',
+    }),
+    []
+  );
   const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(emptyAddress);
 
   useEffect(() => {
@@ -47,7 +50,7 @@ function Basket() {
       county: authUser.county || '',
       postcode: authUser.postcode || '',
     });
-  }, [authUser]);
+  }, [authUser, emptyAddress]);
 
   useEffect(() => {
     if (!isLoggedIn) {
