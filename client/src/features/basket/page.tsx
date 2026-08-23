@@ -1,4 +1,4 @@
-import { Box, Text, Button } from "grommet";
+import { Box, Text, Button, Layer, TextInput } from "grommet";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../store";
@@ -7,6 +7,7 @@ import {
   hydrateBasketFromServer,
 } from "../../store/basket/basketSlice";
 import {
+  DeliveryAddress,
   checkoutBasket,
   fetchBasket,
   removeBasketItem,
@@ -18,8 +19,35 @@ function Basket() {
   const dispatch = useDispatch<any>();
   const { items, totalItems } = useSelector((state: RootState) => state.basket);
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
+  const authUser = useSelector((state: RootState) => state.auth.user);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const emptyAddress: DeliveryAddress = {
+    address_line1: '',
+    address_line2: '',
+    address_line3: '',
+    town: '',
+    county: '',
+    postcode: '',
+  };
+  const [deliveryAddress, setDeliveryAddress] = useState<DeliveryAddress>(emptyAddress);
+
+  useEffect(() => {
+    if (!authUser) {
+      setDeliveryAddress(emptyAddress);
+      return;
+    }
+
+    setDeliveryAddress({
+      address_line1: authUser.address_line1 || '',
+      address_line2: authUser.address_line2 || '',
+      address_line3: authUser.address_line3 || '',
+      town: authUser.town || '',
+      county: authUser.county || '',
+      postcode: authUser.postcode || '',
+    });
+  }, [authUser]);
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -67,13 +95,19 @@ function Basket() {
   };
 
   const handleCheckout = async () => {
-    const resultAction = await dispatch(checkoutBasket());
+    const resultAction = await dispatch(checkoutBasket(deliveryAddress));
 
     if (checkoutBasket.fulfilled.match(resultAction)) {
+      const payload = resultAction.payload as {
+        invoice_id?: number;
+        invoice_number?: string;
+      };
+
       dispatch(clearBasket());
       localStorage.removeItem('basket');
-      setInvoiceId(String(resultAction.payload.invoice_id ?? resultAction.payload.invoice_number ?? 'N/A'));
-      setCheckoutMessage(`Checkout successful! Invoice ${resultAction.payload.invoice_number} has been created.`);
+      setInvoiceId(String(payload.invoice_id ?? payload.invoice_number ?? 'N/A'));
+      setCheckoutMessage(`Checkout successful! Invoice ${payload.invoice_number ?? 'N/A'} has been created.`);
+      setShowCheckoutModal(false);
       const refreshed = await dispatch(fetchBasket());
       if (fetchBasket.fulfilled.match(refreshed)) {
         dispatch(hydrateBasketFromServer(refreshed.payload));
@@ -83,10 +117,92 @@ function Basket() {
 
     setInvoiceId(null);
     setCheckoutMessage('Checkout failed. Please try again.');
+    setShowCheckoutModal(false);
+  };
+
+  const handleCheckoutStart = () => {
+    if (!authUser) {
+      setCheckoutMessage('Please log in before checking out.');
+      return;
+    }
+
+    setShowCheckoutModal(true);
+  };
+
+  const updateDeliveryField = (field: keyof DeliveryAddress, value: string) => {
+    setDeliveryAddress((current) => ({ ...current, [field]: value }));
   };
 
   return (
     <Box pad="medium" background="white" round="small" elevation="small">
+      {showCheckoutModal && (
+        <Layer
+          position="center"
+          onEsc={() => setShowCheckoutModal(false)}
+          onClickOutside={() => setShowCheckoutModal(false)}
+          modal
+        >
+          <Box pad="medium" width="large" gap="small">
+            <Text weight="bold" size="large">Delivery address</Text>
+            <Text size="small">
+              Choose the delivery address to store on the invoice or update it before checkout.
+            </Text>
+            <Button
+              label="Use saved delivery address"
+              secondary
+              onClick={() => {
+                if (authUser) {
+                  setDeliveryAddress({
+                    address_line1: authUser.address_line1 || '',
+                    address_line2: authUser.address_line2 || '',
+                    address_line3: authUser.address_line3 || '',
+                    town: authUser.town || '',
+                    county: authUser.county || '',
+                    postcode: authUser.postcode || '',
+                  });
+                }
+              }}
+            />
+            <TextInput
+              value={deliveryAddress.address_line1}
+              onChange={(event) => updateDeliveryField('address_line1', event.target.value)}
+              placeholder="Address line 1"
+            />
+            <TextInput
+              value={deliveryAddress.address_line2}
+              onChange={(event) => updateDeliveryField('address_line2', event.target.value)}
+              placeholder="Address line 2"
+            />
+            <TextInput
+              value={deliveryAddress.address_line3}
+              onChange={(event) => updateDeliveryField('address_line3', event.target.value)}
+              placeholder="Address line 3"
+            />
+            <Box direction="row" gap="small">
+              <TextInput
+                value={deliveryAddress.town}
+                onChange={(event) => updateDeliveryField('town', event.target.value)}
+                placeholder="Town"
+              />
+              <TextInput
+                value={deliveryAddress.county}
+                onChange={(event) => updateDeliveryField('county', event.target.value)}
+                placeholder="County"
+              />
+            </Box>
+            <TextInput
+              value={deliveryAddress.postcode}
+              onChange={(event) => updateDeliveryField('postcode', event.target.value)}
+              placeholder="Postcode"
+            />
+            <Box direction="row" justify="end" gap="small">
+              <Button label="Cancel" secondary onClick={() => setShowCheckoutModal(false)} />
+              <Button label="Confirm checkout" primary onClick={handleCheckout} />
+            </Box>
+          </Box>
+        </Layer>
+      )}
+
       <Text size="large" weight="bold" margin={{ bottom: "medium" }}>
         Shopping Basket
       </Text>
@@ -222,7 +338,7 @@ function Basket() {
           <Box direction="row" justify="end" pad={{ top: "small" }}>
             <Button
               label="Checkout"
-              onClick={handleCheckout}
+              onClick={handleCheckoutStart}
               disabled={totalItems === 0}
               style={buttonStyles.default}
             />

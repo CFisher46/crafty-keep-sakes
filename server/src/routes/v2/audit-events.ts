@@ -63,7 +63,7 @@ export async function insertAuditEvent(
     ]
   )) as unknown[];
 
-  const [result] = queryResult;
-  const insertResult = result as { insertId?: number | string };
+  const result = Array.isArray(queryResult) ? queryResult[0] : queryResult;
+  const insertResult = (result ?? {}) as { insertId?: number | string };
   return insertResult.insertId;
 }

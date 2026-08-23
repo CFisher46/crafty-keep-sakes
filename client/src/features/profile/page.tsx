@@ -11,8 +11,9 @@ import {
   fetchOrderHistory,
   updateInvoiceStatus,
 } from '../../store/basket/basketThunks';
+import { verifyCurrentPassword } from '../../store/users/usersThunks';
 
-//import { buttonStyles } from '../../helpers/styles';
+import { buttonStyles } from '../../helpers/formatting';
 
 interface InputFieldProps {
   label: string;
@@ -52,6 +53,7 @@ const InputField = ({
       <Button
         icon={isVisible ? <Hide /> : <View />}
         onClick={toggleVisibility}
+        style={buttonStyles.default}
       />
     )}
   </Box>
@@ -83,12 +85,15 @@ function UsersProfile() {
   });
 
   const [currentPassword, setCurrentPassword] = useState('');
-  //Removed setPasswordError for linting
-  const [passwordError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordVerified, setPasswordVerified] = useState(false);
+  const [passwordVerifiedMessage, setPasswordVerifiedMessage] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [orders, setOrders] = useState<Array<{ id: number; invoice_id?: number | null; invoice_number?: string | null; order_status: string; grand_total: number; placed_at: string }>>([]);
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<string>('all');
+  const [invoiceNumberSearch, setInvoiceNumberSearch] = useState<string>('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>('');
   const [invoice, setInvoice] = useState<null | {
@@ -99,6 +104,14 @@ function UsersProfile() {
     total_due: number;
     issued_at: string;
     user_id: number;
+    delivery_address?: {
+      address_line1: string;
+      address_line2: string;
+      address_line3: string;
+      town: string;
+      county: string;
+      postcode: string;
+    };
     items?: Array<{
       id: number;
       description: string;
@@ -186,12 +199,22 @@ function UsersProfile() {
     setSelectedInvoiceId(invoiceId);
   };
 
+  const filteredOrders = orders.filter((order) => {
+    const matchesStatus =
+      invoiceStatusFilter === 'all' || order.order_status === invoiceStatusFilter;
+    const matchesInvoiceNumber =
+      !invoiceNumberSearch ||
+      (order.invoice_number ?? '').toLowerCase().includes(invoiceNumberSearch.toLowerCase());
+
+    return matchesStatus && matchesInvoiceNumber;
+  });
+
   const handleOpenSelectedInvoice = () => {
     if (selectedOrderId === null) {
       return;
     }
 
-    const selectedOrder = orders.find((order) => order.id === selectedOrderId);
+    const selectedOrder = filteredOrders.find((order) => order.id === selectedOrderId);
     if (!selectedOrder) {
       return;
     }
@@ -232,10 +255,58 @@ function UsersProfile() {
     setInvoiceUpdateMessage('Unable to update invoice status');
   };
 
+  const handleVerifyCurrentPassword = async () => {
+    if (!userData.id || !currentPassword.trim()) {
+      setPasswordError('Please enter your current password.');
+      setPasswordVerified(false);
+      setPasswordVerifiedMessage(null);
+      return;
+    }
+
+    try {
+      const isValid = await verifyCurrentPassword(userData.id, currentPassword);
+      if (!isValid) {
+        setPasswordError('Current password is incorrect.');
+        setPasswordVerified(false);
+        setPasswordVerifiedMessage(null);
+        return;
+      }
+
+      setPasswordError(null);
+      setPasswordVerified(true);
+      setPasswordVerifiedMessage('Current password verified.');
+    } catch (error) {
+      setPasswordVerified(false);
+      setPasswordVerifiedMessage(null);
+      setPasswordError(
+        error instanceof Error ? error.message : 'Unable to verify password'
+      );
+    }
+  };
+
   const handleSaveProfile = async () => {
     if (!userData.id) {
       setSaveMessage('No profile loaded');
       return;
+    }
+
+    const hasPasswordChange = Boolean(userData.new_password || userData.confirm_new_password);
+
+    if (hasPasswordChange) {
+      if (!passwordVerified) {
+        setPasswordError('Please verify your current password before changing it.');
+        return;
+      }
+
+      if (userData.new_password !== userData.confirm_new_password) {
+        setPasswordError('New password and confirm password do not match.');
+        return;
+      }
+
+      if (!userData.new_password || userData.new_password.trim().length < 8) {
+        setPasswordError('New password must be at least 8 characters long.');
+        return;
+      }
     }
 
     const profileUpdate = {
@@ -251,15 +322,27 @@ function UsersProfile() {
       telephone_number: userData.telephone_number,
     };
 
+    const payload = hasPasswordChange
+      ? { ...profileUpdate, password: userData.new_password }
+      : profileUpdate;
+
     try {
       await dispatch(
         updateUser({
           id: userData.id,
-          user: profileUpdate,
+          user: payload,
           previousUser: selectedUser ?? undefined,
         })
       ).unwrap();
 
+      setPasswordError(null);
+      setPasswordVerified(false);
+      setCurrentPassword('');
+      setUserData((prev) => ({
+        ...prev,
+        new_password: '',
+        confirm_new_password: '',
+      }));
       setSaveMessage('Profile saved');
     } catch (error) {
       setSaveMessage(
@@ -286,6 +369,16 @@ function UsersProfile() {
               <Text>Status: {invoice.invoice_status}</Text>
               <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
               <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
+              {invoice.delivery_address && (
+                <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
+                  <Text weight="bold">Delivery address</Text>
+                  <Text>{invoice.delivery_address.address_line1 || '—'}</Text>
+                  {invoice.delivery_address.address_line2 && <Text>{invoice.delivery_address.address_line2}</Text>}
+                  {invoice.delivery_address.address_line3 && <Text>{invoice.delivery_address.address_line3}</Text>}
+                  <Text>{[invoice.delivery_address.town, invoice.delivery_address.county].filter(Boolean).join(', ') || '—'}</Text>
+                  <Text>{invoice.delivery_address.postcode || '—'}</Text>
+                </Box>
+              )}
 
               {invoice.items && invoice.items.length > 0 && (
                 <Box margin={{ top: 'small' }} gap="xsmall">
@@ -313,6 +406,7 @@ function UsersProfile() {
                     primary
                     disabled={!pendingInvoiceStatus || pendingInvoiceStatus === invoice.invoice_status}
                     onClick={handleInvoiceStatusUpdate}
+                    style={buttonStyles.default}
                   />
                   {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
                 </Box>
@@ -355,13 +449,22 @@ function UsersProfile() {
                 placeholder="Enter current password"
                 inputStyle={inputStyle}
                 labelStyle={labelStyle}
-                onChange={setCurrentPassword}
+                onChange={(value) => {
+                  setCurrentPassword(value);
+                  setPasswordVerified(false);
+                  setPasswordVerifiedMessage(null);
+                  setPasswordError(null);
+                }}
                 type="password"
               />
               <Button
                 label="Verify Password"
-                // Add password verification logic here
+                onClick={handleVerifyCurrentPassword}
+                disabled={!currentPassword.trim()}
               />
+              {passwordVerifiedMessage && (
+                <Text color="status-ok">{passwordVerifiedMessage}</Text>
+              )}
               {passwordError && (
                 <Text color="status-critical">{passwordError}</Text>
               )}
@@ -371,7 +474,10 @@ function UsersProfile() {
                 placeholder="Enter new password"
                 inputStyle={inputStyle}
                 labelStyle={labelStyle}
-                onChange={(value) => handleFieldChange('new_password', value)}
+                onChange={(value) => {
+                  setPasswordError(null);
+                  handleFieldChange('new_password', value);
+                }}
                 type={showNewPassword ? 'text' : 'password'}
                 isPassword
                 toggleVisibility={() => setShowNewPassword((prev) => !prev)}
@@ -383,9 +489,10 @@ function UsersProfile() {
                 placeholder="Confirm new password"
                 inputStyle={inputStyle}
                 labelStyle={labelStyle}
-                onChange={(value) =>
-                  handleFieldChange('confirm_new_password', value)
-                }
+                onChange={(value) => {
+                  setPasswordError(null);
+                  handleFieldChange('confirm_new_password', value);
+                }}
                 type={showConfirmPassword ? 'text' : 'password'}
                 isPassword
                 toggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
@@ -393,90 +500,110 @@ function UsersProfile() {
               />
             </Box>
             <Box border round="small" pad="medium" gap="small" background="white">
-              <Button label="Save Profile" onClick={handleSaveProfile} />
+              <Button label="Save Changes" onClick={handleSaveProfile} />
               {saveMessage && <Text>{saveMessage}</Text>}
             </Box>
           </Box>
         </Grid>
-
         <Box border round="small" pad="medium" gap="small" background="white" margin={{ top: 'small' }}>
-          <Text style={labelStyle}>My Orders</Text>
+          <Text style={labelStyle}>My Invoices</Text>
           {orders.length === 0 ? (
             <Text>No orders yet.</Text>
           ) : (
             <Box gap="small">
-              <Box border round="xsmall" overflow="auto" style={{ maxHeight: '320px' }}>
-                <table
-                  style={{
-                    width: '100%',
-                    minWidth: '720px',
-                    borderCollapse: 'collapse',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  <thead>
-                    <tr style={{ background: '#EEF3FF', borderBottom: '1px solid #C7D7FF' }}>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Order</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Invoice</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Status</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Total</th>
-                      <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.map((order) => {
-                      const isSelected = selectedOrderId === order.id;
+              <Box gap="small">
+                <Box direction="row" gap="small" wrap align="center">
+                  <Box width="180px">
+                    <Select
+                      options={['all', 'placed', 'fulfilled', 'cancelled']}
+                      value={invoiceStatusFilter}
+                      onChange={({ option }) => setInvoiceStatusFilter(String(option))}
+                    />
+                  </Box>
+                  <Box flex="grow" width="220px">
+                    <TextInput
+                      placeholder="Search invoice number"
+                      value={invoiceNumberSearch}
+                      onChange={(event) => setInvoiceNumberSearch(event.target.value)}
+                    />
+                  </Box>
+                  <Button
+                    label="Open Selected Invoice"
+                    secondary
+                    disabled={selectedOrderId === null}
+                    onClick={handleOpenSelectedInvoice}
+                  />
+                  <Button
+                    label="Clear Selection"
+                    plain
+                    disabled={selectedOrderId === null}
+                    onClick={() => setSelectedOrderId(null)}
+                  />
+                </Box>
+              </Box>
 
-                      return (
-                        <tr
-                          key={order.id}
-                          onClick={() =>
-                            setSelectedOrderId((current) =>
-                              current === order.id ? null : order.id
-                            )
-                          }
-                          style={{
-                            background: isSelected ? '#E8F0FE' : 'transparent',
-                            cursor: 'pointer',
-                            borderBottom: '1px solid #E4E4E4',
-                            transition: 'background-color 0.15s ease',
-                          }}
-                          onMouseEnter={(event) => {
-                            if (!isSelected) {
-                              event.currentTarget.style.background = '#F5F8FF';
+              {filteredOrders.length === 0 ? (
+                <Text>No invoices match the current filter.</Text>
+              ) : (
+                <Box border round="xsmall" overflow="auto" style={{ maxHeight: '320px' }}>
+                  <table
+                    style={{
+                      width: '100%',
+                      minWidth: '720px',
+                      borderCollapse: 'collapse',
+                      fontSize: '0.9rem',
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ background: '#EEF3FF', borderBottom: '1px solid #C7D7FF' }}>
+                        <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Order</th>
+                        <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Invoice</th>
+                        <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Status</th>
+                        <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Total</th>
+                        <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredOrders.map((order) => {
+                        const isSelected = selectedOrderId === order.id;
+
+                        return (
+                          <tr
+                            key={order.id}
+                            onClick={() =>
+                              setSelectedOrderId((current) =>
+                                current === order.id ? null : order.id
+                              )
                             }
-                          }}
-                          onMouseLeave={(event) => {
-                            if (!isSelected) {
-                              event.currentTarget.style.background = 'transparent';
-                            }
-                          }}
-                        >
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.id}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.invoice_number ?? '—'}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.order_status}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>£{Number(order.grand_total).toFixed(2)}</td>
-                          <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{new Date(order.placed_at).toLocaleDateString()}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </Box>
-              <Box direction="row" gap="small">
-                <Button
-                  label="Open Selected Invoice"
-                  secondary
-                  disabled={selectedOrderId === null}
-                  onClick={handleOpenSelectedInvoice}
-                />
-                <Button
-                  label="Clear Selection"
-                  plain
-                  disabled={selectedOrderId === null}
-                  onClick={() => setSelectedOrderId(null)}
-                />
-              </Box>
+                            style={{
+                              background: isSelected ? '#E8F0FE' : 'transparent',
+                              cursor: 'pointer',
+                              borderBottom: '1px solid #E4E4E4',
+                              transition: 'background-color 0.15s ease',
+                            }}
+                            onMouseEnter={(event) => {
+                              if (!isSelected) {
+                                event.currentTarget.style.background = '#F5F8FF';
+                              }
+                            }}
+                            onMouseLeave={(event) => {
+                              if (!isSelected) {
+                                event.currentTarget.style.background = 'transparent';
+                              }
+                            }}
+                          >
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.id}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.invoice_number ?? '—'}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{order.order_status}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>£{Number(order.grand_total).toFixed(2)}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{new Date(order.placed_at).toLocaleDateString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </Box>
+              )}
             </Box>
           )}
         </Box>

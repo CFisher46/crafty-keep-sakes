@@ -131,6 +131,7 @@ describe('v2 basket routes', () => {
           },
         ],
       ])
+      .mockResolvedValueOnce([[{ Field: 'id' }, { Field: 'order_id' }, { Field: 'invoice_number' }, { Field: 'billing_address_line1' }, { Field: 'billing_address_line2' }, { Field: 'billing_address_line3' }, { Field: 'billing_town' }, { Field: 'billing_county' }, { Field: 'billing_postcode' }]])
       .mockResolvedValueOnce([{ insertId: 40 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 90 }])
@@ -140,7 +141,17 @@ describe('v2 basket routes', () => {
 
     const response = await request(app)
       .post('/api/v2/basket/checkout')
-      .set('Cookie', authCookie(7, 'customer'));
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({
+        delivery_address: {
+          address_line1: '1 Test Street',
+          address_line2: 'Bristol',
+          address_line3: '',
+          town: 'Bristol',
+          county: 'Avon',
+          postcode: 'BS1 1AA',
+        },
+      });
 
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
@@ -150,14 +161,81 @@ describe('v2 basket routes', () => {
       invoice_id: 90,
       invoice_number: expect.stringMatching(/^INV-/),
       total_due: 30,
+      delivery_address: {
+        address_line1: '1 Test Street',
+        address_line2: 'Bristol',
+        address_line3: '',
+        town: 'Bristol',
+        county: 'Avon',
+        postcode: 'BS1 1AA',
+      },
     });
 
     expect(mockConnection.beginTransaction).toHaveBeenCalledTimes(1);
     expect(mockConnection.commit).toHaveBeenCalledTimes(1);
-    expect(String(mockConnection.query.mock.calls[2][0])).toContain('FROM basket_items_v2');
-    expect(String(mockConnection.query.mock.calls[3][0])).toContain('INSERT INTO orders_v2');
-    expect(String(mockConnection.query.mock.calls[5][0])).toContain('INSERT INTO invoices_v2');
-    expect(String(mockConnection.query.mock.calls[8][0])).toContain('INSERT INTO audit_events_v2');
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('FROM basket_items_v2'))).toBe(true);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(true);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('SHOW COLUMNS FROM invoices_v2'))).toBe(true);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO invoices_v2'))).toBe(true);
+
+    const auditInsertCall = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO audit_events_v2'));
+    expect(auditInsertCall).toBeDefined();
+    expect(JSON.parse(auditInsertCall[1][7])).toMatchObject({
+      order_id: 40,
+      invoice_id: 90,
+      delivery_address: {
+        address_line1: '1 Test Street',
+        address_line2: 'Bristol',
+        address_line3: '',
+        town: 'Bristol',
+        county: 'Avon',
+        postcode: 'BS1 1AA',
+      },
+    });
+  });
+
+  it('adds missing billing columns before writing the invoice when the schema is older', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([{ insertId: 12 }])
+      .mockResolvedValueOnce([
+        [
+          {
+            id: 9,
+            basket_id: 12,
+            product_id: 25,
+            quantity: 2,
+            unit_price_snapshot: '12.50',
+            product_name: 'Tea Set',
+          },
+        ],
+      ])
+      .mockResolvedValueOnce([[{ Field: 'id' }, { Field: 'order_id' }, { Field: 'invoice_number' }]])
+      .mockResolvedValueOnce([{ insertId: 40 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 90 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 999 }]);
+
+    const response = await request(app)
+      .post('/api/v2/basket/checkout')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({
+        delivery_address: {
+          address_line1: '61 Salisbury Avenue',
+          address_line2: '',
+          address_line3: '',
+          town: 'Torquay',
+          county: 'Devon',
+          postcode: 'TQ2 8AU',
+        },
+      });
+
+    expect(response.status).toBe(201);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('SHOW COLUMNS FROM invoices_v2'))).toBe(true);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('ALTER TABLE invoices_v2'))).toBe(true);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO invoices_v2'))).toBe(true);
   });
 
   it('lists a customers own orders with invoice references', async () => {
@@ -204,6 +282,12 @@ describe('v2 basket routes', () => {
           total_due: '30.00',
           issued_at: '2026-08-15 09:05:00',
           user_id: 7,
+          billing_address_line1: '1 Test Street',
+          billing_address_line2: 'Bristol',
+          billing_address_line3: '',
+          billing_town: 'Bristol',
+          billing_county: 'Avon',
+          billing_postcode: 'BS1 1AA',
           invoice_item_id: 1,
           description: 'Tea Set',
           quantity: 2,
@@ -218,6 +302,12 @@ describe('v2 basket routes', () => {
           total_due: '30.00',
           issued_at: '2026-08-15 09:05:00',
           user_id: 7,
+          billing_address_line1: '1 Test Street',
+          billing_address_line2: 'Bristol',
+          billing_address_line3: '',
+          billing_town: 'Bristol',
+          billing_county: 'Avon',
+          billing_postcode: 'BS1 1AA',
           invoice_item_id: 2,
           description: 'Coffee Beans',
           quantity: 1,
@@ -240,6 +330,14 @@ describe('v2 basket routes', () => {
       total_due: 30,
       issued_at: '2026-08-15 09:05:00',
       user_id: 7,
+      delivery_address: {
+        address_line1: '1 Test Street',
+        address_line2: 'Bristol',
+        address_line3: '',
+        town: 'Bristol',
+        county: 'Avon',
+        postcode: 'BS1 1AA',
+      },
       items: [
         {
           id: 1,

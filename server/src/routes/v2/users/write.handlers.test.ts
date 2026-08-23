@@ -115,6 +115,23 @@ describe('v2 users write routes', () => {
 
   it('updates a v2 user as admin', async () => {
     mockConnection.query
+      .mockResolvedValueOnce([[
+        {
+          id: 42,
+          email: 'old@example.com',
+          status: 'active',
+          first_name: 'Christopher',
+          last_name: 'Fisher',
+          telephone_number: '1111',
+          address_line1: '1 Old Road',
+          address_line2: null,
+          address_line3: null,
+          town: 'Old Town',
+          county: 'Old County',
+          postcode: 'AA1 1AA',
+          role_code: 'customer',
+        },
+      ]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([[{ id: 2 }]])
@@ -139,16 +156,50 @@ describe('v2 users write routes', () => {
       affectedRows: 1,
     });
 
-    const updateSql = String(mockConnection.query.mock.calls[0][0]);
-    const auditSql = String(mockConnection.query.mock.calls[5][0]);
+    const auditValues = mockConnection.query.mock.calls[6][1] as Array<unknown>;
+    expect(JSON.parse(String(auditValues[6]))).toMatchObject({
+      id: 42,
+      email_address: 'old@example.com',
+      first_name: 'Christopher',
+      last_name: 'Fisher',
+      type: 'customer',
+    });
+    expect(JSON.parse(String(auditValues[7]))).toMatchObject({
+      id: '42',
+      email_address: 'updated@example.com',
+      first_name: 'Updated',
+      last_name: 'User',
+      type: 'admin',
+      status: 'active',
+    });
+
+    const updateSql = String(mockConnection.query.mock.calls[1][0]);
+    const auditSql = String(mockConnection.query.mock.calls[6][0]);
     expect(updateSql).toContain('UPDATE users_v2');
-    expect(String(mockConnection.query.mock.calls[1][0])).toContain('customer_profiles_v2');
-    expect(String(mockConnection.query.mock.calls[2][0])).toContain('roles_v2');
+    expect(String(mockConnection.query.mock.calls[2][0])).toContain('customer_profiles_v2');
+    expect(String(mockConnection.query.mock.calls[3][0])).toContain('roles_v2');
     expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
   it('allows a user to update their own v2 profile details', async () => {
     mockConnection.query
+      .mockResolvedValueOnce([[
+        {
+          id: 7,
+          email: 'self@example.com',
+          status: 'active',
+          first_name: 'Christopher',
+          last_name: 'Fisher',
+          telephone_number: '1111',
+          address_line1: '1 Old Road',
+          address_line2: null,
+          address_line3: null,
+          town: 'Town',
+          county: 'County',
+          postcode: 'AA1 1AA',
+          role_code: 'customer',
+        },
+      ]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }]);
 
@@ -157,8 +208,6 @@ describe('v2 users write routes', () => {
       .set('Cookie', authCookie(7, 'customer'))
       .send({
         first_name: 'Self',
-        last_name: 'Updated',
-        telephone_number: '5551234',
       });
 
     expect(response.status).toBe(200);
@@ -167,7 +216,9 @@ describe('v2 users write routes', () => {
       affectedRows: 1,
     });
 
-    expect(String(mockConnection.query.mock.calls[0][0])).toContain('customer_profiles_v2');
+    const upsertValues = mockConnection.query.mock.calls[1][1] as Array<unknown>;
+    expect(upsertValues[2]).toBe('Fisher');
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain('customer_profiles_v2');
   });
 
   it('blocks a customer from updating another users v2 profile', async () => {

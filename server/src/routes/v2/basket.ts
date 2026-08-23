@@ -64,6 +64,67 @@ const parsePrice = (value: unknown, fieldName: string): number => {
   return Number(parsed.toFixed(2));
 };
 
+const normalizeBillingAddress = (value: unknown): Record<string, string> => {
+  const source = (typeof value === 'object' && value !== null ? value : {}) as Record<string, unknown>;
+
+  return {
+    address_line1: String(source.address_line1 ?? '').trim(),
+    address_line2: String(source.address_line2 ?? '').trim(),
+    address_line3: String(source.address_line3 ?? '').trim(),
+    town: String(source.town ?? '').trim(),
+    county: String(source.county ?? '').trim(),
+    postcode: String(source.postcode ?? '').trim(),
+  };
+};
+
+const getProfileBillingAddress = async (
+  connection: Awaited<ReturnType<typeof db.getConnection>>,
+  userId: number
+): Promise<Record<string, string>> => {
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `SELECT address_line1, address_line2, address_line3, town, county, postcode
+     FROM customer_profiles_v2 WHERE user_id = ? LIMIT 1`,
+    [userId]
+  );
+
+  const result = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+  if (!result) {
+    return normalizeBillingAddress({});
+  }
+
+  return normalizeBillingAddress({
+    address_line1: result.address_line1,
+    address_line2: result.address_line2,
+    address_line3: result.address_line3,
+    town: result.town,
+    county: result.county,
+    postcode: result.postcode,
+  });
+};
+
+const ensureInvoiceBillingColumns = async (
+  connection: Awaited<ReturnType<typeof db.getConnection>>
+): Promise<void> => {
+  const [columns] = await connection.query<RowDataPacket[]>(`SHOW COLUMNS FROM invoices_v2`);
+  const existing = new Set((Array.isArray(columns) ? columns : []).map((column) => column.Field));
+
+  const missingColumns = [
+    ['billing_address_line1', 'VARCHAR(255) NULL'],
+    ['billing_address_line2', 'VARCHAR(255) NULL'],
+    ['billing_address_line3', 'VARCHAR(255) NULL'],
+    ['billing_town', 'VARCHAR(120) NULL'],
+    ['billing_county', 'VARCHAR(120) NULL'],
+    ['billing_postcode', 'VARCHAR(20) NULL'],
+  ].filter(([columnName]) => !existing.has(columnName));
+
+  if (missingColumns.length === 0) {
+    return;
+  }
+
+  const addClauses = missingColumns.map(([columnName, definition]) => `ADD COLUMN ${columnName} ${definition}`).join(', ');
+  await connection.query(`ALTER TABLE invoices_v2 ${addClauses}`);
+};
+
 const toCurrency = (amount: number): number => Number(amount.toFixed(2));
 
 const ensureActiveBasket = async (
@@ -250,7 +311,9 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
     const invoiceId = Number(req.params.id);
 
     const [rows] = await connection.query<RowDataPacket[]>(
-      `SELECT i.id, i.order_id, i.invoice_number, i.invoice_status, i.total_due, i.issued_at, o.user_id,
+      `SELECT i.id, i.order_id, i.invoice_number, i.invoice_status, i.total_due, i.issued_at,
+              i.billing_address_line1, i.billing_address_line2, i.billing_address_line3,
+              i.billing_town, i.billing_county, i.billing_postcode, o.user_id,
               ii.id AS invoice_item_id, ii.description, ii.quantity, ii.unit_price, ii.line_total
        FROM invoices_v2 i
        LEFT JOIN orders_v2 o ON o.id = i.order_id
@@ -287,6 +350,14 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
       total_due: Number(Number(invoice.total_due || 0).toFixed(2)),
       issued_at: invoice.issued_at,
       user_id: Number(invoice.user_id),
+      delivery_address: {
+        address_line1: invoice.billing_address_line1 || '',
+        address_line2: invoice.billing_address_line2 || '',
+        address_line3: invoice.billing_address_line3 || '',
+        town: invoice.billing_town || '',
+        county: invoice.billing_county || '',
+        postcode: invoice.billing_postcode || '',
+      },
       items,
     });
   } catch (err) {
@@ -561,6 +632,15 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       throw new Error('Basket is empty');
     }
 
+    const suppliedDeliveryAddress = normalizeBillingAddress(
+      req.body?.delivery_address ?? req.body?.billing_address ?? null
+    );
+    const resolvedDeliveryAddress = Object.values(suppliedDeliveryAddress).some(Boolean)
+      ? suppliedDeliveryAddress
+      : await getProfileBillingAddress(connection, userId);
+
+    await ensureInvoiceBillingColumns(connection);
+
     const subtotal = items.reduce(
       (sum, item) => sum + Number(item.quantity) * Number(item.unit_price_snapshot),
       0
@@ -594,9 +674,22 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
     }
 
     const [invoiceResult] = await connection.query<ResultSetHeader>(
-      `INSERT INTO invoices_v2 (order_id, invoice_number, invoice_status, due_at, total_due)
-       VALUES (?, ?, 'unpaid', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 14 DAY), ?)`,
-      [orderId, invoiceNumber, grandTotal]
+      `INSERT INTO invoices_v2 (
+        order_id, invoice_number, invoice_status, due_at, total_due,
+        billing_address_line1, billing_address_line2, billing_address_line3,
+        billing_town, billing_county, billing_postcode
+      ) VALUES (?, ?, 'unpaid', DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 14 DAY), ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        orderId,
+        invoiceNumber,
+        grandTotal,
+        resolvedDeliveryAddress.address_line1,
+        resolvedDeliveryAddress.address_line2,
+        resolvedDeliveryAddress.address_line3,
+        resolvedDeliveryAddress.town,
+        resolvedDeliveryAddress.county,
+        resolvedDeliveryAddress.postcode,
+      ]
     );
 
     const invoiceId = invoiceResult.insertId;
@@ -645,8 +738,10 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         basket_id: basketId,
         user_id: userId,
         invoice_id: invoiceId,
+        invoice_number: invoiceNumber,
         total_due: grandTotal,
         order_status: 'placed',
+        delivery_address: resolvedDeliveryAddress,
       },
     });
 
@@ -659,6 +754,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       invoice_id: invoiceId,
       invoice_number: invoiceNumber,
       total_due: grandTotal,
+      delivery_address: resolvedDeliveryAddress,
     });
   } catch (err) {
     await connection.rollback();

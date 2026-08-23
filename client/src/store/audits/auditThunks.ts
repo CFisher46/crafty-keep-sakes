@@ -2,11 +2,24 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import { Audit } from '../../types';
 import { buildApiUrl } from '../../api/apiPath';
 
-export const fetchAuditLogs = createAsyncThunk<Audit[]>(
+export type AuditLogResponse = {
+  data: Audit[];
+  total_count?: number;
+};
+
+export const fetchAuditLogs = createAsyncThunk<
+  AuditLogResponse,
+  { page?: number; pageSize?: number } | void
+>(
   'audit/fetchLogs',
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      const response = await fetch(buildApiUrl('audit'), {
+      const query = new URLSearchParams({
+        page: String(params?.page ?? 1),
+        pageSize: String(params?.pageSize ?? 10),
+      });
+
+      const response = await fetch(buildApiUrl('audit', `?${query.toString()}`), {
         credentials: 'include',
       });
 
@@ -15,7 +28,10 @@ export const fetchAuditLogs = createAsyncThunk<Audit[]>(
       }
 
       const data = await response.json();
-      return data.data || data;
+      return {
+        data: data.data || data,
+        total_count: data.total_count ?? (Array.isArray(data) ? data.length : 0),
+      };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch audit logs');
     }

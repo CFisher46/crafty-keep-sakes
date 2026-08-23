@@ -20,7 +20,7 @@ router.get('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
     const page = Math.max(1, parseNumericParam(req.query.page, 1));
     const requestedPageSize = parseNumericParam(
       req.query.pageSize ?? req.query.limit,
-      25
+      10
     );
     const pageSize = Math.min(Math.max(1, requestedPageSize), 200);
     const offset = (page - 1) * pageSize;

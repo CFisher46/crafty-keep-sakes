@@ -33,6 +33,36 @@ describe('v2 audit read routes', () => {
     expect(response.body).toEqual({ error: 'Not authenticated' });
   });
 
+  it('defaults to the latest 10 audit rows when no page size is supplied', async () => {
+    mockedDbQuery
+      .mockResolvedValueOnce([[{ total_count: 1 }]])
+      .mockResolvedValueOnce([
+        [
+          {
+            id: 12,
+            actor_user_id: 3,
+            actor_role: 'admin',
+            action_type: 'CREATE',
+            resource_type: 'product',
+            resource_id: '43',
+            source_endpoint: '/api/v2/products',
+            old_values_json: null,
+            new_values_json: JSON.stringify({ id: 43 }),
+            created_at: '2026-08-23T12:05:00.000Z',
+          },
+        ],
+      ]);
+
+    const response = await request(app).get('/api/v2/audit').set('Cookie', authCookie(1, 'admin'));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('total_count', 1);
+    expect(Array.isArray(response.body.data)).toBe(true);
+    expect(response.body.data).toHaveLength(1);
+
+    expect(mockedDbQuery.mock.calls[1][1]).toEqual([10, 0]);
+  });
+
   it('applies filters and pagination for admin audit reads', async () => {
     mockedDbQuery
       .mockResolvedValueOnce([[{ total_count: 2 }]])
