@@ -59,7 +59,8 @@ describe('v2 users write routes', () => {
       .mockResolvedValueOnce([{ insertId: 42 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([[{ id: 1 }]])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 99 }]);
 
     const response = await request(app)
       .post('/api/v2/users')
@@ -83,10 +84,12 @@ describe('v2 users write routes', () => {
     const firstSql = String(mockConnection.query.mock.calls[0][0]);
     const secondSql = String(mockConnection.query.mock.calls[1][0]);
     const thirdSql = String(mockConnection.query.mock.calls[2][0]);
+    const auditSql = String(mockConnection.query.mock.calls[4][0]);
 
     expect(firstSql).toContain('INSERT INTO users_v2');
     expect(secondSql).toContain('customer_profiles_v2');
     expect(thirdSql).toContain('roles_v2');
+    expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
   it('returns 400 for create with unknown role', async () => {
@@ -116,7 +119,8 @@ describe('v2 users write routes', () => {
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([[{ id: 2 }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 77 }]);
 
     const response = await request(app)
       .put('/api/v2/users/42')
@@ -136,9 +140,11 @@ describe('v2 users write routes', () => {
     });
 
     const updateSql = String(mockConnection.query.mock.calls[0][0]);
+    const auditSql = String(mockConnection.query.mock.calls[5][0]);
     expect(updateSql).toContain('UPDATE users_v2');
     expect(String(mockConnection.query.mock.calls[1][0])).toContain('customer_profiles_v2');
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('roles_v2');
+    expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
   it('allows a user to update their own v2 profile details', async () => {
@@ -187,7 +193,9 @@ describe('v2 users write routes', () => {
   });
 
   it('deletes a v2 user as admin', async () => {
-    mockConnection.query.mockResolvedValueOnce([{ affectedRows: 1 }]);
+    mockConnection.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 88 }]);
 
     const response = await request(app)
       .delete('/api/v2/users/42')
@@ -196,5 +204,6 @@ describe('v2 users write routes', () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ affectedRows: 1 });
     expect(String(mockConnection.query.mock.calls[0][0])).toContain('DELETE FROM users_v2');
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain('INSERT INTO audit_events_v2');
   });
 });

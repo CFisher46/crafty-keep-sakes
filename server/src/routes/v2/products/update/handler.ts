@@ -17,6 +17,7 @@ import {
   verifyAuthToken,
   requireRole,
 } from '../../../../ts-common/middleware';
+import { insertAuditEvent } from '../../audit-events';
 
 const router = express.Router();
 
@@ -154,6 +155,30 @@ router.put('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
         await connection.query(INSERT_PRODUCT_CATEGORY_LINK_QUERY, [productId, categoryId]);
       }
     }
+
+    const actorUser = (req as any).user;
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(connection, {
+      actorUserId,
+      actorRole,
+      actionType: 'UPDATE',
+      resourceType: 'products_v2',
+      resourceId: productId,
+      sourceEndpoint: `PUT /api/v2/products/${idOrSku}`,
+      oldValuesJson: null,
+      newValuesJson: {
+        id: productId,
+        ...updates,
+      },
+    });
 
     await connection.commit();
 

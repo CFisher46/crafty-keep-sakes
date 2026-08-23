@@ -13,6 +13,7 @@ import {
   SELECT_ROLE_ID_BY_CODE_QUERY,
   UPSERT_CUSTOMER_PROFILE_QUERY,
 } from '../shared/sql';
+import { insertAuditEvent } from '../../audit-events';
 import { buildUserAccountUpdateQuery } from './sql';
 
 const router = express.Router();
@@ -111,6 +112,34 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
       await connection.query(DELETE_USER_ROLE_QUERY, [id]);
       await connection.query(INSERT_USER_ROLE_QUERY, [id, roleId]);
     }
+
+    const actorUser = (req as any).user;
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(connection, {
+      actorUserId,
+      actorRole,
+      actionType: 'UPDATE',
+      resourceType: 'users_v2',
+      resourceId: id,
+      sourceEndpoint: `PUT /api/v2/users/${id}`,
+      oldValuesJson: null,
+      newValuesJson: {
+        id,
+        email_address: updates.email_address ?? null,
+        status: updates.status ?? null,
+        type: updates.type ?? null,
+        first_name: updates.first_name ?? null,
+        last_name: updates.last_name ?? null,
+      },
+    });
 
     await connection.commit();
 

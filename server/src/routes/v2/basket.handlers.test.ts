@@ -135,7 +135,8 @@ describe('v2 basket routes', () => {
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 90 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 999 }]);
 
     const response = await request(app)
       .post('/api/v2/basket/checkout')
@@ -156,6 +157,7 @@ describe('v2 basket routes', () => {
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('FROM basket_items_v2');
     expect(String(mockConnection.query.mock.calls[3][0])).toContain('INSERT INTO orders_v2');
     expect(String(mockConnection.query.mock.calls[5][0])).toContain('INSERT INTO invoices_v2');
+    expect(String(mockConnection.query.mock.calls[8][0])).toContain('INSERT INTO audit_events_v2');
   });
 
   it('lists a customers own orders with invoice references', async () => {
@@ -321,7 +323,8 @@ describe('v2 basket routes', () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ order_id: 40 }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 1200 }]);
 
     const response = await request(app)
       .put('/api/v2/basket/invoices/90')
@@ -333,6 +336,7 @@ describe('v2 basket routes', () => {
     expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT order_id FROM invoices_v2');
     expect(String(mockConnection.query.mock.calls[1][0])).toContain('UPDATE invoices_v2');
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('UPDATE orders_v2');
+    expect(String(mockConnection.query.mock.calls[3][0])).toContain('INSERT INTO audit_events_v2');
     expect(mockConnection.query.mock.calls[2][1]).toEqual(['fulfilled', 40]);
   });
 
@@ -340,7 +344,8 @@ describe('v2 basket routes', () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ order_id: 40 }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
-      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 1201 }]);
 
     const response = await request(app)
       .put('/api/v2/basket/invoices/90')

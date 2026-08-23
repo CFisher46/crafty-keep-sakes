@@ -2,6 +2,7 @@ import express from 'express';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { verifyAuthToken, requireRole } from '../../ts-common/middleware';
+import { insertAuditEvent } from './audit-events';
 
 const router = express.Router();
 
@@ -354,6 +355,32 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
       [orderStatusMap[status], orderId]
     );
 
+    const actorUser = (req as any).user;
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(connection, {
+      actorUserId,
+      actorRole,
+      actionType: 'UPDATE',
+      resourceType: 'invoices_v2',
+      resourceId: invoiceId,
+      sourceEndpoint: `PUT /api/v2/basket/invoices/${invoiceId}`,
+      oldValuesJson: null,
+      newValuesJson: {
+        invoice_id: invoiceId,
+        order_id: orderId,
+        invoice_status: status,
+        order_status: orderStatusMap[status],
+      },
+    });
+
     res.json({ message: 'Invoice updated', affectedRows: result.affectedRows });
   } catch (err) {
     console.error('Update V2 Invoice Error:', err);
@@ -594,6 +621,34 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       `UPDATE baskets_v2 SET status = 'checked_out', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [basketId]
     );
+
+    const actorUser = (req as any).user;
+    const actorUserId =
+      actorUser && typeof actorUser === 'object' && 'id' in actorUser
+        ? Number(actorUser.id)
+        : null;
+    const actorRole =
+      actorUser && typeof actorUser === 'object' && 'type' in actorUser
+        ? String(actorUser.type)
+        : null;
+
+    await insertAuditEvent(connection, {
+      actorUserId,
+      actorRole,
+      actionType: 'CREATE',
+      resourceType: 'orders_v2',
+      resourceId: orderId,
+      sourceEndpoint: 'POST /api/v2/basket/checkout',
+      oldValuesJson: null,
+      newValuesJson: {
+        order_id: orderId,
+        basket_id: basketId,
+        user_id: userId,
+        invoice_id: invoiceId,
+        total_due: grandTotal,
+        order_status: 'placed',
+      },
+    });
 
     await connection.commit();
 
