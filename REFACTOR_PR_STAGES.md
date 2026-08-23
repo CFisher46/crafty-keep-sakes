@@ -282,7 +282,7 @@ Exit Criteria:
 
 - [x] Legacy audit table not used by active routes.
 
-## [ ] Stage 9 - Endpoint Test Hardening
+## [x] Stage 9 - Endpoint Test Hardening
 
 PR Goal: add exhaustive API coverage so breakages are caught early as migration complexity grows.
 
@@ -306,18 +306,23 @@ Implementation:
 
 Tests:
 
-- [ ] Auth endpoints: login, me, logout, invalid credentials, expired/invalid token.
-- [ ] Users endpoints: admin allowed, non-admin denied, owner checks enforced.
-- [ ] Products endpoints: public reads, admin-only writes, validation failures.
-- [ ] Audit endpoints: admin-read only, no public write.
-- [ ] Invoice/order endpoints: ownership checks and admin overrides.
-- [ ] Route source tests: canonical and `/api/v2` parity for each domain.
+- [x] Auth endpoints: login, me, logout, invalid credentials, expired/invalid token.
+- [x] Users endpoints: admin allowed, non-admin denied, owner checks enforced.
+- [x] Products endpoints: public reads, admin-only writes, validation failures.
+- [x] Audit endpoints: admin-read only, no public write.
+- [x] Invoice/order endpoints: ownership checks and admin overrides.
+- [x] Route source tests: canonical and `/api/v2` parity for each domain.
 
 Exit Criteria:
 
 - [x] Endpoint auth matrix covered for all active routes.
 - [x] Critical endpoint contract snapshots/baselines recorded.
 - [x] CI fails on regression in endpoint authorization or contract checks.
+
+Verification note:
+
+- [x] Verified via the Stage 9 hardening bundle in `server/src/endpoint-inventory.test.ts` and the app-routing + route-level v2 suites.
+- [x] Verified the coverage gate with `npx jest --coverage --runInBand --passWithNoTests` remains above the configured thresholds for CI.
 
 ## [ ] Stage 10 - Legacy Decommission
 
