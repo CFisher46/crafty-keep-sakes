@@ -212,21 +212,16 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
 
   try {
     const userId = getUserId(req);
-    const isAdmin = isAdminUser(req);
 
+    // Profile-level order history is always scoped to the requesting user,
+    // regardless of role. A separate admin reporting endpoint will provide the cross-user view.
     const [rows] = await connection.query<RowDataPacket[]>(
-      isAdmin
-        ? `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-                 i.id AS invoice_id, i.invoice_number
-           FROM orders_v2 o
-           LEFT JOIN invoices_v2 i ON i.order_id = o.id
-           ORDER BY o.placed_at DESC`
-        : `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-                 i.id AS invoice_id, i.invoice_number
-           FROM orders_v2 o
-           LEFT JOIN invoices_v2 i ON i.order_id = o.id
-           WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
-      isAdmin ? [] : [userId]
+      `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
+              i.id AS invoice_id, i.invoice_number
+       FROM orders_v2 o
+       LEFT JOIN invoices_v2 i ON i.order_id = o.id
+       WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
+      [userId]
     );
 
     res.json(
