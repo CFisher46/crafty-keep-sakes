@@ -1,4 +1,4 @@
-import { Box, Button, Card, Grid, Layer, Text, TextInput } from 'grommet';
+import { Box, Button, Card, Grid, Layer, Text, TextInput, Notification } from 'grommet';
 import { useState, useEffect } from 'react';
 import { User } from '../../../types';
 import { deleteUser } from '../../../store/users/usersThunks';
@@ -14,6 +14,8 @@ function DeleteExistingUser(fetchedUserData: User) {
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [validDelete, setValidDelete] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusIsError, setStatusIsError] = useState(false);
   const deletePasscode = `delete ${user.email_address}`;
 
   useEffect(() => {
@@ -35,12 +37,16 @@ function DeleteExistingUser(fetchedUserData: User) {
       await dispatch(deleteUser(user.id)).unwrap();
       console.log(`User ${user.id} deleted successfully.`);
       setShowConfirmation(false);
-      setDeleteConfirmation(''); // Reset the passcode input
-      // TODO: Add success notification and refresh admin page
+      setDeleteConfirmation('');
+      setStatusIsError(false);
+      setStatusMessage(`User ${user.first_name} ${user.last_name} has been deleted successfully.`);
     } catch (error) {
       console.error('Failed to delete user:', error);
       setShowConfirmation(false);
-      // TODO: Add error notification
+      setStatusIsError(true);
+      setStatusMessage(
+        typeof error === 'string' ? error : 'Failed to delete user. Please try again.'
+      );
     }
   };
 
@@ -50,6 +56,14 @@ function DeleteExistingUser(fetchedUserData: User) {
 
   return (
     <>
+      {statusMessage && (
+        <Notification
+          title={statusIsError ? 'Error' : 'Success'}
+          message={statusMessage}
+          type={statusIsError ? 'warning' : 'status'}
+          onClose={() => setStatusMessage(null)}
+        />
+      )}
       <Card pad="small" background="light-2" elevation="small" overflow="auto">
         <Grid
           columns={['1/2', '1/2']}

@@ -1,4 +1,4 @@
-import { Card, Grid, TextInput, Select, Box, Button } from 'grommet';
+import { Card, Grid, TextInput, Select, Box, Button, Text } from 'grommet';
 import { User } from '../../../types';
 import { buttonStyles } from '../../../helpers/formatting';
 import { createUser } from '../../../store/users/usersThunks';
@@ -28,16 +28,25 @@ function CreateNewUser() {
   const [newUser, setNewUser] = useState<Partial<User>>(requiredDetails);
   const [passwordMatch, setPasswordMatch] = useState<boolean>(false);
   const [password, setPassword] = useState<string>('');
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [statusIsError, setStatusIsError] = useState<boolean>(false);
 
   const handleCreateUser = async () => {
     console.log(`Creating user with data:`, newUser);
     try {
       await dispatch(createUser(newUser as User)).unwrap();
-      //TODO: Add a success popup window with an OK button and reset rerender admin page
       console.log('User created successfully');
+      setStatusIsError(false);
+      setStatusMessage(`User ${newUser.first_name} ${newUser.last_name} was created successfully.`);
+      setNewUser(requiredDetails);
+      setPassword('');
+      setPasswordMatch(false);
     } catch (error) {
-      //TODO: Add error popup window with error message with the error provided by the backend
       console.error('Failed to create user:', error);
+      setStatusIsError(true);
+      setStatusMessage(
+        typeof error === 'string' ? error : 'Failed to create user. Please try again.'
+      );
     }
   };
 
@@ -166,6 +175,12 @@ function CreateNewUser() {
           />
         </Box>
 
+        {statusMessage && (
+          <Text color={statusIsError ? 'status-critical' : 'status-ok'}>
+            {statusMessage}
+          </Text>
+        )}
+
         <Button
           label="Create User"
           style={buttonStyles.default}
@@ -179,6 +194,7 @@ function CreateNewUser() {
             setNewUser(requiredDetails);
             setPassword('');
             setPasswordMatch(false);
+            setStatusMessage(null);
           }}
         />
       </Grid>
