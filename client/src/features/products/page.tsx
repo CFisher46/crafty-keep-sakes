@@ -15,10 +15,6 @@ import {
   selectProductsLoading,
 } from '../../store/products/productsSlice';
 
-//TODO: change the products query to be dynamic based on the filters
-// and categories selected by the user rather than geting all products
-// including non-live.
-
 function Shop() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
