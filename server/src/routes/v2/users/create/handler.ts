@@ -15,17 +15,9 @@ import {
   UPSERT_CUSTOMER_PROFILE_QUERY,
 } from '../shared/sql';
 import { insertAuditEvent } from '../../audit-events';
+import { normalizeOptionalText } from '../../../../ts-common/validators';
 
 const router = express.Router();
-
-const normalizeOptionalText = (value: unknown): string | null => {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  const text = String(value).trim();
-  return text.length ? text : null;
-};
 
 router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
   console.log('POST /api/v2/users');

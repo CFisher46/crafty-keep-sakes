@@ -10,12 +10,12 @@ describe('api route switchboard', () => {
     delete process.env.REACT_APP_API_AUDIT_VERSION;
   });
 
-  it('defaults canonical domains with users and basket on the v2 route', () => {
+  it('defaults all canonical domains to the v2 route', () => {
     process.env.REACT_APP_API_URL = 'https://example.test';
 
-    expect(getDomainFlag('auth')).toBe('legacy');
-    expect(getApiBasePath('auth')).toBe('/api/auth');
-    expect(buildApiUrl('auth', '/me')).toBe('https://example.test/api/auth/me');
+    expect(getDomainFlag('auth')).toBe('v2');
+    expect(getApiBasePath('auth')).toBe('/api/v2/auth');
+    expect(buildApiUrl('auth', '/me')).toBe('https://example.test/api/v2/auth/me');
 
     expect(getDomainFlag('users')).toBe('v2');
     expect(buildApiUrl('users', '/1')).toBe('https://example.test/api/v2/users/1');
