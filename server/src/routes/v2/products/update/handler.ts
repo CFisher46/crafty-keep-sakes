@@ -19,60 +19,15 @@ import {
   getRequestUser,
 } from '../../../../ts-common/middleware';
 import { insertAuditEvent } from '../../audit-events';
+import {
+  toNumber,
+  toInteger,
+  toBoolean,
+  slugify,
+  parseCategories,
+} from '../../../../ts-common/validators';
 
 const router = express.Router();
-
-const toNumber = (value: unknown, fieldName: string): number => {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed)) {
-    throw new Error(`Invalid ${fieldName}`);
-  }
-  return parsed;
-};
-
-const toInteger = (value: unknown, fieldName: string): number => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed)) {
-    throw new Error(`Invalid ${fieldName}`);
-  }
-  return parsed;
-};
-
-const toBoolean = (value: unknown, fieldName: string): boolean => {
-  if (typeof value === 'boolean') {
-    return value;
-  }
-
-  if (typeof value === 'number') {
-    if (value === 1) return true;
-    if (value === 0) return false;
-  }
-
-  if (typeof value === 'string') {
-    const normalized = value.trim().toLowerCase();
-    if (['true', '1', 'yes', 'y'].includes(normalized)) return true;
-    if (['false', '0', 'no', 'n'].includes(normalized)) return false;
-  }
-
-  throw new Error(`Invalid ${fieldName}`);
-};
-
-const slugify = (value: string) =>
-  value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-
-const parseCategories = (categoryValue: string): string[] => {
-  const categories = categoryValue
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  const unique = Array.from(new Set(categories));
-  return unique.length ? unique : ['Uncategorized'];
-};
 
 const resolveProductId = async (
   connection: Awaited<ReturnType<typeof db.getConnection>>,

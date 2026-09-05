@@ -85,4 +85,43 @@ describe("authorization middleware", () => {
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ ok: true });
   });
+
+  it("returns 403 for an invalid auth token", async () => {
+    const response = await request(app)
+      .get("/admin")
+      .set("Cookie", ["auth_token=invalid.token.value"]);
+
+    expect(response.status).toBe(403);
+    expect(response.body).toEqual({ error: "Invalid token" });
+  });
+
+  it("allows an admin user to access the admin route", async () => {
+    const token = signToken({ id: 1, type: "admin" });
+
+    const response = await request(app)
+      .get("/admin")
+      .set("Cookie", [`auth_token=${token}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
+  });
+
+  it("falls back to role_code when type is absent", async () => {
+    const token = signToken({ id: 1, role_code: "admin" });
+
+    const response = await request(app)
+      .get("/admin")
+      .set("Cookie", [`auth_token=${token}`]);
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ ok: true });
+  });
+
+  it("returns 401 for unauthenticated request on self-or-admin route", async () => {
+    const response = await request(app).get("/users/42");
+
+    expect(response.status).toBe(401);
+    expect(response.body).toEqual({ error: "Not authenticated" });
+  });
 });
+

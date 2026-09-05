@@ -5,7 +5,7 @@ describe('auth thunks', () => {
     global.fetch = jest.fn() as unknown as typeof fetch;
   });
 
-  it('hydrates auth state from /api/auth/me without refreshing the user record', async () => {
+  it('hydrates auth state from /api/v2/auth/me without refreshing the user record', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -27,7 +27,7 @@ describe('auth thunks', () => {
     expect(result.type).toBe('auth/check/fulfilled');
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('/api/auth/me'),
+      expect.stringContaining('/api/v2/auth/me'),
       expect.objectContaining({ credentials: 'include' })
     );
     expect(dispatch).toHaveBeenCalledWith(
