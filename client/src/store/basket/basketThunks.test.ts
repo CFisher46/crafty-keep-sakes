@@ -109,8 +109,9 @@ describe('basket thunks', () => {
       const result = await addBasketItem(item)(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/addBasketItem/fulfilled');
-      expect(result.payload.product_id).toBe(5);
-      expect(result.payload.quantity).toBe(2);
+      const payload = result.payload as { product_id: number; quantity: number };
+      expect(payload.product_id).toBe(5);
+      expect(payload.quantity).toBe(2);
     });
 
     it('sends POST request with correct payload', async () => {
@@ -175,7 +176,8 @@ describe('basket thunks', () => {
       );
 
       expect(result.type).toBe('basket/updateBasketItem/fulfilled');
-      expect(result.payload.quantity).toBe(5);
+      const payload = result.payload as { quantity: number };
+      expect(payload.quantity).toBe(5);
     });
 
     it('sends PUT request with quantity in body', async () => {
@@ -215,7 +217,8 @@ describe('basket thunks', () => {
       const result = await removeBasketItem('5')(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/removeBasketItem/fulfilled');
-      expect(result.payload.affectedRows).toBe(1);
+      const payload = result.payload as { affectedRows: number };
+      expect(payload.affectedRows).toBe(1);
     });
 
     it('sends DELETE request to correct endpoint', async () => {
@@ -266,8 +269,9 @@ describe('basket thunks', () => {
       const result = await checkoutBasket(deliveryAddress)(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/checkoutBasket/fulfilled');
-      expect(result.payload.order_id).toBe(10);
-      expect(result.payload.invoice_number).toBe('INV-001-0001');
+      const payload = result.payload as { order_id: number; invoice_number: string };
+      expect(payload.order_id).toBe(10);
+      expect(payload.invoice_number).toBe('INV-001-0001');
     });
 
     it('completes checkout without delivery address', async () => {
@@ -289,7 +293,8 @@ describe('basket thunks', () => {
       const result = await checkoutBasket(undefined)(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/checkoutBasket/fulfilled');
-      expect(result.payload.order_id).toBe(10);
+      const payload = result.payload as { order_id: number };
+      expect(payload.order_id).toBe(10);
     });
 
     it('sends POST request to checkout endpoint with delivery data', async () => {
@@ -372,8 +377,9 @@ describe('basket thunks', () => {
       const result = await fetchOrderHistory()(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/fetchOrderHistory/fulfilled');
-      expect(result.payload).toHaveLength(2);
-      expect(result.payload[0].order_status).toBe('placed');
+      const payload = result.payload as Array<{ order_status: string }>;
+      expect(payload).toHaveLength(2);
+      expect(payload[0].order_status).toBe('placed');
     });
 
     it('sends GET request to orders endpoint', async () => {
@@ -421,8 +427,9 @@ describe('basket thunks', () => {
       const result = await fetchInvoiceById(90)(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/fetchInvoiceById/fulfilled');
-      expect(result.payload.invoice_number).toBe('INV-001-0001');
-      expect(result.payload.invoice_status).toBe('unpaid');
+      const payload = result.payload as { invoice_number: string; invoice_status: string };
+      expect(payload.invoice_number).toBe('INV-001-0001');
+      expect(payload.invoice_status).toBe('unpaid');
     });
 
     it('sends GET request with invoice id in path', async () => {
@@ -482,7 +489,8 @@ describe('basket thunks', () => {
       );
 
       expect(result.type).toBe('basket/updateInvoiceStatus/fulfilled');
-      expect(result.payload.affectedRows).toBe(1);
+      const payload = result.payload as { affectedRows: number };
+      expect(payload.affectedRows).toBe(1);
     });
 
     it('sends PUT request with invoice status', async () => {
