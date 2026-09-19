@@ -27,21 +27,23 @@ describe('PageHeader', () => {
   });
 
   it('navigates home when the logo is clicked', () => {
-    const store = buildStore({
-      auth: { isLoggedIn: false, user: null },
-      basket: { items: [], totalItems: 0 },
-    });
-
-    render(
-      <Provider store={store}>
-        <PageHeader />
-      </Provider>
-    );
-
-    fireEvent.click(screen.getByAltText('Logo'));
-
-    expect(mockNavigate).toHaveBeenCalledWith('/Home');
+  const store = buildStore({
+    auth: { isLoggedIn: false, user: null },
+    basket: { items: [], totalItems: 0 },
   });
+
+  render(
+    <Provider store={store}>
+      <PageHeader />
+    </Provider>
+  );
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Logo' })
+  );
+
+  expect(mockNavigate).toHaveBeenCalledWith('/Home');
+});
 
   it('does not show a basket count badge when the basket is empty', () => {
     const store = buildStore({
@@ -85,7 +87,9 @@ describe('PageHeader', () => {
       </Provider>
     );
 
-    const profileButton = document.querySelectorAll('button')[2];
+      const profileButton = screen.getByRole('button', {
+    name: 'Profile',
+  });
     fireEvent.click(profileButton);
 
     expect(mockNavigate).toHaveBeenCalledWith('/profile/42');

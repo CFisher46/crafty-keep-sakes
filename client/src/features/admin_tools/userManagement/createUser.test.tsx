@@ -60,6 +60,7 @@ describe('CreateNewUser', () => {
       target: { value: 'Secret123' },
     });
 
+
     expect(screen.getByText('Create User')).not.toBeDisabled();
   });
 

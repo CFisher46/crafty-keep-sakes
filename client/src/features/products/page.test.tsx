@@ -61,7 +61,7 @@ describe('Shop (products page)', () => {
   });
 
   it('shows a loading indicator while the initial fetch is in flight', () => {
-    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof fetch;
+    global.fetch = jest.fn(() => new Promise(() => { })) as unknown as typeof fetch;
 
     const store = buildStore({
       products: emptyProductsState,
@@ -116,10 +116,8 @@ describe('Shop (products page)', () => {
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('Tea Mug')).toBeInTheDocument();
-      expect(screen.getByText('£10')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Tea Mug')).toBeInTheDocument();
+    expect(await screen.findByText('£10')).toBeInTheDocument();
   });
 
   it('filters out products missing an id or name', async () => {

@@ -45,6 +45,7 @@ function PageHeader() {
           <Box style={{ position: "relative" }}>
             <Button
               //disabled={totalItems == 0}
+              a11yTitle="Basket"
               icon={<Basket />}
               onClick={() => navigate("/Basket")}
             />
@@ -67,6 +68,7 @@ function PageHeader() {
             )}
           </Box>
           <Button
+            a11yTitle="Profile"
             onClick={() => navigate(`/profile/${userId}`)}
             icon={<User />}
             plain
