@@ -12,7 +12,6 @@ import {
   updateInvoiceStatus,
 } from '../../store/basket/basketThunks';
 import { verifyCurrentPassword } from '../../store/users/usersThunks';
-
 import { buttonStyles } from '../../helpers/formatting';
 
 interface InputFieldProps {
@@ -26,6 +25,7 @@ interface InputFieldProps {
   toggleVisibility?: () => void;
   isPassword?: boolean;
   isVisible?: boolean;
+  disabled?: boolean;
 }
 
 const InputField = ({
@@ -39,6 +39,7 @@ const InputField = ({
   toggleVisibility,
   isPassword = false,
   isVisible = false,
+  disabled,
 }: InputFieldProps) => (
   <Box direction="row" gap="small" align="center">
     <Text style={labelStyle}>{label}</Text>
@@ -48,6 +49,7 @@ const InputField = ({
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
       type={type}
+      disabled={disabled}
     />
     {isPassword && toggleVisibility && (
       <Button
@@ -468,6 +470,7 @@ function UsersProfile() {
               {passwordError && (
                 <Text color="status-critical">{passwordError}</Text>
               )}
+              
               <InputField
                 label="New Password"
                 value={userData.new_password || ''}
@@ -482,6 +485,7 @@ function UsersProfile() {
                 isPassword
                 toggleVisibility={() => setShowNewPassword((prev) => !prev)}
                 isVisible={showNewPassword}
+                disabled={!passwordVerified}
               />
               <InputField
                 label="Confirm Password"
@@ -497,6 +501,7 @@ function UsersProfile() {
                 isPassword
                 toggleVisibility={() => setShowConfirmPassword((prev) => !prev)}
                 isVisible={showConfirmPassword}
+                disabled={!passwordVerified}
               />
             </Box>
             <Box border round="small" pad="medium" gap="small" background="white">
