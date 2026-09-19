@@ -1,5 +1,6 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test-utils/renderWithProviders';
+import Login from './login';
 
 jest.mock(
   'react-router-dom',
@@ -18,7 +19,17 @@ describe('UserLogin', () => {
   });
 
   it('renders email and password fields', () => {
-    renderWithProviders();
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     expect(screen.getByPlaceholderText('Username')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Password')).toBeInTheDocument();
@@ -26,7 +37,17 @@ describe('UserLogin', () => {
   });
 
   it('updates form values when typing', () => {
-    renderWithProviders();
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     const emailInput = screen.getByPlaceholderText('Username') as HTMLInputElement;
     const passwordInput = screen.getByPlaceholderText('Password') as HTMLInputElement;
@@ -46,7 +67,17 @@ describe('UserLogin', () => {
       }),
     });
 
-    const { store } = renderWithProviders();
+    const { store } = renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     fireEvent.change(screen.getByPlaceholderText('Username'), {
       target: { value: 'user@example.com' },
@@ -69,7 +100,17 @@ describe('UserLogin', () => {
       json: async () => ({ error: 'Invalid credentials' }),
     });
 
-    renderWithProviders();
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     fireEvent.change(screen.getByPlaceholderText('Username'), {
       target: { value: 'user@example.com' },
@@ -87,7 +128,17 @@ describe('UserLogin', () => {
   it('displays generic error message on network failure', async () => {
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-    renderWithProviders();
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     fireEvent.change(screen.getByPlaceholderText('Username'), {
       target: { value: 'user@example.com' },
@@ -108,7 +159,17 @@ describe('UserLogin', () => {
       json: async () => ({ user: { id: 1, type: 'customer' } }),
     });
 
-    renderWithProviders();
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     fireEvent.change(screen.getByPlaceholderText('Username'), {
       target: { value: 'user@example.com' },
@@ -135,7 +196,17 @@ describe('UserLogin', () => {
       json: async () => ({}),
     });
 
-    renderWithProviders();
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: {
+            user: null,
+            isLoggedIn: false,
+          },
+        },
+      }
+    );
 
     fireEvent.click(screen.getByText('Login'));
 
