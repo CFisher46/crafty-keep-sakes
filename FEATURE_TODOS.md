@@ -26,12 +26,18 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Enhancements
 
--   [ ] CKS-2-007 : Add Delivery tracking to the invoices [ENHANCEMENT]
+-   [ ] CKS-2-007 : Add Delivery tracking to the invoices
     -   AS a CUSTOMER, WHEN my order has been dispatched, I WANT to see my tracking details.
     -   AS an ADMIN, WHEN I ship an order, I WANT to be able to add the tracking details to the CUSTOMERS invoice.
 
--   [ ] CKS-2-008 : Add Billing address details to the Invoices [ENHANCEMENT]
+-   [ ] CKS-2-008 : Add Billing address details to the Invoices
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to be able to see both the BILLING ADDRESS and the DELIVERY ADDRESS.
+
+-   [ ] CKS-2-011 : Add images to the onSale items scrolling on the landing page
+    -   AS a CUSTOMER, WHEN I am on the landing page, I WANT to see the thumbnail of the products that are onSale.
+
+-   [ ] CKS-2-012 : Add sale %, Price before and Price after to the scrolling onSale tiles of on the landing page
+    -   AS a CUSTOMER, WHEN I am on the landing page, I WANT to see the reduction %, the original price (striked through) and the reduced price.
 
 
 ## Bugs
