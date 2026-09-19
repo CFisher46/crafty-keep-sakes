@@ -51,3 +51,5 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-009 : Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
 
 -   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
+
+-   [ ] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price

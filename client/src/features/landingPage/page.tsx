@@ -1,4 +1,4 @@
-import { Text, Box, Grid, Card, CardBody, CardFooter } from 'grommet';
+import { Text, Box, Button, Grid, Card, CardBody, CardFooter } from 'grommet';
 import CksButton from '../../components/buttons/cksButtons';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +12,10 @@ import {
   selectAllProducts,
   selectProductsLoading,
 } from '../../store/products/productsSlice';
+import { buttonStyles } from '../../helpers/formatting';
+import CommonModal from '../../components/modals/common-modal';
+import { addBasketItem } from '../../store/basket/basketThunks';
+import { addItemToBasket } from '../../store/basket/basketSlice';
 
 function Home() {
   const dispatch = useAppDispatch();
@@ -26,6 +30,50 @@ function Home() {
   const [showLogin, setShowLogin] = useState(false);
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   const carouselRef = useRef<HTMLDivElement>(null);
+
+  const parseProductImages = (images: Product['images']) => {
+    if (Array.isArray(images)) return images;
+    if (typeof images !== 'string' || !images.trim()) return [];
+
+    try {
+      return JSON.parse(images);
+    } catch {
+      return [];
+    }
+  };
+
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+    const openModal = (product: Product) => {
+    setSelectedProduct(product);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setSelectedProduct(null);
+    setIsModalOpen(false);
+  };
+
+  const handleAddToCart = async (product: Product) => {
+      const productImages = parseProductImages(product.images);
+      const basketItem = {
+        id: product.id,
+        image: productImages[0] || '',
+        product_name: product.product_name,
+        price: product.price,
+        quantity: 1,
+      };
+  
+      if (isLoggedIn) {
+        await dispatch(addBasketItem(basketItem));
+      }
+  
+      dispatch(addItemToBasket(basketItem));
+    };
+ 
+
+  const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -182,11 +230,54 @@ function Home() {
                 }}
               >
                 <CardBody>
+                  <Box height="small" width="100%" overflow="hidden">
+                      {parseProductImages(product.images).length > 0 ? (
+                        <img
+                          src={parseProductImages(product.images)[0]}
+                          alt={product.product_name}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      ) : (
+                        <Box
+                          height="100%"
+                          width="100%"
+                          background="white"
+                          align="center"
+                          justify="center"
+                          round="small"
+                        >
+                          <Text>No Image</Text>
+                        </Box>
+                      )}
+                    </Box>
+                
                   <Text weight="bold">{product.product_name}</Text>
                   <Text size="small">{product.description}</Text>
-                  <Text size="small" color="status-critical">
-                    £{product.price}
+                  <Text size="small" style={{ textDecoration: 'line-through' }}>
+                    RRP:£{product.price}
                   </Text>
+                  <Text size="small" color="status-critical">
+                  £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
+                  </Text>
+                  <Button
+                      label="View Details"
+                      //  status="enabled"
+                      onClick={() => openModal(product)}
+                      style={buttonStyles.default}
+                    />
+                    <Box pad={{ vertical: 'small' }}>
+                      <Button
+                        label="Add to Basket"
+                        //status="enabled"
+                        //primary
+                        style={buttonStyles.default}
+                        onClick={() => handleAddToCart(product)}
+                      />
+                    </Box>
                 </CardBody>
                 <CardFooter pad={{ vertical: 'small' }}></CardFooter>
               </Card>
@@ -194,6 +285,14 @@ function Home() {
           </Box>
         </Box>
       </Grid>
+      {isModalOpen && selectedProduct && (
+          <CommonModal
+            title={selectedProduct?.product_name || 'Product Details'}
+            type="viewProducts"
+            values={selectedProduct}
+            onClose={closeModal}
+          />
+        )}
     </Box>
   );
 }

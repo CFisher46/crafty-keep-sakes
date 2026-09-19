@@ -3,6 +3,8 @@ import { Product } from '../../../types';
 
 function ProductModal({ title, values }: { title: string; values?: Product }) {
   const product = values;
+    const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
+
 
   if (!product) {
     return null;
@@ -41,10 +43,17 @@ function ProductModal({ title, values }: { title: string; values?: Product }) {
           {product.product_name}
         </Text>
         <Text>Description: {product.description}</Text>
-        <Text>
-          Price: £
-          {typeof product.price === 'number' ? product.price.toFixed(2) : 'N/A'}
-        </Text>
+        {product.on_sale ? (
+                        <><Text size="small" style={{ textDecoration: 'line-through' }}>
+                          RRP:£{product.price}
+                        </Text>
+                          <Text size="small" color="status-critical">
+                            £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
+                          </Text></>
+                      ) : (
+                        <Text>RRP: £{product.price}</Text>
+                      )
+                      }
         <Text>Category: {product.category}</Text>
       </Box>
     </Box>

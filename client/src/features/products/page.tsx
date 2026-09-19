@@ -24,6 +24,7 @@ function Shop() {
   const loading = useAppSelector(selectProductsLoading);
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const location = useLocation();
+  const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
 
   const visibleProducts = products.filter(
     (product) => Boolean(product?.id) && Boolean(product?.product_name)
@@ -98,7 +99,7 @@ function Shop() {
     <>
       <ShopFilterBar />
       <Box>
-        <Form value={{}} onChange={() => {}}>
+        <Form value={{}} onChange={() => { }}>
           {loading ? (
             <Text>Loading... </Text>
           ) : visibleProducts.length === 0 ? (
@@ -158,7 +159,20 @@ function Shop() {
                     </Box>
                     <Box pad={{ vertical: 'small' }}>
                       <Text>{product.product_name}</Text>
-                      <Text>£{product.price}</Text>
+
+                      {product.on_sale ? (
+                        <><Text size="small" style={{ textDecoration: 'line-through' }}>
+                          RRP:£{product.price}
+                        </Text>
+                          <Text size="small" color="status-critical">
+                            £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
+                          </Text></>
+                      ) : (
+                        <Text>RRP: £{product.price}</Text>
+                      )
+                      }
+
+
                     </Box>
                     <Box pad={{ vertical: 'small' }}>
                       <Button
