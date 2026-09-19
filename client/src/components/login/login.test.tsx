@@ -1,28 +1,14 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { Provider } from 'react-redux';
-import { configureStore } from '@reduxjs/toolkit';
+import { screen, fireEvent, waitFor } from '@testing-library/react';
 import UserLogin from './login';
-import authReducer from '../../store/auth/authSlice';
+import { renderWithProviders } from '../../test-utils/renderWithProviders';
 
 jest.mock(
   'react-router-dom',
-  () => ({
-    useNavigate: () => jest.fn(),
-  }),
+  () => require('../../test-utils/reactRouterDomMock'),
   { virtual: true }
 );
 
-const renderWithProviders = () => {
-  const store = configureStore({ reducer: { auth: authReducer } });
-  return {
-    store,
-    ...render(
-      <Provider store={store}>
-        <UserLogin />
-      </Provider>
-    ),
-  };
-};
+const renderLogin = () => renderWithProviders(<UserLogin />);
 
 describe('UserLogin', () => {
   beforeEach(() => {
