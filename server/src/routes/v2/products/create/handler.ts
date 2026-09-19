@@ -2,7 +2,7 @@ import express from 'express';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
 import { Product } from '../../../../ts-common/product-types';
-import { createProductV2Query } from './sql';
+import { createProductV2Query } from '../../../../ts-common/product-queries';
 import {
   INSERT_PRODUCT_CATEGORY_LINK_QUERY,
   SELECT_CATEGORY_ID_BY_SLUG_QUERY,

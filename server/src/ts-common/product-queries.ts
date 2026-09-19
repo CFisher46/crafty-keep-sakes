@@ -366,6 +366,9 @@ export function createProductQuery(product: Product) {
   };
 }
 
+
+
+
 export function updateProductQuery(id: string, product: Product) {
   return {
     sql: `
