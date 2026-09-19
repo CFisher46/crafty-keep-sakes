@@ -126,7 +126,7 @@ const CreateNewProduct = () => {
     }
   };
 
-  const handleCreateClick = () => {
+  const handleCreateProductClick = () => {
     const missingFields = requiredFields.filter(
       (field) => rawInputValues[field]?.trim() === ''
     );
@@ -211,7 +211,7 @@ const CreateNewProduct = () => {
 
           <Button
             label="Create Product"
-            onClick={handleCreateClick}
+            onClick={handleCreateProductClick}
             style={buttonStyles.default}
           />
         </Grid>
@@ -223,7 +223,7 @@ const CreateNewProduct = () => {
           onEsc={() => setShowValidationWarning(false)}
           onClickOutside={() => setShowValidationWarning(false)}
         >
-          <Box pad="medium" gap="medium" width="medium">
+          <Box pad="medium" gap="medium" width="medium" round="small">
             <Text weight="bold">
               Missing required information
             </Text>
