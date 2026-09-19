@@ -382,6 +382,17 @@ function UsersProfile() {
                 </Box>
               )}
 
+              {userData.address_line1 && (
+                <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
+                  <Text weight="bold">Billing address</Text>
+                  <Text>{userData.address_line1 || '—'}</Text>
+                  {userData.address_line2 && <Text>{userData.address_line2}</Text>}
+                  {userData.address_line3 && <Text>{userData.address_line3}</Text>}
+                  <Text>{[userData.town, userData.county].filter(Boolean).join(', ') || '—'}</Text>
+                  <Text>{userData.postcode || '—'}</Text>
+                </Box>
+              )}
+
               {invoice.items && invoice.items.length > 0 && (
                 <Box margin={{ top: 'small' }} gap="xsmall">
                   <Text weight="bold">Items</Text>
