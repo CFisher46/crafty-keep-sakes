@@ -30,19 +30,20 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS a CUSTOMER, WHEN my order has been dispatched, I WANT to see my tracking details.
     -   AS an ADMIN, WHEN I ship an order, I WANT to be able to add the tracking details to the CUSTOMERS invoice.
 
--   [ ] CKS-2-008 : Add Billing address details to the Invoices
+-   [x] CKS-2-008 : Add Billing address details to the Invoices
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to be able to see both the BILLING ADDRESS and the DELIVERY ADDRESS.
 
--   [ ] CKS-2-011 : Add images to the onSale items scrolling on the landing page
+-   [x] CKS-2-011 : Add images to the onSale items scrolling on the landing page
     -   AS a CUSTOMER, WHEN I am on the landing page, I WANT to see the thumbnail of the products that are onSale.
 
--   [ ] CKS-2-012 : Add sale %, Price before and Price after to the scrolling onSale tiles of on the landing page
+-   [x] CKS-2-012 : Add sale %, Price before and Price after to the scrolling onSale tiles of on the landing page
     -   AS a CUSTOMER, WHEN I am on the landing page, I WANT to see the reduction %, the original price (striked through) and the reduced price.
 
 
 ## Bugs
 
 -   [ ] TotalDue on Invoice seems to be a different value to that of the product
+-   [ ] Filters on the Admin Audit table dont seem to auto apply
 
 ## Adhoc TODOs
 
@@ -55,3 +56,5 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
 
 -   [ ] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price? VAT somewhere maybe?
+
+-   [ ] CKS-2-014 : Introduce a change log that is updated with the branch name and title when merging to main
