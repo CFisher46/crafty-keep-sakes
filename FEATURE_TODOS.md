@@ -43,3 +43,5 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-009 : Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
 
 -   [ ] CKS-2-009 : Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
+
+-   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
