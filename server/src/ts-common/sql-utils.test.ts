@@ -1,5 +1,6 @@
 import { conditionIn, generateSortSql, generateFilterSql } from './sql-utils';
 import { SORT_OPTIONS } from './product-queries';
+import type { DefaultQueryParams } from './types';
 
 describe('sql-utils', () => {
   describe('conditionIn', () => {
@@ -87,8 +88,7 @@ describe('sql-utils', () => {
     });
 
     it('ignores query params that are not in the opts map', () => {
-      const result = generateFilterSql(opts, { unrelated_param: 'value' } as any);
-
+      const result = generateFilterSql(opts, { unrelated_param: 'value' } as DefaultQueryParams);
       expect(result).toBe('');
     });
   });
