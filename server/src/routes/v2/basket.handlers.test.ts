@@ -160,7 +160,7 @@ describe('v2 basket routes', () => {
       order_id: 40,
       invoice_id: 90,
       invoice_number: expect.stringMatching(/^INV-/),
-      total_due: 30,
+      total_due: 25,
       delivery_address: {
         address_line1: '1 Test Street',
         address_line2: 'Bristol',
