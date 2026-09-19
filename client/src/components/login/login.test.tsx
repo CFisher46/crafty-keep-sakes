@@ -1,5 +1,4 @@
 import { screen, fireEvent, waitFor } from '@testing-library/react';
-import UserLogin from './login';
 import { renderWithProviders } from '../../test-utils/renderWithProviders';
 
 jest.mock(
