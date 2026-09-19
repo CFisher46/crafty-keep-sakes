@@ -4,7 +4,6 @@ import LandingPage from "../../features/landingPage/page";
 import Shop from "../../features/products/page";
 import ShoppingBasket from "../../features/basket/page";
 // import About from '../../pages/about/aboutUs';
-// import Shop from '../../pages/shop/shop';
 import Blog from '../../features/blog/page';
 import Profile from "../../features/profile/page";
 import Admin from "../../features/admin_tools/page";

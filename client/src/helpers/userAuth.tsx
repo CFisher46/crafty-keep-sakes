@@ -1,4 +1,3 @@
-// client/src/hooks/useAuth.ts
 import { useEffect } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { RootState } from "../store";

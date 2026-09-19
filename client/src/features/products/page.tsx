@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Form, Text, Box, Card, Grid, Button } from 'grommet';
 import ShopFilterBar from '../../components/shop-filters-bar/shop-filter-bar';
-// import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
 import { useLocation } from 'react-router-dom';
 import { fetchAllProducts, fetchFilteredProducts } from '../../store/products/productsThunks';
 import { addItemToBasket } from '../../store/basket/basketSlice';
@@ -177,15 +176,12 @@ function Shop() {
                     <Box pad={{ vertical: 'small' }}>
                       <Button
                         label="Add to Basket"
-                        //status="enabled"
-                        //primary
                         style={buttonStyles.default}
                         onClick={() => handleAddToCart(product)}
                       />
                     </Box>
                     <Button
                       label="View Details"
-                      //status="enabled"
                       onClick={() => openModal(product)}
                       style={buttonStyles.default}
                     />

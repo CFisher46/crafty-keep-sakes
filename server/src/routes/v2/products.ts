@@ -11,8 +11,6 @@ const router = express.Router();
 router.get('/', getProductsHandler);
 router.get('/filter', getFilteredProductsHandler);
 router.get('/:id', getProductByIdHandler);
-
-// Stage 5 migrates product writes to v2 tables.
 router.use('/', createRouter);
 router.use('/', updateRouter);
 router.use('/', uploadImagesRouter);

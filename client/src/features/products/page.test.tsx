@@ -49,8 +49,6 @@ const emptyProductsState = {
   createStatus: 'idle',
 };
 
-// The page always dispatches fetchAllProducts on mount, so fetch is mocked
-// per-test to return the data the assertions expect, then awaited via waitFor.
 describe('Shop (products page)', () => {
   beforeEach(() => {
     localStorage.clear();

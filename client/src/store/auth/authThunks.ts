@@ -12,10 +12,10 @@ export const checkAuth = createAsyncThunk('auth/check', async (_, thunkAPI) => {
 
     const { user } = await response.json();
 
-    thunkAPI.dispatch(loginSuccess(user)); // ✅ Sets both isLoggedIn + user
+    thunkAPI.dispatch(loginSuccess(user));
     return user;
   } catch (err) {
-    thunkAPI.dispatch(logout()); // clears state
+    thunkAPI.dispatch(logout());
     throw err;
   }
 });
@@ -26,14 +26,14 @@ export const performLogout = createAsyncThunk(
     try {
       await fetch(buildApiUrl('auth', '/logout'), {
         method: 'POST',
-        credentials: 'include', // needed to send the auth cookie
+        credentials: 'include',
       });
 
       thunkAPI.dispatch(logout());
       thunkAPI.dispatch(resetState());
     } catch (error) {
       console.error('Logout failed', error);
-      thunkAPI.dispatch(logout()); // fallback
+      thunkAPI.dispatch(logout());
     }
   }
 );

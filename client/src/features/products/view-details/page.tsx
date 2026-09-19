@@ -10,7 +10,6 @@ function ProductModal({ title, values }: { title: string; values?: Product }) {
     return null;
   }
 
-  // Parse images if they are a string
   const images: string[] = product.images
     ? typeof product.images === 'string'
       ? JSON.parse(product.images)

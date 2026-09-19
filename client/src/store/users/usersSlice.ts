@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
 import { RootState } from "..";
-import { logout } from "../auth/authSlice"; // Import the logout action
-
+import { logout } from "../auth/authSlice";
 import { UsersState } from "../../store/users/types";
 import { User } from "../../types";
 import {
@@ -73,7 +72,6 @@ const userSlice = createSlice({
       .addCase(deleteUser.fulfilled, (state, action: PayloadAction<string>) => {
         state.list = state.list.filter((user) => user.id !== action.payload);
       })
-      // Handle the logout action to reset the selectedUser
       .addCase(logout, (state) => {
         state.selectedUser = null;
       });
