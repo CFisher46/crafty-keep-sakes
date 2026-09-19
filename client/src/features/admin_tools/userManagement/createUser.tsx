@@ -39,14 +39,7 @@ function CreateNewUser() {
   const requiredFields = [
     'first_name',
     'last_name',
-    'email_address',
-    'telephone_number',
-    'address_line1',
-    'town',
-    'county',
-    'postcode',
-    'type',
-    'status',
+    'email_address'
   ] as const;
 
   const [newUser, setNewUser] = useState<Partial<User>>(requiredDetails);
@@ -323,6 +316,7 @@ function CreateNewUser() {
             label="Create User"
             style={buttonStyles.default}
             onClick={handleCreateUserClick}
+            disabled={!passwordMatch}
           />
 
           <Button

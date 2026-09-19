@@ -1,12 +1,9 @@
 import { Header, Box, Button, Image, Text } from "grommet";
-import { buttonStyles } from "../../helpers/formatting";
 import { Basket, User } from "grommet-icons";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
-import SearchBar from "../header/searchBar";
 import NavigationBar from "../header/nav";
 import { NavigationBarProps } from "../header/types";
-//removed useAppSelector import for linting
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
 
@@ -48,6 +45,7 @@ function PageHeader() {
           <Box style={{ position: "relative" }}>
             <Button
               //disabled={totalItems == 0}
+              a11yTitle="Basket"
               icon={<Basket />}
               onClick={() => navigate("/Basket")}
             />
@@ -70,6 +68,7 @@ function PageHeader() {
             )}
           </Box>
           <Button
+            a11yTitle="Profile"
             onClick={() => navigate(`/profile/${userId}`)}
             icon={<User />}
             plain

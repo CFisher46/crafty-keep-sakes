@@ -1,0 +1,944 @@
+{
+  "report_date": "2026-08-29",
+  "summary": {
+    "server": {
+      "overall": "66.71% Statements, 53.97% Branches, 70.54% Functions, 66.47% Lines",
+      "status": "MODERATE - Decent baseline but critical gaps in mission-critical paths",
+      "total_files": 35,
+      "untested_files": 4,
+      "critical_gaps": 7
+    },
+    "client": {
+      "overall": "7.34% Statements, 7.96% Branches, 5.01% Functions, 7.70% Lines",
+      "status": "CRITICAL - Essentially no React component testing; only store thunks/slices have minimal coverage",
+      "total_files": 110,
+      "untested_files": 102,
+      "critical_gaps": "All feature pages, all UI components, all helpers"
+    }
+  },
+  "executive_summary": {
+    "key_findings": [
+      {
+        "issue": "Server authentication (auth.ts) only 45.45% covered",
+        "impact": "Mission-critical: Login, logout, JWT validation paths not fully tested",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "Client has 7.34% coverage - almost no component tests exist",
+        "impact": "No assurance that UI works correctly; zero e2e test coverage for user flows",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "Encryption/decryption (helpers.ts) only 29.26% covered",
+        "impact": "Critical security feature; cannot verify encryption/decryption works correctly",
+        "severity": "CRITICAL"
+      },
+      {
+        "issue": "Product filtering logic (product-queries.ts) only 64.28% covered",
+        "impact": "Core business logic; filter edge cases untested",
+        "severity": "HIGH"
+      },
+      {
+        "issue": "Error handling paths largely untested",
+        "impact": "Cannot verify application handles errors gracefully",
+        "severity": "HIGH"
+      }
+    ],
+    "current_status": "Two separate codebases with very different maturity levels: server has decent baseline coverage but missing critical paths; client has virtually no coverage and needs complete test infrastructure"
+  },
+  "server_analysis": {
+    "overall_metrics": {
+      "statements": "66.71% (944/1415)",
+      "branches": "53.97% (536/993)",
+      "functions": "70.54% (103/146)",
+      "lines": "66.47% (912/1372)"
+    },
+    "top_coverage_files": [
+      {
+        "file": "src/app.ts",
+        "coverage": "100%",
+        "lines": "33/33",
+        "description": "Express app setup"
+      },
+      {
+        "file": "src/routes/v2/audit-events.ts",
+        "coverage": "100%",
+        "lines": "11/11",
+        "description": "Audit event routing"
+      },
+      {
+        "file": "src/routes/v2/products.ts",
+        "coverage": "100%",
+        "lines": "15/15",
+        "description": "Product route setup"
+      },
+      {
+        "file": "src/routes/v2/users.ts",
+        "coverage": "100%",
+        "lines": "11/11",
+        "description": "User route setup"
+      }
+    ],
+    "critical_gaps": [
+      {
+        "file": "src/routes/v2/auth.ts",
+        "coverage": "45.45%",
+        "statements": "55/121",
+        "functions": "5/13 (38.46%)",
+        "branches": "44/90 (48.88%)",
+        "severity": "CRITICAL",
+        "description": "Authentication route handler - login, logout, JWT validation",
+        "untested_paths": [
+          "Legacy user authentication flow",
+          "V2 user authentication flow",
+          "Token refresh logic",
+          "Password validation error cases",
+          "User status checks (locked, inactive)",
+          "Encryption/decryption of passwords",
+          "Role-based access control checks"
+        ],
+        "suggested_tests": [
+          "Test login with valid legacy user credentials",
+          "Test login with valid v2 user credentials",
+          "Test login with invalid credentials (404)",
+          "Test login with locked user account",
+          "Test login with inactive user",
+          "Test JWT token generation and validation",
+          "Test token expiration and refresh",
+          "Test password hashing (bcrypt) vs encrypted passwords",
+          "Test concurrent login attempts",
+          "Test session management"
+        ],
+        "test_files": [
+          "Needs: src/routes/v2/auth.handlers.test.ts"
+        ]
+      },
+      {
+        "file": "src/ts-common/helpers.ts",
+        "coverage": "29.26%",
+        "statements": "12/41",
+        "functions": "1/3 (33.33%)",
+        "branches": "3/20 (15%)",
+        "severity": "CRITICAL",
+        "description": "Encryption/decryption utilities - handles sensitive user data",
+        "untested_paths": [
+          "Encryption with AES-256-CBC",
+          "Decryption with IV extraction",
+          "Fallback key handling for old encrypted data",
+          "Invalid encrypted format handling",
+          "Missing colon separator in encrypted data",
+          "Hex parsing of IV",
+          "Error handling for invalid keys"
+        ],
+        "suggested_tests": [
+          "Test encryption generates valid IV:encrypted format",
+          "Test decryption recovers original text",
+          "Test encryption/decryption roundtrip for user PII",
+          "Test non-encrypted values pass through unchanged",
+          "Test invalid encrypted format returns gracefully",
+          "Test fallback key for legacy encrypted data",
+          "Test encryption with unicode characters",
+          "Test large text encryption/decryption",
+          "Test IV uniqueness across multiple encryptions",
+          "Test missing encryption key error"
+        ],
+        "test_files": [
+          "Needs: src/ts-common/helpers.test.ts"
+        ]
+      },
+      {
+        "file": "src/ts-common/sql-utils.ts",
+        "coverage": "40.9%",
+        "statements": "9/22",
+        "functions": "1/6 (16.66%)",
+        "branches": "4/16 (25%)",
+        "severity": "HIGH",
+        "description": "SQL query building utilities for filtering and sorting",
+        "untested_paths": [
+          "conditionIn with multiple values",
+          "generateSortSql with custom sort fields",
+          "generateFilterSql with multiple filters",
+          "SQL injection prevention (escaping)",
+          "Empty value handling"
+        ],
+        "suggested_tests": [
+          "Test conditionIn builds correct IN clause",
+          "Test conditionIn with array vs comma-separated values",
+          "Test generateSortSql ASC vs DESC",
+          "Test generateSortSql with invalid sort field (defaults)",
+          "Test generateFilterSql combines multiple filters with AND",
+          "Test generateFilterSql with empty filters",
+          "Test SQL escaping prevents injection"
+        ],
+        "test_files": [
+          "Needs: src/ts-common/sql-utils.test.ts"
+        ]
+      },
+      {
+        "file": "src/ts-common/validators.ts",
+        "coverage": "51.02%",
+        "statements": "25/49",
+        "functions": "7/10 (70%)",
+        "branches": "9/36 (25%)",
+        "severity": "HIGH",
+        "description": "Input validation functions for type conversion and validation",
+        "untested_paths": [
+          "toNumber with invalid strings",
+          "toBoolean with edge cases",
+          "toInteger with floats",
+          "Error messages for invalid inputs"
+        ],
+        "suggested_tests": [
+          "Test toNumber with valid numbers",
+          "Test toNumber with Infinity (should fail)",
+          "Test toNumber with non-numeric strings",
+          "Test toInteger with floats (should fail)",
+          "Test toBoolean with boolean, number, string inputs",
+          "Test toBoolean edge cases ('yes', 'no', 'y', 'n')",
+          "Test all validators throw appropriate errors"
+        ],
+        "test_files": [
+          "Needs: src/ts-common/validators.test.ts"
+        ]
+      },
+      {
+        "file": "src/ts-common/product-queries.ts",
+        "coverage": "64.28%",
+        "statements": "63/98",
+        "functions": "12/20 (60%)",
+        "branches": "37/78 (47.43%)",
+        "severity": "HIGH",
+        "description": "Complex product search and filtering logic",
+        "untested_paths": [
+          "Category filtering for v2 products",
+          "Search clause building with special characters",
+          "Boolean field filtering logic",
+          "Number range parsing edge cases",
+          "Multiple filter combinations"
+        ],
+        "suggested_tests": [
+          "Test buildV2CategoryClause with multiple categories",
+          "Test buildSearchClause with wildcard characters",
+          "Test buildSearchClause with empty search",
+          "Test buildBooleanInClause with mixed inputs",
+          "Test parseNumber with edge cases (0, negative, Infinity)",
+          "Test full product query with all filter types combined",
+          "Test SQL escaping in filter values"
+        ],
+        "test_files": [
+          "Needs: src/ts-common/product-queries.test.ts"
+        ]
+      },
+      {
+        "file": "src/routes/v2/blog.ts",
+        "coverage": "47.41%",
+        "statements": "55/116",
+        "functions": "5/14 (35.71%)",
+        "branches": "42/108 (38.88%)",
+        "severity": "MEDIUM",
+        "description": "Blog post CRUD and comment operations",
+        "untested_paths": [
+          "Update blog post handler",
+          "Delete blog post handler",
+          "Update comment handler",
+          "Delete comment handler",
+          "Reaction endpoints",
+          "Permission checks (who can edit/delete)"
+        ],
+        "suggested_tests": [
+          "Test edit blog post (admin only)",
+          "Test delete blog post (admin only)",
+          "Test delete comment (author or admin)",
+          "Test update comment (author only)",
+          "Test like/dislike reactions",
+          "Test permission denied for non-admin"
+        ],
+        "test_files": [
+          "Has: blog.handlers.test.ts (partial)"
+        ]
+      },
+      {
+        "file": "src/routes/v2/basket.ts",
+        "coverage": "65.48%",
+        "statements": "184/281",
+        "functions": "24/29 (82.75%)",
+        "branches": "113/223 (50.67%)",
+        "severity": "MEDIUM",
+        "description": "Shopping basket operations",
+        "untested_paths": [
+          "Concurrent cart modifications",
+          "Price recalculation edge cases",
+          "Inventory availability checks",
+          "Tax calculations",
+          "Discount application logic"
+        ],
+        "suggested_tests": [
+          "Test concurrent add/update operations",
+          "Test price updates when product price changes",
+          "Test inventory depletion handling",
+          "Test minimum/maximum quantity validation",
+          "Test clear basket operation"
+        ],
+        "test_files": [
+          "Has: basket.handlers.test.ts (partial)"
+        ]
+      },
+      {
+        "file": "src/routes/v2/products/get-filtered/handler.ts",
+        "coverage": "59.09%",
+        "statements": "13/22",
+        "functions": "1/2 (50%)",
+        "branches": "2/6 (33.33%)",
+        "severity": "MEDIUM",
+        "description": "Product filtering endpoint",
+        "untested_paths": [
+          "Multiple concurrent filters",
+          "Filter value escaping",
+          "Empty filter handling",
+          "Performance with large result sets"
+        ],
+        "suggested_tests": [
+          "Test filtering by category",
+          "Test filtering by price range",
+          "Test filtering by multiple attributes",
+          "Test pagination with filters"
+        ],
+        "test_files": [
+          "Has: products/read.handlers.test.ts (partial)"
+        ]
+      },
+      {
+        "file": "src/config/api-route-flags.ts",
+        "coverage": "0%",
+        "statements": "3/3",
+        "severity": "LOW",
+        "description": "Feature flags for API routes",
+        "note": "0% coverage but small file, low risk"
+      },
+      {
+        "file": "src/index.ts",
+        "coverage": "0%",
+        "statements": "4/4",
+        "severity": "LOW",
+        "description": "Server entry point (integration level, not unit testable)"
+      }
+    ],
+    "untested_error_paths": {
+      "database_errors": "No tests for MySQL connection failures, query timeouts, or transaction rollbacks",
+      "authentication_errors": "No tests for token validation failures, expired tokens, or invalid signatures",
+      "validation_errors": "Limited tests for malformed input, type mismatches, or boundary values",
+      "authorization_errors": "No tests for permission denied scenarios across routes"
+    }
+  },
+  "client_analysis": {
+    "overall_metrics": {
+      "statements": "7.34% (estimated ~82/1118 based on coverage-final.json sample)",
+      "branches": "7.96%",
+      "functions": "5.01%",
+      "lines": "7.70%"
+    },
+    "coverage_by_category": {
+      "components": {
+        "status": "0% - NOT TESTED",
+        "files": [
+          "buttons/cksButtons.tsx - 0%",
+          "footer/footer.tsx - 0%",
+          "header/header.tsx - 0%",
+          "header/nav.tsx - 0%",
+          "header/searchBar.tsx - 0%",
+          "login/login.tsx - 0%",
+          "mainContainer/mainBody.tsx - 0%",
+          "modals/common-modal.tsx - 0%",
+          "shop-filters-bar/shop-filter-bar.tsx - 0%"
+        ],
+        "description": "Zero React component tests. No snapshot tests, no unit tests, no integration tests."
+      },
+      "features": {
+        "status": "0% - NOT TESTED",
+        "files": [
+          "admin_tools/page.tsx - 0%",
+          "admin_tools/audits/page.tsx - 0%",
+          "admin_tools/customReports/page.tsx - 0%",
+          "admin_tools/productManagement/createProduct.tsx - 0%",
+          "admin_tools/productManagement/updateProduct.tsx - 0%",
+          "admin_tools/reports/page.tsx - 0%",
+          "admin_tools/userManagement/createUser.tsx - 0%",
+          "admin_tools/userManagement/deleteUser.tsx - 0%",
+          "admin_tools/userManagement/updateUser.tsx - 0%",
+          "basket/page.tsx - 0%",
+          "blog/page.tsx - 0%",
+          "landingPage/page.tsx - 0%",
+          "products/page.tsx - 0%",
+          "products/view-details/page.tsx - 0%",
+          "profile/page.tsx - 0%"
+        ],
+        "description": "15 feature pages with zero test coverage. Each page has complex state management, form handling, and API calls."
+      },
+      "helpers": {
+        "status": "0% - NOT TESTED",
+        "files": [
+          "helpers/formatting.ts - 0%",
+          "helpers/protectedRoutes.tsx - 0%",
+          "helpers/userAuth.tsx - 0%"
+        ],
+        "description": "Critical auth and utility helpers with zero tests"
+      },
+      "store": {
+        "status": "MINIMAL - Estimated 5-10%",
+        "test_files_found": [
+          "auth/authThunks.test.ts - partial",
+          "products/productsThunks.filters.test.ts - partial",
+          "users/usersSlice.test.ts - partial",
+          "users/usersThunks.test.ts - partial"
+        ],
+        "missing_tests": [
+          "auth/authSlice.test.ts - reducer logic untested",
+          "basket/basketSlice.test.ts - reducer logic untested",
+          "basket/basketThunks.test.ts - async thunk untested",
+          "products/productsSlice.test.ts - reducer logic untested",
+          "products/productsThunks.test.ts - async thunk untested",
+          "audits/auditSlice.test.ts - reducer logic untested",
+          "audits/auditThunks.test.ts - async thunk untested"
+        ]
+      },
+      "api": {
+        "status": "MINIMAL",
+        "coverage": "apiPath.test.ts has partial coverage (apiVersion shows some execution)",
+        "untested": [
+          "domainFlags.ts - 0%",
+          "API error handling",
+          "Timeout handling",
+          "Network error recovery"
+        ]
+      }
+    },
+    "critical_untested_areas": [
+      {
+        "area": "Authentication Flow (Client-Side)",
+        "files": [
+          "helpers/userAuth.tsx",
+          "helpers/protectedRoutes.tsx",
+          "components/login/login.tsx",
+          "store/auth/authThunks.ts",
+          "store/auth/authSlice.ts"
+        ],
+        "severity": "CRITICAL",
+        "untested_scenarios": [
+          "Login with valid credentials",
+          "Login with invalid credentials",
+          "Logout and session cleanup",
+          "Protected route access control",
+          "Token expiration handling",
+          "Session persistence across page reload",
+          "Admin vs customer role separation"
+        ],
+        "impact": "Users cannot verify login actually works; no assurance that protected routes are secure"
+      },
+      {
+        "area": "Product Management (Admin)",
+        "files": [
+          "features/admin_tools/productManagement/createProduct.tsx",
+          "features/admin_tools/productManagement/updateProduct.tsx",
+          "features/admin_tools/page.tsx",
+          "store/products/productsThunks.ts"
+        ],
+        "severity": "CRITICAL",
+        "untested_scenarios": [
+          "Create product form validation",
+          "Upload product images",
+          "Update product details",
+          "Delete product with confirmation",
+          "Image gallery management",
+          "Error handling for upload failures",
+          "Permission checks (admin only)"
+        ],
+        "impact": "Core business feature completely untested; cannot verify admin can manage products"
+      },
+      {
+        "area": "User Management (Admin)",
+        "files": [
+          "features/admin_tools/userManagement/createUser.tsx",
+          "features/admin_tools/userManagement/updateUser.tsx",
+          "features/admin_tools/userManagement/deleteUser.tsx",
+          "store/users/usersThunks.ts"
+        ],
+        "severity": "CRITICAL",
+        "untested_scenarios": [
+          "Create user form validation",
+          "Update user details",
+          "Delete user with confirmation",
+          "Role assignment",
+          "Email validation",
+          "Password field handling",
+          "Permission checks"
+        ],
+        "impact": "Admin users cannot verify user management works; risk of data loss"
+      },
+      {
+        "area": "Shopping Cart/Basket",
+        "files": [
+          "features/basket/page.tsx",
+          "store/basket/basketSlice.ts",
+          "store/basket/basketThunks.ts"
+        ],
+        "severity": "CRITICAL",
+        "untested_scenarios": [
+          "Add item to basket",
+          "Update quantity",
+          "Remove item from basket",
+          "Clear entire basket",
+          "Calculate totals correctly",
+          "Apply discounts/promo codes",
+          "Persist basket across sessions",
+          "Checkout flow"
+        ],
+        "impact": "Critical e-commerce flow untested; cannot verify cart works correctly"
+      },
+      {
+        "area": "Product Browse & Filter",
+        "files": [
+          "features/products/page.tsx",
+          "features/products/view-details/page.tsx",
+          "components/shop-filters-bar/shop-filter-bar.tsx",
+          "store/products/productsThunks.ts"
+        ],
+        "severity": "CRITICAL",
+        "untested_scenarios": [
+          "Load all products",
+          "Apply filters (category, price, etc.)",
+          "Sort products",
+          "Pagination",
+          "Search functionality",
+          "View product details",
+          "Add to cart from product page"
+        ],
+        "impact": "Main user-facing feature untested; customers cannot verify product discovery works"
+      },
+      {
+        "area": "Blog & Comments",
+        "files": [
+          "features/blog/page.tsx",
+          "store/audits/auditThunks.ts (if used for blog audit)"
+        ],
+        "severity": "MEDIUM",
+        "untested_scenarios": [
+          "Load blog posts",
+          "Display comments",
+          "Add comment",
+          "Like/dislike functionality",
+          "Pagination of posts"
+        ],
+        "impact": "Blog feature untested; cannot verify content display works"
+      }
+    ],
+    "testing_infrastructure": {
+      "status": "EXISTS BUT MINIMAL",
+      "findings": [
+        {
+          "test": "Few Redux thunk/slice tests found",
+          "issue": "No React component tests at all",
+          "impact": "Cannot verify UI renders correctly or handles user interactions"
+        },
+        {
+          "test": "No integration tests",
+          "issue": "No end-to-end user flow validation",
+          "impact": "No assurance that features work together correctly"
+        },
+        {
+          "test": "No mock API setup",
+          "issue": "Cannot simulate backend responses or errors",
+          "impact": "Error handling in UI cannot be tested"
+        },
+        {
+          "test": "No React Testing Library found",
+          "issue": "Manual testing might be required for component validation",
+          "impact": "Regression testing is manual and error-prone"
+        }
+      ]
+    }
+  },
+  "priority_recommendations": {
+    "phase_1_critical_server": [
+      {
+        "priority": 1,
+        "file": "server/src/routes/v2/auth.ts",
+        "current_coverage": "45.45%",
+        "target_coverage": "90%",
+        "effort": "HIGH",
+        "test_count": 12,
+        "tests_needed": [
+          "Login with valid legacy user",
+          "Login with valid v2 user",
+          "Login with invalid credentials (404)",
+          "Login with locked/inactive user",
+          "JWT token generation and validation",
+          "Token refresh and expiration",
+          "Concurrent login handling",
+          "Session management and cleanup",
+          "Error handling for encryption failures",
+          "Password validation (bcrypt vs encrypted)",
+          "Role-based permission checks",
+          "Logout flow"
+        ]
+      },
+      {
+        "priority": 2,
+        "file": "server/src/ts-common/helpers.ts",
+        "current_coverage": "29.26%",
+        "target_coverage": "95%",
+        "effort": "MEDIUM",
+        "test_count": 10,
+        "tests_needed": [
+          "Encryption produces valid IV:encrypted format",
+          "Decryption recovers original text",
+          "Roundtrip encryption/decryption",
+          "Non-encrypted values pass through",
+          "Invalid format handling",
+          "Fallback key for legacy data",
+          "Unicode character support",
+          "Large text handling",
+          "IV uniqueness verification",
+          "Missing encryption key error"
+        ]
+      },
+      {
+        "priority": 3,
+        "file": "server/src/ts-common/validators.ts",
+        "current_coverage": "51.02%",
+        "target_coverage": "90%",
+        "effort": "MEDIUM",
+        "test_count": 9,
+        "tests_needed": [
+          "toNumber with valid/invalid inputs",
+          "toNumber with Infinity boundary",
+          "toInteger with float inputs",
+          "toBoolean with all input types",
+          "toBoolean edge cases (yes/no/y/n)",
+          "All validators error messages",
+          "Boundary value testing",
+          "Type coercion edge cases",
+          "Error propagation"
+        ]
+      }
+    ],
+    "phase_1_critical_client": [
+      {
+        "priority": 1,
+        "area": "Authentication Components",
+        "files": [
+          "helpers/userAuth.tsx",
+          "helpers/protectedRoutes.tsx",
+          "components/login/login.tsx",
+          "store/auth/authThunks.ts"
+        ],
+        "current_coverage": "0%",
+        "target_coverage": "85%",
+        "effort": "HIGH",
+        "test_count": 15,
+        "tests_needed": [
+          "Login component renders correctly",
+          "Form validation on input",
+          "Submit sends correct request",
+          "Error message display on failed login",
+          "Success redirect to dashboard",
+          "Protected route redirects unauthenticated users",
+          "Protected route allows authenticated users",
+          "Logout clears auth state",
+          "Token refresh on expiration",
+          "Admin vs customer role check",
+          "Session persistence reload",
+          "Loading state during login",
+          "Network error handling",
+          "Invalid credentials error",
+          "Locked account error"
+        ]
+      },
+      {
+        "priority": 2,
+        "area": "Shopping Cart (Basket)",
+        "files": [
+          "features/basket/page.tsx",
+          "store/basket/basketSlice.ts",
+          "store/basket/basketThunks.ts",
+          "components/shop-filters-bar/shop-filter-bar.tsx"
+        ],
+        "current_coverage": "0%",
+        "target_coverage": "85%",
+        "effort": "HIGH",
+        "test_count": 14,
+        "tests_needed": [
+          "Add item to basket updates state",
+          "Update quantity modifies correctly",
+          "Remove item deletes from basket",
+          "Clear basket empties completely",
+          "Total calculation is correct",
+          "Tax calculation applied properly",
+          "Discount/promo code application",
+          "Empty basket message shown",
+          "Checkout button available when items present",
+          "Persist basket to localStorage",
+          "Restore basket after reload",
+          "Quantity validation (min/max)",
+          "Out of stock handling",
+          "Price update on product change"
+        ]
+      },
+      {
+        "priority": 3,
+        "area": "Product Management (Admin)",
+        "files": [
+          "features/admin_tools/productManagement/createProduct.tsx",
+          "features/admin_tools/productManagement/updateProduct.tsx",
+          "features/admin_tools/page.tsx",
+          "store/products/productsThunks.ts"
+        ],
+        "current_coverage": "0%",
+        "target_coverage": "80%",
+        "effort": "HIGH",
+        "test_count": 12,
+        "tests_needed": [
+          "Create product form renders",
+          "Form validation works",
+          "Image upload initiates",
+          "Submit creates new product",
+          "Success message displays",
+          "Edit product form loads existing data",
+          "Update submits changes",
+          "Delete shows confirmation",
+          "Permission denied for non-admin",
+          "Error handling for upload failures",
+          "Loading state during submission",
+          "Form reset after successful submit"
+        ]
+      }
+    ],
+    "phase_2_high_priority_server": [
+      {
+        "priority": 4,
+        "file": "server/src/ts-common/sql-utils.ts",
+        "current_coverage": "40.9%",
+        "target_coverage": "85%",
+        "effort": "MEDIUM",
+        "test_count": 8
+      },
+      {
+        "priority": 5,
+        "file": "server/src/ts-common/product-queries.ts",
+        "current_coverage": "64.28%",
+        "target_coverage": "85%",
+        "effort": "MEDIUM",
+        "test_count": 10
+      },
+      {
+        "priority": 6,
+        "file": "server/src/routes/v2/blog.ts",
+        "current_coverage": "47.41%",
+        "target_coverage": "80%",
+        "effort": "MEDIUM",
+        "test_count": 8
+      }
+    ],
+    "phase_2_high_priority_client": [
+      {
+        "priority": 4,
+        "area": "Product Browse & Filter",
+        "current_coverage": "0%",
+        "target_coverage": "80%",
+        "effort": "HIGH",
+        "test_count": 11
+      },
+      {
+        "priority": 5,
+        "area": "User Management (Admin)",
+        "current_coverage": "0%",
+        "target_coverage": "80%",
+        "effort": "HIGH",
+        "test_count": 10
+      },
+      {
+        "priority": 6,
+        "area": "Navigation & Layout",
+        "files": [
+          "components/header/header.tsx",
+          "components/header/nav.tsx",
+          "components/mainContainer/mainBody.tsx"
+        ],
+        "current_coverage": "0%",
+        "target_coverage": "75%",
+        "effort": "MEDIUM",
+        "test_count": 8
+      }
+    ]
+  },
+  "implementation_roadmap": {
+    "week_1_2": {
+      "focus": "Server Critical Paths",
+      "tasks": [
+        "Create auth.handlers.test.ts with 12 tests for auth.ts",
+        "Create helpers.test.ts with 10 tests for encryption/decryption",
+        "Create validators.test.ts with 9 tests for input validation",
+        "Target: auth.ts from 45% to 85%, helpers.ts from 29% to 85%, validators.ts from 51% to 85%"
+      ],
+      "expected_coverage_improvement": "Server: +15-20%"
+    },
+    "week_3_4": {
+      "focus": "Server Secondary Gaps",
+      "tasks": [
+        "Create sql-utils.test.ts with 8 tests",
+        "Expand product-queries.test.ts with 10 tests",
+        "Expand blog.handlers.test.ts with 6 additional tests",
+        "Target: sql-utils from 41% to 85%, product-queries from 64% to 85%"
+      ],
+      "expected_coverage_improvement": "Server: +10-15% (reaching ~85% overall)"
+    },
+    "week_5_6": {
+      "focus": "Client Critical Paths - Auth & Cart",
+      "tasks": [
+        "Create comprehensive auth component test suite (15 tests)",
+        "Create basket component tests (14 tests)",
+        "Set up React Testing Library infrastructure",
+        "Create test utilities and mock API responses",
+        "Target: auth and basket at 80-85% coverage"
+      ],
+      "expected_coverage_improvement": "Client: +10-15%"
+    },
+    "week_7_8": {
+      "focus": "Client High Priority Features",
+      "tasks": [
+        "Create product browsing tests (11 tests)",
+        "Create admin product management tests (12 tests)",
+        "Create user management tests (10 tests)",
+        "Target: Each feature at 75-80% coverage"
+      ],
+      "expected_coverage_improvement": "Client: +15-20% (reaching ~30-35% overall)"
+    },
+    "week_9_10": {
+      "focus": "Client Layout & Navigation",
+      "tasks": [
+        "Create component tests for header, nav, footer (8 tests)",
+        "Create modal and form tests",
+        "Test integration between components"
+      ],
+      "expected_coverage_improvement": "Client: +5-10%"
+    },
+    "ongoing": {
+      "tasks": [
+        "Set up CI/CD to enforce minimum coverage thresholds (85% for server, 75% for critical client features)",
+        "Add coverage badges to README",
+        "Create coverage trend reports",
+        "Establish code review requirement: new code must have tests"
+      ]
+    }
+  },
+  "test_infrastructure_requirements": {
+    "server": {
+      "existing": "Jest + supertest, database mocking",
+      "needs": [
+        "Expand test database connection mocking",
+        "Create fixtures/factories for test data",
+        "Add integration test suite"
+      ]
+    },
+    "client": {
+      "existing": "Jest with CRA configuration",
+      "needs": [
+        "Install React Testing Library (@testing-library/react)",
+        "Create mock API response fixtures",
+        "Create Redux mock store for testing",
+        "Set up component rendering utilities",
+        "Create user interaction test helpers",
+        "Add MSW (Mock Service Worker) for API mocking"
+      ],
+      "recommended_packages": [
+        "@testing-library/react",
+        "@testing-library/jest-dom",
+        "@testing-library/user-event",
+        "msw (Mock Service Worker)",
+        "redux-mock-store"
+      ]
+    }
+  },
+  "metrics_and_goals": {
+    "current_state": {
+      "server": "66.71% overall (good baseline, critical gaps)",
+      "client": "7.34% overall (critical gaps everywhere)"
+    },
+    "6_month_goal": {
+      "server": "85% - statements, 80% - branches, 85% - functions, 85% - lines",
+      "client": "70% - statements, 65% - branches, 70% - functions, 70% - lines",
+      "focus": "Critical paths (auth, cart, payments) at 90%+"
+    },
+    "12_month_goal": {
+      "server": "90%+ across all metrics",
+      "client": "85%+ across all metrics",
+      "focus": "Comprehensive coverage with e2e tests"
+    },
+    "success_criteria": [
+      "All mission-critical code paths tested",
+      "Error handling paths tested for all critical features",
+      "Integration tests for core workflows (auth → browse → cart → checkout)",
+      "CI/CD pipeline enforces test coverage minimums",
+      "New feature PRs required to include tests"
+    ]
+  },
+  "files_requiring_immediate_attention": [
+    {
+      "rank": 1,
+      "file": "server/src/routes/v2/auth.ts",
+      "coverage": "45.45%",
+      "reason": "Authentication is mission-critical; must test all login/logout/token paths",
+      "tests_to_add": 12
+    },
+    {
+      "rank": 2,
+      "file": "client/src/components/login/login.tsx",
+      "coverage": "0%",
+      "reason": "User-facing auth component; must verify login UI works",
+      "tests_to_add": 8
+    },
+    {
+      "rank": 3,
+      "file": "server/src/ts-common/helpers.ts",
+      "coverage": "29.26%",
+      "reason": "Encryption critical for security; must test all crypto operations",
+      "tests_to_add": 10
+    },
+    {
+      "rank": 4,
+      "file": "client/src/features/basket/page.tsx",
+      "coverage": "0%",
+      "reason": "Shopping cart is core e-commerce feature; must verify it works",
+      "tests_to_add": 14
+    },
+    {
+      "rank": 5,
+      "file": "client/src/features/products/page.tsx",
+      "coverage": "0%",
+      "reason": "Main product discovery page; must verify loading/filtering/display",
+      "tests_to_add": 11
+    },
+    {
+      "rank": 6,
+      "file": "server/src/ts-common/product-queries.ts",
+      "coverage": "64.28%",
+      "reason": "Complex filtering logic; must test all filter combinations",
+      "tests_to_add": 10
+    }
+  ],
+  "estimated_effort": {
+    "total_tests_needed": 165,
+    "breakdown_by_phase": {
+      "phase_1": "31 tests (2 weeks)",
+      "phase_2": "27 tests (2 weeks)",
+      "phase_3": "41 tests (2 weeks)",
+      "phase_4": "32 tests (2 weeks)",
+      "infrastructure": "1-2 weeks"
+    },
+    "total_estimate": "10 weeks for critical path coverage (85%+ server, 70%+ client critical features)",
+    "team_size_recommendation": "1-2 developers",
+    "dependencies": [
+      "React Testing Library setup must complete before client component tests",
+      "Test infrastructure for API mocking must be established early"
+    ]
+  }
+}
