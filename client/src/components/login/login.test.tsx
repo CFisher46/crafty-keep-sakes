@@ -8,7 +8,6 @@ jest.mock(
   { virtual: true }
 );
 
-const renderLogin = () => renderWithProviders(<UserLogin />);
 
 describe('UserLogin', () => {
   beforeEach(() => {
