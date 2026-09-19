@@ -247,9 +247,10 @@ describe('v2 auth routes', () => {
       const cookie = response.headers['set-cookie'][0];
       const token = cookie.split(';')[0].split('=')[1];
 
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      const now = Date.now() / 1000;
-      const expiresIn = decoded.exp - Math.floor(now);
+      const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+
+      const now = Math.floor(Date.now() / 1000);
+      const expiresIn = decoded.exp! - now;
 
       expect(expiresIn).toBeGreaterThan(13 * 24 * 60 * 60);
       expect(expiresIn).toBeLessThanOrEqual(14 * 24 * 60 * 60);
@@ -287,9 +288,9 @@ describe('v2 auth routes', () => {
       const cookie = response.headers['set-cookie'][0];
       const token = cookie.split(';')[0].split('=')[1];
 
-      const decoded = jwt.verify(token, JWT_SECRET) as any;
-      const now = Date.now() / 1000;
-      const expiresIn = decoded.exp - Math.floor(now);
+      const decoded = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload;
+      const now = Math.floor(Date.now() / 1000);
+      const expiresIn = decoded.exp! - now;
 
       expect(expiresIn).toBeGreaterThan(29 * 24 * 60 * 60);
       expect(expiresIn).toBeLessThanOrEqual(30 * 24 * 60 * 60);
