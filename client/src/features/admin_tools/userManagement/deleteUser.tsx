@@ -33,6 +33,10 @@ function DeleteExistingUser(fetchedUserData: User) {
   };
 
   const handleConfirmDelete = async () => {
+    //TODO: Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`, 
+    // CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query
+    // need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message.
+
     try {
       await dispatch(deleteUser(user.id)).unwrap();
       console.log(`User ${user.id} deleted successfully.`);
@@ -46,6 +50,7 @@ function DeleteExistingUser(fetchedUserData: User) {
       setStatusIsError(true);
       setStatusMessage(
         typeof error === 'string' ? error : 'Failed to delete user. Please try again.'
+        //TODO: look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code.
       );
     }
   };
@@ -57,11 +62,11 @@ function DeleteExistingUser(fetchedUserData: User) {
   return (
     <>
       {statusMessage && (
-        <Notification
-          title={statusIsError ? 'Error' : 'Success'}
-          message={statusMessage}
-          type={statusIsError ? 'warning' : 'status'}
-          onClose={() => setStatusMessage(null)}
+          <Notification
+            title={statusIsError ? 'Error' : 'Success'}
+            message={statusMessage}
+            status={statusIsError ? 'warning' : 'normal'}
+            onClose={() => setStatusMessage(null)}
         />
       )}
       <Card pad="small" background="light-2" elevation="small" overflow="auto">
