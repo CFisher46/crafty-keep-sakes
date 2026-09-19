@@ -42,6 +42,8 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Bugs
 
+-   [ ] TotalDue on Invoice seems to be a different value to that of the product
+
 ## Adhoc TODOs
 
 -   [ ] CKS-2-009 : Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
@@ -52,4 +54,4 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
 
--   [ ] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price
+-   [ ] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price? VAT somewhere maybe?

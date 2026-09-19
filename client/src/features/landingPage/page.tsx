@@ -44,8 +44,9 @@ function Home() {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
 
-    const openModal = (product: Product) => {
+  const openModal = (product: Product) => {
     setSelectedProduct(product);
     setIsModalOpen(true);
   };
@@ -56,24 +57,24 @@ function Home() {
   };
 
   const handleAddToCart = async (product: Product) => {
-      const productImages = parseProductImages(product.images);
-      const basketItem = {
-        id: product.id,
-        image: productImages[0] || '',
-        product_name: product.product_name,
-        price: product.price,
-        quantity: 1,
-      };
-  
-      if (isLoggedIn) {
-        await dispatch(addBasketItem(basketItem));
-      }
-  
-      dispatch(addItemToBasket(basketItem));
+    const productImages = parseProductImages(product.images);
+    const basketItem = {
+      id: product.id,
+      image: productImages[0] || '',
+      product_name: product.product_name,
+      price: product.on_sale ? salePrice(product) : product.price,
+      quantity: 1,
     };
- 
 
-  const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
+    if (isLoggedIn) {
+      await dispatch(addBasketItem(basketItem));
+    }
+
+    dispatch(addItemToBasket(basketItem));
+  };
+
+
+  
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -229,70 +230,63 @@ function Home() {
                   minWidth: '200px',
                 }}
               >
-                <CardBody>
+                <CardBody onClick={() => openModal(product)}>
                   <Box height="small" width="100%" overflow="hidden">
-                      {parseProductImages(product.images).length > 0 ? (
-                        <img
-                          src={parseProductImages(product.images)[0]}
-                          alt={product.product_name}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                          }}
-                        />
-                      ) : (
-                        <Box
-                          height="100%"
-                          width="100%"
-                          background="white"
-                          align="center"
-                          justify="center"
-                          round="small"
-                        >
-                          <Text>No Image</Text>
-                        </Box>
-                      )}
-                    </Box>
-                
+                    {parseProductImages(product.images).length > 0 ? (
+                      <img
+                        src={parseProductImages(product.images)[0]}
+                        alt={product.product_name}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                        }}
+                      />
+                    ) : (
+                      <Box
+                        height="100%"
+                        width="100%"
+                        background="white"
+                        align="center"
+                        justify="center"
+                        round="small"
+                      >
+                        <Text>No Image</Text>
+                      </Box>
+                    )}
+                  </Box>
+
                   <Text weight="bold">{product.product_name}</Text>
                   <Text size="small">{product.description}</Text>
                   <Text size="small" style={{ textDecoration: 'line-through' }}>
                     RRP:£{product.price}
                   </Text>
                   <Text size="small" color="status-critical">
-                  £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
+                    £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
                   </Text>
-                  <Button
-                      label="View Details"
-                      //  status="enabled"
-                      onClick={() => openModal(product)}
-                      style={buttonStyles.default}
-                    />
-                    <Box pad={{ vertical: 'small' }}>
-                      <Button
-                        label="Add to Basket"
-                        //status="enabled"
-                        //primary
-                        style={buttonStyles.default}
-                        onClick={() => handleAddToCart(product)}
-                      />
-                    </Box>
+                  
                 </CardBody>
                 <CardFooter pad={{ vertical: 'small' }}></CardFooter>
+                <Box margin={{ top: 'small' }}>
+                    <Button
+                      label="Add to Basket"
+                      style={buttonStyles.default}
+                      onClick={() => handleAddToCart(product)}
+                    />
+                  </Box>
               </Card>
             ))}
           </Box>
         </Box>
       </Grid>
       {isModalOpen && selectedProduct && (
-          <CommonModal
-            title={selectedProduct?.product_name || 'Product Details'}
-            type="viewProducts"
-            values={selectedProduct}
-            onClose={closeModal}
-          />
-        )}
+        <CommonModal
+          title={selectedProduct?.product_name || 'Product Details'}
+          type="viewProducts"
+          values={selectedProduct}
+          onClose={closeModal}
+        />
+      )}
     </Box>
   );
 }

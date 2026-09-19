@@ -640,7 +640,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       (sum, item) => sum + Number(item.quantity) * Number(item.unit_price_snapshot),
       0
     );
-    const taxTotal = toCurrency(subtotal * 0.2);
+    const taxTotal = toCurrency(subtotal * 0); //set Tax to Zero
     const grandTotal = toCurrency(subtotal + taxTotal);
 
     const [orderResult] = await connection.query<ResultSetHeader>(

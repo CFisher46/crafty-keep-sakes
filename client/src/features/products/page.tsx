@@ -47,7 +47,7 @@ function Shop() {
       id: product.id,
       image: productImages[0] || '',
       product_name: product.product_name,
-      price: product.price,
+      price: product.on_sale ? salePrice(product) : product.price,
       quantity: 1,
     };
 
