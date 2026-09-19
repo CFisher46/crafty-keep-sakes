@@ -1,4 +1,14 @@
-import { Box, Card, Grid, TextInput, Text, Button, FileInput, Layer } from 'grommet';
+
+import {
+  Box,
+  Card,
+  Grid,
+  TextInput,
+  Text,
+  Button,
+  FileInput,
+  Layer,
+} from 'grommet';
 import { Product } from '../../../types';
 import { useAppDispatch } from '../../../store/hooks';
 import { useState } from 'react';
@@ -10,6 +20,7 @@ import { buttonStyles } from '../../../helpers/formatting';
 
 const CreateNewProduct = () => {
   const dispatch = useAppDispatch();
+
   const requiredDetails: Product = {
     id: '',
     category: '',
@@ -23,6 +34,15 @@ const CreateNewProduct = () => {
     images: '',
   };
 
+  // Fields that must be populated before a product can be created
+  const requiredFields = [
+    'product_name',
+    'category',
+    'description',
+    'price',
+    'quantity',
+  ] as const;
+
   const parseBoolean = (value: string): boolean => {
     const normalized = value.trim().toLowerCase();
     return ['true', '1', 'yes', 'y'].includes(normalized);
@@ -33,12 +53,22 @@ const CreateNewProduct = () => {
     'quantity',
     'sale_percent',
   ]);
+
   const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
 
   const getBlankRawValues = () =>
     Object.fromEntries(
       Object.keys(requiredDetails).map((key) => [key, ''])
     ) as Record<string, string>;
+
+  const [newProduct, setNewProduct] = useState<Product>(requiredDetails);
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [rawInputValues, setRawInputValues] = useState<Record<string, string>>(
+    getBlankRawValues()
+  );
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showValidationWarning, setShowValidationWarning] = useState(false);
+  const [fileInputResetKey, setFileInputResetKey] = useState(0);
 
   const resetForm = () => {
     setNewProduct(requiredDetails);
@@ -70,12 +100,15 @@ const CreateNewProduct = () => {
 
   const handleCreateProduct = async () => {
     console.log(`Creating product with data:`, newProduct);
+
     try {
       const createResult = (await dispatch(
         createProduct(newProduct as Product)
       ).unwrap()) as { insertId?: string | number };
 
-      const resolvedProductId = String(newProduct.id || createResult.insertId || '');
+      const resolvedProductId = String(
+        newProduct.id || createResult.insertId || ''
+      );
 
       if (selectedImages.length > 0 && resolvedProductId) {
         await dispatch(
@@ -93,17 +126,36 @@ const CreateNewProduct = () => {
     }
   };
 
-  const [newProduct, setNewProduct] = useState<Product>(requiredDetails);
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [rawInputValues, setRawInputValues] = useState<Record<string, string>>(
-    getBlankRawValues()
+  const handleCreateClick = () => {
+    const missingFields = requiredFields.filter(
+      (field) => rawInputValues[field]?.trim() === ''
+    );
+
+    if (missingFields.length > 0) {
+      setShowValidationWarning(true);
+      return;
+    }
+
+    handleCreateProduct();
+  };
+
+  const getFieldLabel = (field: string) =>
+    field
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (char) => char.toUpperCase());
+
+  const missingFields = requiredFields.filter(
+    (field) => rawInputValues[field]?.trim() === ''
   );
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [fileInputResetKey, setFileInputResetKey] = useState(0);
 
   return (
     <>
-      <Card pad="small" background="light-2" elevation="small" overflow="auto">
+      <Card
+        pad="small"
+        background="light-2"
+        elevation="small"
+        overflow="auto"
+      >
         <Box pad="small" margin={{ bottom: 'medium' }}>
           <FileInput
             key={fileInputResetKey}
@@ -113,7 +165,9 @@ const CreateNewProduct = () => {
               const files = event.target.files
                 ? Array.from(event.target.files)
                 : [];
+
               setSelectedImages(files);
+
               setNewProduct({
                 ...newProduct,
                 images: files.map((file) => file.name).join(','),
@@ -121,6 +175,7 @@ const CreateNewProduct = () => {
             }}
           />
         </Box>
+
         <Grid
           columns={['1/2', '1/2']}
           gap="small"
@@ -136,29 +191,66 @@ const CreateNewProduct = () => {
                   weight="bold"
                   style={{ textTransform: 'capitalize' }}
                 >
-                  {key
-                    .replace(/_/g, ' ')
-                    .replace(/\b\w/g, (char) => char.toUpperCase())}
-                  :
+                  {getFieldLabel(key)}:
                 </Text>
+
                 <TextInput
                   value={rawInputValues[key] ?? String(value)}
                   placeholder={String(value)}
                   size="small"
                   style={{ fontSize: '12px' }}
                   onChange={(event) =>
-                    handleInputChange(key as keyof Product, event.target.value)
+                    handleInputChange(
+                      key as keyof Product,
+                      event.target.value
+                    )
                   }
                 />
               </Box>
             ))}
+
           <Button
             label="Create Product"
-            onClick={handleCreateProduct}
+            onClick={handleCreateClick}
             style={buttonStyles.default}
           />
         </Grid>
       </Card>
+
+      {/* Validation warning */}
+      {showValidationWarning && (
+        <Layer
+          onEsc={() => setShowValidationWarning(false)}
+          onClickOutside={() => setShowValidationWarning(false)}
+        >
+          <Box pad="medium" gap="medium" width="medium">
+            <Text weight="bold">
+              Missing required information
+            </Text>
+
+            <Text>
+              Please complete the following required fields before creating
+              the product:
+            </Text>
+
+            <Box gap="small">
+              {missingFields.map((field) => (
+                <Text key={field}>
+                  • {getFieldLabel(field)}
+                </Text>
+              ))}
+            </Box>
+
+            <Button
+              label="OK"
+              onClick={() => setShowValidationWarning(false)}
+              style={buttonStyles.default}
+            />
+          </Box>
+        </Layer>
+      )}
+
+      {/* Success message */}
       {showSuccessModal && (
         <Layer
           onEsc={() => {
@@ -171,7 +263,10 @@ const CreateNewProduct = () => {
           }}
         >
           <Box pad="medium" gap="medium" width="medium">
-            <Text weight="bold">Product added successfully.</Text>
+            <Text weight="bold">
+              Product added successfully.
+            </Text>
+
             <Button
               label="OK"
               onClick={() => {
@@ -188,3 +283,4 @@ const CreateNewProduct = () => {
 };
 
 export default CreateNewProduct;
+
