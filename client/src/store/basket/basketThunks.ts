@@ -234,6 +234,7 @@ export const fetchInvoiceById = createAsyncThunk(
         issued_at: string;
         user_id: number;
         delivery_address?: DeliveryAddress;
+        tracking_info: string;
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
@@ -265,4 +266,33 @@ export const updateInvoiceStatus = createAsyncThunk(
       return rejectWithValue(error.message || 'Network error');
     }
   }
-);
+)
+
+
+export const updateInvoiceTrackingInfo = createAsyncThunk(
+  'basket/updateInvoiceTrackingInfo',
+  async (
+    { invoiceId, trackingInfo }: { invoiceId: string | number; trackingInfo: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await fetch(buildApiUrl('basket', `/invoices/${invoiceId}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tracking_info: trackingInfo }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        return rejectWithValue(payload.error || 'Failed to update invoice tracking info');
+      }
+
+      return (await response.json()) as { message: string; affectedRows: number };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Network error');
+    }
+  }
+)
+
+;

@@ -328,6 +328,7 @@ describe('v2 basket routes', () => {
       invoice_number: 'INV-123-40',
       invoice_status: 'unpaid',
       total_due: 30,
+      tracking_info: '',
       issued_at: '2026-08-15 09:05:00',
       user_id: 7,
       delivery_address: {
@@ -406,15 +407,25 @@ describe('v2 basket routes', () => {
     expect(response.body[1].user_id).toBe(9);
   });
 
-  it('rejects unsupported invoice statuses before hitting the database', async () => {
+  it('returns 400 when an invalid invoice status is supplied', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[
+        {
+          order_id: 40,
+          invoice_status: 'overdue',
+          tracking_info: null,
+        },
+      ]]);
+
     const response = await request(app)
       .put('/api/v2/basket/invoices/90')
       .set('Cookie', authCookie(1, 'admin'))
-      .send({ invoice_status: 'overdue' });
+      .send({ invoice_status: 'invalid-status' });
 
     expect(response.status).toBe(400);
-    expect(response.body).toEqual({ error: 'Invalid invoice_status' });
-    expect(mockConnection.query).not.toHaveBeenCalled();
+    expect(response.body).toEqual({
+      error: 'Invalid invoice_status',
+    });
   });
 
   it('updates the linked order when an invoice is marked paid', async () => {
@@ -430,8 +441,11 @@ describe('v2 basket routes', () => {
       .send({ invoice_status: 'paid' });
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1 });
-    expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT order_id FROM invoices_v2');
+    expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1, statusChanged: true, trackingUpdated: false });
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT order_id, invoice_status, tracking_info');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('FROM invoices_v2');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('WHERE id = ?');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('LIMIT 1');
     expect(String(mockConnection.query.mock.calls[1][0])).toContain('UPDATE invoices_v2');
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('UPDATE orders_v2');
     expect(String(mockConnection.query.mock.calls[3][0])).toContain('INSERT INTO audit_events_v2');
@@ -451,7 +465,7 @@ describe('v2 basket routes', () => {
       .send({ invoice_status: 'paid' });
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1 });
+    expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1, statusChanged: true, trackingUpdated: false });
   });
 
   it('rolls back checkout when the basket is empty', async () => {

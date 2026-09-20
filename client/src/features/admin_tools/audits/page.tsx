@@ -115,11 +115,15 @@ export const AuditLogs = () => {
     Partial<Record<keyof Audit, string[]>>
   >({});
   const [page, setPage] = useState(1);
+  const [showAuditTable, setShowAuditTable] = useState(false);
 
   useEffect(() => {
     dispatch(fetchAuditLogs({ page, pageSize: PAGE_SIZE }));
   }, [dispatch, page]);
 
+  const toggleAuditTable = () => {
+    setShowAuditTable((prev) => !prev);
+  };
   const columnHeaders = useMemo(
     () =>
       auditLogs.length
@@ -223,6 +227,13 @@ export const AuditLogs = () => {
   }
 
   return (
+    <>
+    <Button
+      label={showAuditTable ? "Hide Audit Table" : "Show Audit Table"}
+      onClick={toggleAuditTable}
+      style={buttonStyles.default}
+    />
+    {showAuditTable && (
     <Box pad="medium" background="light-1" round="small" overflow={{ horizontal: 'auto' }}>
       <Box direction="row" gap="small" wrap margin={{ bottom: 'medium' }}>
         {columnHeaders.map((header) => (
@@ -340,8 +351,8 @@ export const AuditLogs = () => {
           </Box>
         </Box>
       )}
-    </Box>
-  );
-};
+    </Box>)}
+  </>
+)}
 
 export default AuditLogs;

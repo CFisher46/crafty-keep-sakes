@@ -10,6 +10,7 @@ import {
   fetchInvoiceById,
   fetchOrderHistory,
   updateInvoiceStatus,
+  updateInvoiceTrackingInfo,
 } from '../../store/basket/basketThunks';
 import { verifyCurrentPassword } from '../../store/users/usersThunks';
 import { buttonStyles } from '../../helpers/formatting';
@@ -114,6 +115,7 @@ function UsersProfile() {
       county: string;
       postcode: string;
     };
+    tracking_info?: string;
     items?: Array<{
       id: number;
       description: string;
@@ -124,6 +126,8 @@ function UsersProfile() {
   }>(null);
   const [pendingInvoiceStatus, setPendingInvoiceStatus] = useState<string>('');
   const [invoiceUpdateMessage, setInvoiceUpdateMessage] = useState<string | null>(null);
+  const [enableSave, setEnableSave] = useState(false);
+  const [trackingInfo, setTrackingInfo] = useState('');
 
   const inputStyle = { width: '100%' };
   const labelStyle = { width: '100%', textAlign: 'left' as 'left' };
@@ -201,6 +205,11 @@ function UsersProfile() {
     setSelectedInvoiceId(invoiceId);
   };
 
+  const handleEnableSave = (trackingInfoUpdate: string) => {
+    setEnableSave(true);
+    setTrackingInfo(trackingInfoUpdate);
+  };
+
   const filteredOrders = orders.filter((order) => {
     const matchesStatus =
       invoiceStatusFilter === 'all' || order.order_status === invoiceStatusFilter;
@@ -255,6 +264,34 @@ function UsersProfile() {
     }
 
     setInvoiceUpdateMessage('Unable to update invoice status');
+  };
+
+
+  const handleInvoiceTrackingInfoUpdate = async (trackingInfo: string) => {
+    if (!selectedInvoiceId) {
+      return;
+    }
+
+    const result = await dispatch(
+      updateInvoiceTrackingInfo({
+        invoiceId: selectedInvoiceId,
+        trackingInfo,
+      })
+    );
+
+    if (updateInvoiceTrackingInfo.fulfilled.match(result)) {
+      setInvoiceUpdateMessage('Invoice tracking info updated');
+      console.log('Invoice tracking info update successful');
+      const refreshed = await dispatch(fetchInvoiceById(selectedInvoiceId));
+      if (fetchInvoiceById.fulfilled.match(refreshed)) {
+        setInvoice(refreshed.payload);
+      }
+      await refreshOrderHistory();
+      return;
+    }
+
+    setInvoiceUpdateMessage('Unable to update invoice tracking info');
+    console.log('Invoice tracking info update failed');
   };
 
   const handleVerifyCurrentPassword = async () => {
@@ -365,47 +402,95 @@ function UsersProfile() {
           >
             <Box pad="medium" width="large" gap="small">
               <Box direction="row" justify="between" align="center">
-                <Text>Invoice #{invoice.invoice_number}</Text>
+                <Text weight="bold">Invoice id: {invoice.invoice_number}</Text>
                 <Button label="Close" onClick={handleCloseInvoice} style={buttonStyles.default} />
+               </Box>
+
+              <Box direction="row" align="center" gap="xsmall">
+                <Text weight="bold"> Total Due: </Text>
+                <Text >£{Number(invoice.total_due).toFixed(2)}</Text>
               </Box>
-              <Text>Status: {invoice.invoice_status}</Text>
-              <Text>Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
-              <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
-              {invoice.delivery_address && (
-                <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
-                  <Text weight="bold">Delivery address</Text>
-                  <Text>{invoice.delivery_address.address_line1 || '—'}</Text>
-                  {invoice.delivery_address.address_line2 && <Text>{invoice.delivery_address.address_line2}</Text>}
-                  {invoice.delivery_address.address_line3 && <Text>{invoice.delivery_address.address_line3}</Text>}
-                  <Text>{[invoice.delivery_address.town, invoice.delivery_address.county].filter(Boolean).join(', ') || '—'}</Text>
-                  <Text>{invoice.delivery_address.postcode || '—'}</Text>
-                </Box>
-              )}
 
-              {userData.address_line1 && (
-                <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
-                  <Text weight="bold">Billing address</Text>
-                  <Text>{userData.address_line1 || '—'}</Text>
-                  {userData.address_line2 && <Text>{userData.address_line2}</Text>}
-                  {userData.address_line3 && <Text>{userData.address_line3}</Text>}
-                  <Text>{[userData.town, userData.county].filter(Boolean).join(', ') || '—'}</Text>
-                  <Text>{userData.postcode || '—'}</Text>
-                </Box>
-              )}
+              <Box direction="row" align="center" gap="xsmall">
+                <Text weight="bold">Status: </Text>
+                <Text>{invoice.invoice_status}</Text>
+              </Box>
 
-              {invoice.items && invoice.items.length > 0 && (
-                <Box margin={{ top: 'small' }} gap="xsmall">
-                  <Text weight="bold">Items</Text>
-                  {invoice.items.map((item) => (
-                    <Box key={item.id} border pad="xsmall" round="xsmall">
-                      <Text>{item.description}</Text>
-                      <Text>Qty: {item.quantity}</Text>
-                      <Text>Unit: £{Number(item.unit_price).toFixed(2)}</Text>
-                      <Text>Total: £{Number(item.line_total).toFixed(2)}</Text>
-                    </Box>
-                  ))}
+              <Box direction="row" align="center" gap="xsmall">
+                <Text weight="bold">Issued: </Text>
+                <Text>{new Date(invoice.issued_at).toLocaleString()}</Text>
+              </Box>
+
+              <Box margin={{ top: 'small' }} direction="row" align="center">
+                <Box width="120px">
+                  <Text weight="bold">Tracking Info:</Text>
                 </Box>
-              )}
+
+                <TextInput
+                  placeholder={invoice.tracking_info || 'No Tracking Available'}
+                  disabled={selectedUser?.type !== 'admin'}
+                  width="medium"
+                  onChange={(e) => handleEnableSave(e.target.value)}
+                />
+              </Box>
+
+              <Grid columns={["medium", "medium"]} gap="xsmall">
+                {invoice.delivery_address && (
+                  <Box margin={{ top: 'xsmall' }} pad="xsmall" round="xsmall" width="300px">
+                    <Text weight="bold">Delivery address</Text>
+                    <Text>{invoice.delivery_address.address_line1 || '—'}</Text>
+                    {invoice.delivery_address.address_line2 && <Text>{invoice.delivery_address.address_line2}</Text>}
+                    {invoice.delivery_address.address_line3 && <Text>{invoice.delivery_address.address_line3}</Text>}
+                    <Text>{[invoice.delivery_address.town, invoice.delivery_address.county].filter(Boolean).join(', ') || '—'}</Text>
+                    <Text>{invoice.delivery_address.postcode || '—'}</Text>
+                  </Box>
+                )}
+
+                {userData.address_line1 && (
+                  <Box margin={{ top: 'xsmall' }} pad="xsmall" round="xsmall" width="300px" >
+                    <Text weight="bold">Billing address</Text>
+                    <Text>{userData.address_line1 || '—'}</Text>
+                    {userData.address_line2 && <Text>{userData.address_line2}</Text>}
+                    {userData.address_line3 && <Text>{userData.address_line3}</Text>}
+                    <Text>{[userData.town, userData.county].filter(Boolean).join(', ') || '—'}</Text>
+                    <Text>{userData.postcode || '—'}</Text>
+                  </Box>
+                )}
+              </Grid>
+              <Grid>
+                {invoice.items && invoice.items.length > 0 && (
+                  <Box margin={{ top: 'small' }} gap="xsmall">
+                    <Text weight="bold">Items</Text>
+                    <table
+                      style={{
+                        width: '100%',
+                        minWidth: '720px',
+                        borderCollapse: 'collapse',
+                        fontSize: '0.9rem',
+                      }}>
+                      <thead>
+                        <tr style={{ background: '#EEF3FF', borderBottom: '1px solid #C7D7FF' }}>
+                          <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Description</th>
+                          <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Quantity</th>
+                          <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Unit Price</th>
+                          <th style={{ textAlign: 'left', width: '20%', padding: '12px 12px', fontWeight: 700, color: '#1F2937' }}>Total</th>
+                        </tr>
+                      </thead>
+                      {invoice.items.map((item) => (
+                        <tbody>
+                          <tr style={{ borderBottom: '1px solid #C7D7FF' }}>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{item.description}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>{item.quantity}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>£{Number(item.unit_price).toFixed(2)}</td>
+                            <td style={{ padding: '12px', whiteSpace: 'nowrap', color: '#1F2937' }}>£{Number(item.line_total).toFixed(2)}</td>
+                          </tr>
+                        </tbody>
+                      ))}
+                    </table>
+                  </Box>
+                )}
+              </Grid>
+
 
               {(selectedUser?.type === 'admin' || selectedUser?.type === 'Admin') && (
                 <Box margin={{ top: 'small' }} gap="xsmall">
@@ -420,7 +505,14 @@ function UsersProfile() {
                     onClick={handleInvoiceStatusUpdate}
                     style={buttonStyles.default}
                   />
+                  <Button
+                    label="Update Tracking Info"
+                    disabled={!enableSave}
+                    onClick={() => handleInvoiceTrackingInfoUpdate(trackingInfo)}
+                    style={buttonStyles.default}
+                  />
                   {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
+
                 </Box>
               )}
             </Box>
@@ -481,7 +573,7 @@ function UsersProfile() {
               {passwordError && (
                 <Text color="status-critical">{passwordError}</Text>
               )}
-              
+
               <InputField
                 label="New Password"
                 value={userData.new_password || ''}
