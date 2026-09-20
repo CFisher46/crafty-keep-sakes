@@ -52,6 +52,9 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-018 : Move Invoice feature into its own component
     -   AS a DEVELOPER, WHEN I come to make changes to the Invocies feature, I WANT to be able to quickly identify the Invoices component.
 
+-   [ ] CKS-2-019 : Add in an ADMIN report for ALL Invoices
+    - AS an ADMIN, WHEN I want to update order tracking, I NEED a report that gives me a list of invoices that need updating
+
 
 ## Bugs
 
