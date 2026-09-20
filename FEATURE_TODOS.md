@@ -13,7 +13,6 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   Type [Bug, Enhancemment, Missing Criteria]
     -   User Story
 
--   ALL items in progress CANNOT be marked as complete without test coverage.
 
 # Decision Log
 
@@ -26,7 +25,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Enhancements
 
--   [ ] CKS-2-007 : Add Delivery tracking to the invoices
+-   [x] CKS-2-007 : Add Delivery tracking to the invoices
     -   AS a CUSTOMER, WHEN my order has been dispatched, I WANT to see my tracking details.
     -   AS an ADMIN, WHEN I ship an order, I WANT to be able to add the tracking details to the CUSTOMERS invoice.
 
@@ -55,10 +54,14 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-019 : Add in an ADMIN report for ALL Invoices
     - AS an ADMIN, WHEN I want to update order tracking, I NEED a report that gives me a list of invoices that need updating
 
+-   [ ] CKS-2-020 : Change the blog post table to be card/tiles instead
+    -   AS a CUSTOMER, WHEN I view the Blogs page, I WANT it to be able to easily see individual blog posts.
+
 
 ## Bugs
 
--   [ ] TotalDue on Invoice seems to be a different value to that of the product
+-   [x] TotalDue on Invoice seems to be a different value to that of the product
+    -   Issue was that Tax was being applied, i have set to zero as this might still be needed in the future.
 
 -   [ ] Filters on the Admin Audit table dont seem to auto apply
 
@@ -72,6 +75,6 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
 
--   [ ] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price? VAT somewhere maybe?
+-   [x] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price?
 
 -   [ ] CKS-2-014 : Introduce a change log that is updated with the branch name and title when merging to main
