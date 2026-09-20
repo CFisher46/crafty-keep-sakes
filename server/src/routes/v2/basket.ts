@@ -305,7 +305,7 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT i.id, i.order_id, i.invoice_number, i.invoice_status, i.total_due, i.issued_at,
               i.billing_address_line1, i.billing_address_line2, i.billing_address_line3,
-              i.billing_town, i.billing_county, i.billing_postcode, o.user_id,
+              i.billing_town, i.billing_county, i.billing_postcode,i.tracking_info, o.user_id,
               ii.id AS invoice_item_id, ii.description, ii.quantity, ii.unit_price, ii.line_total
        FROM invoices_v2 i
        LEFT JOIN orders_v2 o ON o.id = i.order_id
@@ -350,6 +350,7 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
         county: invoice.billing_county || '',
         postcode: invoice.billing_postcode || '',
       },
+      tracking_info: invoice.tracking_info || '',
       items,
     });
   } catch (err) {
@@ -365,6 +366,7 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
   }
 });
 
+
 router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
   console.log(`PUT /api/v2/basket/invoices/${req.params.id}`);
 
@@ -372,57 +374,88 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
 
   try {
     const invoiceId = Number(req.params.id);
-    const status = String(req.body.invoice_status || '').trim();
+
+    const status = req.body.invoice_status !== undefined
+      ? String(req.body.invoice_status).trim()
+      : null;
+
+    const trackingInfo = req.body.tracking_info !== undefined
+      ? String(req.body.tracking_info).trim()
+      : null;
+
     const allowedStatuses = new Set(['unpaid', 'paid', 'void']);
+
     const orderStatusMap: Record<string, string> = {
       unpaid: 'placed',
       paid: 'fulfilled',
       void: 'cancelled',
     };
 
-    if (!status) {
-      res.status(400).json({ error: 'Missing invoice_status' });
-      return;
-    }
-
-    if (!allowedStatuses.has(status)) {
-      res.status(400).json({ error: 'Invalid invoice_status' });
-      return;
-    }
-
+    // Get the current invoice details
     const [invoiceRows] = await connection.query<RowDataPacket[]>(
-      `SELECT order_id FROM invoices_v2 WHERE id = ? LIMIT 1`,
+      `SELECT order_id, invoice_status, tracking_info
+       FROM invoices_v2
+       WHERE id = ?
+       LIMIT 1`,
       [invoiceId]
     );
 
-    const invoice = Array.isArray(invoiceRows) && invoiceRows.length > 0 ? invoiceRows[0] : null;
+    const invoice = Array.isArray(invoiceRows) && invoiceRows.length > 0
+      ? invoiceRows[0]
+      : null;
+
     if (!invoice) {
       res.status(404).json({ error: 'Invoice not found' });
       return;
     }
 
     const orderId = Number(invoice.order_id);
+    const currentStatus = String(invoice.invoice_status);
 
-    const [result] = await connection.query<ResultSetHeader>(
-      `UPDATE invoices_v2 SET invoice_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [status, invoiceId]
-    );
+    // Determine whether the status actually needs to change
+    const statusChanged =
+      status !== null && status !== currentStatus;
 
-    if (result.affectedRows === 0) {
-      res.status(404).json({ error: 'Invoice not found' });
+    // Only validate status if one was supplied
+    if (status !== null && !allowedStatuses.has(status)) {
+      res.status(400).json({ error: 'Invalid invoice_status' });
       return;
     }
 
-    await connection.query<ResultSetHeader>(
-      `UPDATE orders_v2 SET order_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [orderStatusMap[status], orderId]
-    );
+    // Update invoice/order status only if the status has actually changed
+    if (statusChanged) {
+      await connection.query(
+        `UPDATE invoices_v2
+         SET invoice_status = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [status, invoiceId]
+      );
+
+      await connection.query(
+        `UPDATE orders_v2
+         SET order_status = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [orderStatusMap[status!], orderId]
+      );
+    }
+
+    // Update tracking information if it was supplied
+    if (trackingInfo !== null) {
+      await connection.query(
+        `UPDATE invoices_v2
+         SET tracking_info = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [trackingInfo, invoiceId]
+      );
+    }
 
     const actorUser = getRequestUser(req);
+
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)
         : null;
+
     const actorRole =
       actorUser && typeof actorUser === 'object' && 'type' in actorUser
         ? String(actorUser.type)
@@ -435,16 +468,29 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
       resourceType: 'invoices_v2',
       resourceId: invoiceId,
       sourceEndpoint: `PUT /api/v2/basket/invoices/${invoiceId}`,
-      oldValuesJson: null,
+      oldValuesJson: {
+        invoice_status: currentStatus,
+        tracking_info: invoice.tracking_info,
+      },
       newValuesJson: {
         invoice_id: invoiceId,
         order_id: orderId,
-        invoice_status: status,
-        order_status: orderStatusMap[status],
+        invoice_status: statusChanged ? status : currentStatus,
+        order_status: statusChanged
+          ? orderStatusMap[status!]
+          : undefined,
+        tracking_info: trackingInfo !== null
+          ? trackingInfo
+          : invoice.tracking_info,
       },
     });
 
-    res.json({ message: 'Invoice updated', affectedRows: result.affectedRows });
+    res.json({
+      message: 'Invoice updated',
+      affectedRows: 1,
+      statusChanged,
+      trackingUpdated: trackingInfo !== null,
+    });
   } catch (err) {
     console.error('Update V2 Invoice Error:', err);
     res.status(500).json({ error: 'Database error' });
@@ -452,6 +498,8 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
     connection.release();
   }
 });
+
+
 
 router.post('/items', verifyAuthToken, async (req, res) => {
   console.log('POST /api/v2/basket/items');
