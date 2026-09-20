@@ -69,7 +69,6 @@ function Basket() {
     loadBasket();
   }, [dispatch, isLoggedIn]);
 
-  // Calculate the total price for all items
   const totalPrice = items.reduce(
     (sum, item) => sum + item.quantity * item.price,
     0
@@ -78,7 +77,6 @@ function Basket() {
   const handleBasketQuantity = async (itemId: string, delta: number) => {
     const existingItem = items.find((item) => item.id === itemId);
 
-    // Guests have no server-side basket, so update local state only
     if (!isLoggedIn) {
       if (existingItem) {
         dispatch(addItemToBasket({ ...existingItem, quantity: delta }));
@@ -285,7 +283,7 @@ function Basket() {
               <Box direction="row" align="center" flex="grow" gap="small">
                 <Box width="50px" height="50px" overflow="hidden" round="small">
                   <img
-                    src={item.image || "/placeholder.png"} // Use a placeholder if no image is available
+                    src={item.image || "/placeholder.png"}
                     alt={item.product_name}
                     style={{
                       width: "100%",

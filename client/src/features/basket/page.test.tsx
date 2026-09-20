@@ -199,6 +199,7 @@ describe('Basket page', () => {
     });
   });
 
+
   it('shows a failure message when checkout fails', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,

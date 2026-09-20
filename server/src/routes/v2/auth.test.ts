@@ -11,7 +11,7 @@ jest.mock('../../ts-common/database', () => ({
   db: mockDb,
 }));
 jest.mock('../../ts-common/helpers', () => ({
-  decrypt: jest.fn((value) => value), // Mock: no-op decrypt for testing
+  decrypt: jest.fn((value) => value),
 }));
 
 import app from '../../app';

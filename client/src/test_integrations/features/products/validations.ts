@@ -1,4 +1,3 @@
-// src/features/products/validation.ts
 import { Product } from "../../../types";
 
 export function validateProduct(product: Partial<Product>) {
@@ -32,8 +31,6 @@ export function validateProduct(product: Partial<Product>) {
       errors.sale_percent = "Sale percent must be between 0 and 100";
     }
   }
-
-  // Add more validations as needed...
 
   return errors;
 }

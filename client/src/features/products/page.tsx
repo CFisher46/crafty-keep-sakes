@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Form, Text, Box, Card, Grid, Button } from 'grommet';
 import ShopFilterBar from '../../components/shop-filters-bar/shop-filter-bar';
-// import { fetchFilteredProducts, fetchLiveProducts } from '../../helpers/api';
 import { useLocation } from 'react-router-dom';
 import { fetchAllProducts, fetchFilteredProducts } from '../../store/products/productsThunks';
 import { addItemToBasket } from '../../store/basket/basketSlice';
@@ -24,6 +23,7 @@ function Shop() {
   const loading = useAppSelector(selectProductsLoading);
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const location = useLocation();
+  const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
 
   const visibleProducts = products.filter(
     (product) => Boolean(product?.id) && Boolean(product?.product_name)
@@ -46,7 +46,7 @@ function Shop() {
       id: product.id,
       image: productImages[0] || '',
       product_name: product.product_name,
-      price: product.price,
+      price: product.on_sale ? salePrice(product) : product.price,
       quantity: 1,
     };
 
@@ -98,7 +98,7 @@ function Shop() {
     <>
       <ShopFilterBar />
       <Box>
-        <Form value={{}} onChange={() => {}}>
+        <Form value={{}} onChange={() => { }}>
           {loading ? (
             <Text>Loading... </Text>
           ) : visibleProducts.length === 0 ? (
@@ -158,20 +158,30 @@ function Shop() {
                     </Box>
                     <Box pad={{ vertical: 'small' }}>
                       <Text>{product.product_name}</Text>
-                      <Text>£{product.price}</Text>
+
+                      {product.on_sale ? (
+                        <><Text size="small" style={{ textDecoration: 'line-through' }}>
+                          RRP:£{product.price}
+                        </Text>
+                          <Text size="small" color="status-critical">
+                            £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
+                          </Text></>
+                      ) : (
+                        <Text>RRP: £{product.price}</Text>
+                      )
+                      }
+
+
                     </Box>
                     <Box pad={{ vertical: 'small' }}>
                       <Button
                         label="Add to Basket"
-                        //status="enabled"
-                        //primary
                         style={buttonStyles.default}
                         onClick={() => handleAddToCart(product)}
                       />
                     </Box>
                     <Button
                       label="View Details"
-                      //status="enabled"
                       onClick={() => openModal(product)}
                       style={buttonStyles.default}
                     />

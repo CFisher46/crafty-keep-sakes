@@ -1,4 +1,3 @@
-// src/store/products/productsThunks.ts
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Product } from "../../types";
 import { createAuditEntry } from "../audits/auditThunks";
@@ -11,7 +10,6 @@ const parseProductsPayload = (raw: unknown): Product[] => {
     }
 
     if (typeof input[0] === "string") {
-      // Defend against accidental array-of-JSON-strings payloads.
       return input
         .map((item) => {
           if (typeof item !== "string") {
@@ -134,7 +132,7 @@ export const createProduct = createAsyncThunk(
         })
       );
 
-      return data; // Expected to return { message, insertId }
+      return data; 
     } catch (err: any) {
       return rejectWithValue(err.message || "Unexpected error");
     }
@@ -171,8 +169,8 @@ export const uploadProductImages = createAsyncThunk<
 });
 
 export const updateProduct = createAsyncThunk<
-  Product, // Return type on success
-  { id: string; product: Partial<Product>; previousProduct?: Product }, // Payload: id + partial product data
+  Product, 
+  { id: string; product: Partial<Product>; previousProduct?: Product }, 
   { rejectValue: string }
 >(
   "products/updateProduct",

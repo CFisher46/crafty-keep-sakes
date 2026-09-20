@@ -51,14 +51,13 @@ const DynamicProductForm = () => {
   };
 
   const handleSubmit = (event: React.FormEvent) => {
-    event.preventDefault(); // prevent native form submission
+    event.preventDefault(); 
 
     const errors = validateProduct(product);
     setFormErrors(errors);
 
     if (Object.keys(errors).length === 0) {
       setLoading(true);
-      // Simulate API call or dispatch redux action
       setTimeout(() => {
         alert("Product submitted: " + JSON.stringify(product, null, 2));
         setLoading(false);

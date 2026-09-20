@@ -38,18 +38,15 @@ const basketSlice = createSlice({
       if (existingItem) {
         existingItem.quantity += action.payload.quantity;
 
-        // Remove the item if the quantity is zero or less
         if (existingItem.quantity <= 0) {
           state.items = state.items.filter(
             (item) => item.id !== action.payload.id
           );
         }
       } else if (action.payload.quantity > 0) {
-        // Only add the item if the quantity is greater than zero
         state.items.push(action.payload);
       }
 
-      // Recalculate the totalItems
       state.totalItems = state.items.reduce(
         (sum, item) => sum + item.quantity,
         0

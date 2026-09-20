@@ -1,8 +1,5 @@
 import { User } from '../types';
 
-// Common sample fixtures reused across client test files. Use `{ ...sampleX, overrideField: ... }`
-// to customize a specific test's data without redefining the whole shape.
-
 export const sampleUser: User = {
   id: '5',
   email_address: 'jane@example.com',

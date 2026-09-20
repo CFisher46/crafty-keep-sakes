@@ -63,7 +63,7 @@ const InputField = ({
 
 function UsersProfile() {
   console.log(' Navigated to /Profile');
-  const { id: userId } = useParams<{ id: string }>(); // Extract userId from URL
+  const { id: userId } = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
   const selectedUser = useSelector(
     (state: RootState) => state.users.selectedUser
@@ -379,6 +379,17 @@ function UsersProfile() {
                   {invoice.delivery_address.address_line3 && <Text>{invoice.delivery_address.address_line3}</Text>}
                   <Text>{[invoice.delivery_address.town, invoice.delivery_address.county].filter(Boolean).join(', ') || '—'}</Text>
                   <Text>{invoice.delivery_address.postcode || '—'}</Text>
+                </Box>
+              )}
+
+              {userData.address_line1 && (
+                <Box margin={{ top: 'xsmall' }} pad="xsmall" border round="xsmall">
+                  <Text weight="bold">Billing address</Text>
+                  <Text>{userData.address_line1 || '—'}</Text>
+                  {userData.address_line2 && <Text>{userData.address_line2}</Text>}
+                  {userData.address_line3 && <Text>{userData.address_line3}</Text>}
+                  <Text>{[userData.town, userData.county].filter(Boolean).join(', ') || '—'}</Text>
+                  <Text>{userData.postcode || '—'}</Text>
                 </Box>
               )}
 

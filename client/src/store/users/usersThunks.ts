@@ -26,7 +26,6 @@ const normalizeUserRecord = (user: RawUserRecord): User => ({
   password: String(user.password ?? ''),
 });
 
-// Helper to get changedBy from state
 const getChangedBy = (state: any) => {
   const loggedInUser = state.auth?.user;
   return loggedInUser
@@ -94,7 +93,6 @@ export const updateUser = createAsyncThunk(
 
       await res.json();
 
-      // Create audit entries for each changed field
       if (previousUser) {
         const changedBy = getChangedBy(getState());
         Object.keys(user).forEach((key) => {
@@ -139,7 +137,6 @@ export const createUser = createAsyncThunk(
 
       const data = await res.json();
 
-      // Log user creation
       const changedBy = getChangedBy(getState());
       dispatch(
         createAuditEntry({
@@ -147,7 +144,7 @@ export const createUser = createAsyncThunk(
           field_changed: 'user_created',
           action_type: 'CREATE',
           api_source: '/admin',
-          changed_by: changedBy, //Temporary until this has been thought about more
+          changed_by: changedBy, 
         })
       );
 
@@ -166,7 +163,6 @@ export const deleteUser = createAsyncThunk(
       credentials: 'include',
     });
     const changedBy = getChangedBy(getState());
-    // Log user deletion
     dispatch(
       createAuditEntry({
         user: id,
