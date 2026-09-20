@@ -38,7 +38,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-012 : Add sale %, Price before and Price after to the scrolling onSale tiles of on the landing page
     -   AS a CUSTOMER, WHEN I am on the landing page, I WANT to see the reduction %, the original price (striked through) and the reduced price.
 
--   [ ] CKS-2-015 : Add navigation arrows to onSale items on landng page.
+-   [x] CKS-2-015 : Add navigation arrows to onSale items on landng page.
     -   AS a CUSTOMER, WHEN I am on the landing page AND viewing the onSale items, I WANT to be able to skip forward or backwards through them items.
 
 -   [ ] CKS-2-016 : Add in a 'Delete Comment' to the blog feature
