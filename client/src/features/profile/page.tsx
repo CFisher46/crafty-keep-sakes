@@ -210,11 +210,6 @@ function UsersProfile() {
     setTrackingInfo(trackingInfoUpdate);
   };
 
-  const handleTrackingInfoUpdate = async () => {
-    console.log('Updating tracking info for invoice:', selectedInvoiceId);
-    setEnableSave(false);
-  }
-
   const filteredOrders = orders.filter((order) => {
     const matchesStatus =
       invoiceStatusFilter === 'all' || order.order_status === invoiceStatusFilter;
@@ -407,15 +402,36 @@ function UsersProfile() {
           >
             <Box pad="medium" width="large" gap="small">
               <Box direction="row" justify="between" align="center">
-                <Text>Invoice #{invoice.invoice_number}</Text>
+                <Text weight="bold">Invoice id: {invoice.invoice_number}</Text>
                 <Button label="Close" onClick={handleCloseInvoice} style={buttonStyles.default} />
-              </Box>
-              <Text>Status: {invoice.invoice_status}</Text>
-              <Text>Issued: {new Date(invoice.issued_at).toLocaleString()}</Text>
+               </Box>
 
-              <Box margin={{ top: 'small' }} direction="row" >
-                <Text style={{ minWidth: '120px' }}>Tracking Info:</Text>
-                <TextInput placeholder={invoice.tracking_info || 'No Tracking Available'} disabled={selectedUser?.type !== 'admin'} width="small" onChange={(e) => handleEnableSave(e.target.value)} />
+              <Box direction="row" align="center" gap="xsmall">
+                <Text weight="bold"> Total Due: </Text>
+                <Text >£{Number(invoice.total_due).toFixed(2)}</Text>
+              </Box>
+
+              <Box direction="row" align="center" gap="xsmall">
+                <Text weight="bold">Status: </Text>
+                <Text>{invoice.invoice_status}</Text>
+              </Box>
+
+              <Box direction="row" align="center" gap="xsmall">
+                <Text weight="bold">Issued: </Text>
+                <Text>{new Date(invoice.issued_at).toLocaleString()}</Text>
+              </Box>
+
+              <Box margin={{ top: 'small' }} direction="row" align="center">
+                <Box width="120px">
+                  <Text weight="bold">Tracking Info:</Text>
+                </Box>
+
+                <TextInput
+                  placeholder={invoice.tracking_info || 'No Tracking Available'}
+                  disabled={selectedUser?.type !== 'admin'}
+                  width="medium"
+                  onChange={(e) => handleEnableSave(e.target.value)}
+                />
               </Box>
 
               <Grid columns={["medium", "medium"]} gap="xsmall">
@@ -471,9 +487,6 @@ function UsersProfile() {
                         </tbody>
                       ))}
                     </table>
-                    <Box align="end">
-                      <Text size="small"> Total Due: £{Number(invoice.total_due).toFixed(2)}</Text>
-                    </Box>
                   </Box>
                 )}
               </Grid>
@@ -492,10 +505,10 @@ function UsersProfile() {
                     onClick={handleInvoiceStatusUpdate}
                     style={buttonStyles.default}
                   />
-                    <Button
+                  <Button
                     label="Update Tracking Info"
                     disabled={!enableSave}
-                    onClick={() =>  handleInvoiceTrackingInfoUpdate(trackingInfo)}
+                    onClick={() => handleInvoiceTrackingInfoUpdate(trackingInfo)}
                     style={buttonStyles.default}
                   />
                   {invoiceUpdateMessage && <Text>{invoiceUpdateMessage}</Text>}
