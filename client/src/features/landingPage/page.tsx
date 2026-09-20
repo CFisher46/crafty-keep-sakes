@@ -1,3 +1,4 @@
+
 import { Text, Box, Button, Grid, Card, CardBody, CardFooter } from 'grommet';
 import CksButton from '../../components/buttons/cksButtons';
 import { useEffect, useState, useRef } from 'react';
@@ -31,6 +32,9 @@ function Home() {
   const [onSaleProducts, setOnSaleProducts] = useState<Product[]>([]);
   const carouselRef = useRef<HTMLDivElement>(null);
 
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
   const parseProductImages = (images: Product['images']) => {
     if (Array.isArray(images)) return images;
     if (typeof images !== 'string' || !images.trim()) return [];
@@ -44,7 +48,9 @@ function Home() {
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
+
+  const salePrice = (product: Product) =>
+    product.price * (1 - product.sale_percent / 100);
 
   const openModal = (product: Product) => {
     setSelectedProduct(product);
@@ -58,6 +64,7 @@ function Home() {
 
   const handleAddToCart = async (product: Product) => {
     const productImages = parseProductImages(product.images);
+
     const basketItem = {
       id: product.id,
       image: productImages[0] || '',
@@ -73,9 +80,6 @@ function Home() {
     dispatch(addItemToBasket(basketItem));
   };
 
-
-  
-
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
@@ -88,17 +92,49 @@ function Home() {
     const filteredProducts = products.filter(
       (product: Product) => product.on_sale
     );
+
     setOnSaleProducts(filteredProducts);
   }, [products]);
 
+  /*
+   * Update the state of the carousel buttons based on
+   * the current scroll position.
+   */
+  const updateCarouselButtons = () => {
+    if (!carouselRef.current) return;
+
+    const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
+
+    setCanScrollLeft(scrollLeft > 0);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 1);
+  };
+
+  /*
+   * Recalculate the button state whenever the products change.
+   */
+  useEffect(() => {
+    updateCarouselButtons();
+  }, [onSaleProducts]);
+
+  /*
+   * Automatically scroll the carousel every 5 seconds.
+   */
   useEffect(() => {
     const interval = setInterval(() => {
       if (carouselRef.current) {
-        const { scrollLeft, scrollWidth, clientWidth } = carouselRef.current;
-        if (scrollLeft + clientWidth >= scrollWidth) {
-          carouselRef.current.scrollTo({ left: 0, behavior: 'smooth' });
+        const { scrollLeft, scrollWidth, clientWidth } =
+          carouselRef.current;
+
+        if (scrollLeft + clientWidth >= scrollWidth - 1) {
+          carouselRef.current.scrollTo({
+            left: 0,
+            behavior: 'smooth',
+          });
         } else {
-          carouselRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+          carouselRef.current.scrollBy({
+            left: 200,
+            behavior: 'smooth',
+          });
         }
       }
     }, 5000);
@@ -135,6 +171,7 @@ function Home() {
           <Text size="large" weight="bold">
             Welcome to Crafty Keepsakes!
           </Text>
+
           <Text>
             Explore our collection of handcrafted items and unique keepsakes.
           </Text>
@@ -150,22 +187,26 @@ function Home() {
           border={{ color: 'light-4', size: 'xsmall' }}
         >
           {isLoggedIn ? (
-            <Box gap={'small'}>
+            <Box gap="small">
               <Text size="medium">
                 Welcome, {userDetails ? userDetails.first_name : ''}!
               </Text>
+
               <Text>Your profile is ready to explore.</Text>
+
               {userType === 'admin' && (
                 <Text size="small" color="status-critical">
                   Admin Access Granted
                 </Text>
               )}
+
               <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <CksButton
                   label="Log Out"
                   onClick={handleLogout}
                   status="enabled"
                 />
+
                 <CksButton
                   label="Go to Profile"
                   onClick={() => navigate(`/profile/${userDetails?.id}`)}
@@ -182,12 +223,14 @@ function Home() {
               <Text size="medium" weight="bold">
                 Login or Sign Up
               </Text>
+
               <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <CksButton
                   onClick={() => setShowLogin(true)}
                   label="Login"
                   status="enabled"
                 />
+
                 <CksButton
                   onClick={() => navigate('/register')}
                   label="Sign Up"
@@ -205,79 +248,150 @@ function Home() {
           border={{ color: 'light-4', size: 'xsmall' }}
         >
           <Text size="medium" weight="bold" margin={{ bottom: 'small' }}>
-            Discover our latest products and offers!
+            Discover our latest offers!
           </Text>
-          <Box
-            direction="row"
-            overflow="hidden"
-            style={{
-              whiteSpace: 'nowrap',
-              scrollBehavior: 'smooth',
-              scrollbarWidth: 'none',
-            }}
-            ref={carouselRef}
-          >
-            {onSaleProducts.map((product) => (
-              <Card
-                key={product.id}
-                background="light-1"
-                pad="small"
-                border={{ color: 'light-4', size: 'xsmall' }}
-                margin={{ right: 'small' }}
+
+          {onSaleProducts.length === 0 ? (
+            <Text>No products currently on sale.</Text>
+          ) : (
+            <Box
+              style={{
+                position: 'relative',
+                width: '100%',
+              }}
+            >
+              {/* Left carousel button */}
+              <Button
+                label="<<"
+                disabled={!canScrollLeft}
+                onClick={() => {
+                  carouselRef.current?.scrollBy({
+                    left: -200,
+                    behavior: 'smooth',
+                  });
+                }}
                 style={{
-                  display: 'inline-block',
-                  minWidth: '200px',
+                  ...buttonStyles.default,
+                  position: 'absolute',
+                  left: '0',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 2,
+                }}
+              />
+
+              {/* Carousel */}
+              <Box
+                direction="row"
+                overflow="hidden"
+                ref={carouselRef}
+                onScroll={updateCarouselButtons}
+                style={{
+                  whiteSpace: 'nowrap',
+                  scrollBehavior: 'smooth',
+                  scrollbarWidth: 'none',
+                  paddingLeft: '50px',
+                  paddingRight: '50px',
                 }}
               >
-                <CardBody onClick={() => openModal(product)}>
-                  <Box height="small" width="100%" overflow="hidden">
-                    {parseProductImages(product.images).length > 0 ? (
-                      <img
-                        src={parseProductImages(product.images)[0]}
-                        alt={product.product_name}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        height="100%"
-                        width="100%"
-                        background="white"
-                        align="center"
-                        justify="center"
-                        round="small"
-                      >
-                        <Text>No Image</Text>
+                {onSaleProducts.map((product) => (
+                  <Card
+                    key={product.id}
+                    background="light-1"
+                    pad="small"
+                    border={{ color: 'light-4', size: 'xsmall' }}
+                    margin={{ right: 'small' }}
+                    style={{
+                      display: 'inline-block',
+                      width: '200px',
+                      minWidth: '200px',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <CardBody onClick={() => openModal(product)}>
+                      <Box height="small" width="100%" overflow="hidden">
+                        {parseProductImages(product.images).length > 0 ? (
+                          <img
+                            src={parseProductImages(product.images)[0]}
+                            alt={product.product_name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'cover',
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            height="100%"
+                            width="100%"
+                            background="white"
+                            align="center"
+                            justify="center"
+                            round="small"
+                          >
+                            <Text>No Image</Text>
+                          </Box>
+                        )}
                       </Box>
-                    )}
-                  </Box>
 
-                  <Text weight="bold">{product.product_name}</Text>
-                  <Text size="small">{product.description}</Text>
-                  <Text size="small" style={{ textDecoration: 'line-through' }}>
-                    RRP:£{product.price}
-                  </Text>
-                  <Text size="small" color="status-critical">
-                    £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
-                  </Text>
-                  
-                </CardBody>
-                <CardFooter pad={{ vertical: 'small' }}></CardFooter>
-                <Box margin={{ top: 'small' }}>
-                    <Button
-                      label="Add to Basket"
-                      style={buttonStyles.default}
-                      onClick={() => handleAddToCart(product)}
-                    />
-                  </Box>
-              </Card>
-            ))}
-          </Box>
+                      <Text weight="bold">
+                        {product.product_name}
+                      </Text>
+
+                      <Text size="small">
+                        {product.description}
+                      </Text>
+
+                      <Text
+                        size="small"
+                        style={{ textDecoration: 'line-through' }}
+                      >
+                        RRP:£{product.price}
+                      </Text>
+
+                      <Text size="small" color="status-critical">
+                        £{salePrice(product).toFixed(2)} (
+                        {product.sale_percent}% off)
+                      </Text>
+                    </CardBody>
+
+                    <CardFooter pad={{ vertical: 'small' }} />
+
+                    <Box margin={{ top: 'small' }}>
+                      <Button
+                        label="Add to Basket"
+                        style={buttonStyles.default}
+                        onClick={() => handleAddToCart(product)}
+                      />
+                    </Box>
+                  </Card>
+                ))}
+              </Box>
+
+              {/* Right carousel button */}
+              <Button
+                label=">>"
+                disabled={!canScrollRight}
+                onClick={() => {
+                  carouselRef.current?.scrollBy({
+                    left: 200,
+                    behavior: 'smooth',
+                  });
+                }}
+                style={{
+                  ...buttonStyles.default,
+                  position: 'absolute',
+                  right: '0',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  zIndex: 2,
+                }}
+              />
+            </Box>
+          )}
         </Box>
       </Grid>
+
       {isModalOpen && selectedProduct && (
         <CommonModal
           title={selectedProduct?.product_name || 'Product Details'}
