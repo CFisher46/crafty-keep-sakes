@@ -1,0 +1,468 @@
+# AWS Migration Evaluation
+
+Status: **Exploratory – no implementation planned yet.**
+Purpose: Understand whether moving from Express + MySQL to an AWS-native, Terraform-managed stack is worth the refactor.
+
+**Preferred direction: Option B (host the existing Express app on AWS, cost-minimised). See [section 10](#10-option-b-in-detail-cost-minimised-hosting-of-express--mysql).** Sections 2 and 6 describe the Option B architecture and phases. Sections 3–5 and 7–9 are the original comparison against a full serverless stack, retained for context; the serverless architecture and phases are kept in [Appendix A](#appendix-a-serverless-alternative-deferred).
+
+**Key context: the app has not been deployed and the only existing users are test accounts.** This makes it a *greenfield* move: no user migration, no production data backfill, no zero-downtime cutover and no parallel running of old and new systems. Those costs are excluded below. Remaining effort is code refactoring, infrastructure, and learning.
+
+> Cost figures are rough, order-of-magnitude estimates and AWS pricing changes. Verify with the AWS Pricing Calculator before deciding.
+
+---
+
+## 1. Current state (as found in the repo)
+
+| Area | Today |
+| --- | --- |
+| API | Express 5 app ([server/src/app.ts](../server/src/app.ts)) with v2 routers: products, users, auth, basket, blog, audit. ~25 endpoints (see [endpoint-inventory.ts](../server/src/endpoint-inventory.ts)). |
+| Auth | Custom: `bcryptjs` password hashes, `jsonwebtoken` JWT in an `auth_token` httpOnly cookie, `verifyAuthToken` / `requireRole('admin')` middleware, `verify-password` endpoint. |
+| Database | MySQL via `mysql2` pool, hand-written SQL per handler. Schema in [phase1_schema_v2.sql](../server/scripts/migrations/phase1_schema_v2.sql): users, roles, profiles, products, categories, images, baskets, orders, invoices, payments, audit events, blog posts/comments/reactions. |
+| PII protection | App-level field encryption (`ENCRYPTION_KEY`, `ENCRYPTION_KEY_PREVIOUS`) for names, addresses, phone. Key rotation/repair done by scripts. |
+| Images | `multer` disk storage writing to `client/public/images`; DB stores `/images/<file>` paths. |
+| Logging | `console.log` per route; audit trail in `audit_events_v2` table. |
+| CI | GitHub Actions: lint + test for client and server. |
+| Frontend | React (CRA) with Redux Toolkit thunks calling `/api/...` and `/api/v2/...`. |
+
+Existing pain points AWS would directly address:
+
+- Images on local disk (not horizontally scalable, tied to the client build folder, lost on redeploy).
+- Hand-rolled auth and encryption key management (security burden sits entirely with you).
+- Secrets in `.env` files.
+- No structured logging/metrics/alerting.
+- No defined hosting/infra story (nothing in the repo says where this runs).
+
+---
+
+## 2. Proposed target architecture (Option B, cost-minimised)
+
+Host the existing Express app on a single small EC2 instance, backed by managed RDS MySQL, with S3 + CloudFront for the SPA and images. Everything is provisioned with Terraform. Cognito, WAF, Multi-AZ and Fargate are deliberate later upgrades, not day-one requirements.
+
+```
+                          Route 53 (DNS) · ACM (TLS certs)
+                                   │
+Browser ──► CloudFront ──┬── S3 (React build)                      www.<domain>
+                         ├── S3 (product/blog images, OAC)         img.<domain> (admin uploads via presigned PUT)
+                         └── API origin ──► EC2 t4g (public subnet) api.<domain>
+                                             Caddy/nginx → Express container
+                                             │  instance role (least privilege), IMDSv2, SSM Session Manager
+                                             ├──► RDS MySQL db.t4g.micro (private subnet, SG allows EC2 only, TLS)
+                                             ├──► S3 (images)
+                                             ├──► SSM Parameter Store (DB creds, JWT secret, encryption key)
+                                             └──► CloudWatch agent → Logs / Metrics / Alarms ──► SNS email
+
+Account-level: CloudTrail · GuardDuty · AWS Budgets · (optional) Cognito · (later) WAF
+CI/CD: GitHub Actions (OIDC role) → ECR image → SSM Run Command deploy; Terraform plan/apply
+```
+
+### 2.1 Component mapping
+
+| Today | Option B |
+| --- | --- |
+| Express routers (`/api`, `/api/v2`) | Unchanged, running in a Docker container on EC2 behind Caddy/nginx |
+| `mysql2` / `slonik` + MySQL | Unchanged code; MySQL becomes RDS MySQL (`db.t4g.micro`, single-AZ, encrypted, 7-day backups) |
+| `multer` disk storage in `client/public/images` | S3 bucket + presigned PUT URLs; DB stores object keys; CloudFront serves images |
+| React build served locally | S3 + CloudFront with security headers |
+| `.env` secrets | SSM Parameter Store (SecureString) loaded at container start |
+| App-level field encryption (`ENCRYPTION_KEY`) | Kept as is, key held in SSM (AWS-managed KMS). Revisit KMS envelope encryption later |
+| Custom JWT/bcrypt auth | Kept initially; Cognito is an optional later phase |
+| `console.log` | pino JSON to stdout → CloudWatch Logs (14–30 day retention), metric filters and alarms |
+| `audit_events_v2` | Kept for business audit; CloudTrail added for infrastructure audit |
+| Manual deploys | Terraform + GitHub Actions (OIDC, no stored AWS keys) |
+
+### 2.2 Network and security design
+
+- **VPC**: 2 AZs, public subnets (EC2) and private subnets (RDS subnet group). **No NAT gateway, no ALB, no RDS Proxy, no VPC endpoints.** EC2 reaches AWS APIs over its public IP.
+- **Security groups**: EC2 accepts 80/443 only (preferably from the CloudFront managed prefix list); no inbound SSH. RDS accepts 3306 only from the EC2 security group and is not publicly accessible.
+- **Access**: SSM Session Manager for shell access, IMDSv2 required, EBS encrypted.
+- **IAM**: one instance role limited to its S3 prefix, specific SSM parameters, CloudWatch logs, and ECR pull. Separate OIDC role for CI with narrowly scoped permissions.
+- **Data protection**: RDS and S3 encrypted at rest; TLS to RDS; S3 Block Public Access; images only readable via CloudFront OAC.
+- **Detection**: CloudTrail, GuardDuty, CloudWatch alarms (status check with auto-recover, CPU, disk, 5xx, RDS storage/CPU, failed logins) to SNS email, AWS Budgets.
+- **App hardening**: `helmet`, rate limiting (also at Caddy/nginx), `trust proxy` set correctly, strict CORS, `Secure`/`SameSite` cookies.
+
+### 2.3 Terraform layout
+
+```
+infra/
+  bootstrap/          remote state bucket, OIDC provider/role
+  modules/
+    network/          VPC, subnets, route tables, security groups
+    database/         RDS, subnet group, parameter group, backups
+    storage/          S3 buckets, CloudFront, OAC, lifecycle
+    compute/          EC2, instance role, user-data, EIP, ECR
+    secrets/          SSM parameters
+    observability/    log groups, alarms, SNS, CloudTrail, GuardDuty, budgets
+    dns-tls/          Route 53, ACM
+  envs/
+    dev/              short-lived, destroy when idle
+    prod/
+```
+
+### 2.4 Growth path (only if needed)
+
+Cognito (managed auth/MFA) → WAF → customer-managed KMS keys → Multi-AZ RDS → ECS Fargate + ALB (same container image and RDS) → optional Lambda for specific workloads such as payment webhooks.
+
+---
+
+## 3. Pros
+
+### Security & compliance
+- **Cognito removes custom auth risk**: password hashing, brute-force protection, MFA, email verification, password reset, token handling – managed and patched.
+- **Better secrets and key management**: KMS + Secrets Manager replace `.env` keys and the manual `ENCRYPTION_KEY` / `ENCRYPTION_KEY_PREVIOUS` rotation scripts.
+- **Defence in depth off the shelf**: WAF, GuardDuty, CloudTrail, Config, Security Hub – useful evidence for GDPR / Cyber Essentials / ISO 27001 conversations.
+- **Per-function IAM** limits blast radius (e.g. only the image Lambda can write to the bucket).
+- Encryption at rest/in transit is largely a configuration option.
+
+### Operations & scalability
+- **S3 fixes the image-storage design flaw**: durable, cheap, CDN-fronted, uploads bypass the API.
+- **Scale to zero / pay-per-use** for Lambda and API Gateway – suits a small shop with spiky traffic.
+- **No compute patching**; managed backups, Multi-AZ and point-in-time restore on RDS.
+- **Built-in observability**: logs, metrics, alarms, tracing; easy alerting on 5xx, auth failures, DB CPU.
+- **Reproducible environments**: Terraform makes dev/staging/prod identical and disaster recovery a re-apply.
+
+### Engineering
+- Terraform gives **reviewable, versioned infrastructure**.
+- Handlers are already split per feature (`routes/v2/<domain>/<action>/handler.ts`), so they port to Lambda relatively cleanly.
+- Strong skill value (AWS, IaC, serverless, security).
+- Cognito + API Gateway authorizer centralises authentication so Lambdas only need authorisation (group checks).
+
+---
+
+## 4. Cons / risks
+
+### Cost
+- **Lambda + RDS is a classic hidden-cost trap**. Reaching a private RDS from Lambda needs a VPC, meaning a **NAT Gateway (~$30+/month)** or VPC endpoints, plus ideally **RDS Proxy (~$15+/month)** to avoid exhausting connections. This can exceed the DB cost itself.
+- RDS has no permanent free tier; `db.t4g.micro` + storage + backups is roughly **$15–30/month** running 24/7.
+- Aurora Serverless v2 can pause but has resume latency and a higher active floor.
+- Secrets Manager, KMS keys, WAF, GuardDuty, Config, CloudWatch all add small recurring costs that stack.
+- A small VPS/PaaS, or ECS Fargate/App Runner running the *existing* Express app, may be cheaper for low traffic.
+
+### Complexity & effort
+- **Large refactor**: auth, image handling, DB connectivity, config, logging, deployment, local dev and tests all change.
+- Terraform learning curve, state management, and IAM debugging are time-consuming.
+- Many moving parts for a business website; misconfiguration (IAM, public buckets, security groups) becomes the new risk.
+- **Local development is harder**: LocalStack/SAM/serverless-offline or a shared dev AWS account; Cognito cannot be fully emulated locally.
+- Lambda cold starts (especially in a VPC) affect p95 latency; mitigated by esbuild bundling and small functions.
+
+### Technical
+- **Cognito limits**: user attribute schema can't be removed/renamed after creation, hosted UI customisation is limited, and the pricing tier model has changed recently (check current tiers and free MAU allowance).
+- **PII encryption model**: decide between KMS data keys vs. relying on RDS encryption. Best made now, before real data exists (test data can simply be recreated).
+- **Cookie-based JWT flow changes**: API Gateway JWT authorizers expect `Authorization: Bearer` headers; keeping httpOnly cookies needs a custom Lambda authorizer or BFF, otherwise tokens live in SPA memory/storage (security trade-off).
+- **Express features must be re-expressed**: `cookie-parser`, `cors`, `multer`, middleware chain, `/api` + `/api/v2` aliasing → API Gateway routes, CORS config, Lambda middleware (Middy/Powertools).
+- Payload limits (6 MB Lambda sync, 10 MB API Gateway) make presigned S3 uploads mandatory.
+- `slonik`/`mysql2` pooling assumes long-lived processes; needs a small reused pool or RDS Proxy.
+- **Vendor lock-in**, especially Cognito and API Gateway.
+- CRA frontend also needs a deployment pipeline (S3 + CloudFront invalidation).
+
+### Risk
+- With no live data, migration risk is low. The main risks are now getting design decisions right early (auth token flow, schema attribute choices in Cognito, networking) because they are costly to change after launch.
+- Tests are mocked around Express/`supertest`; Lambda handlers need new harnesses.
+
+---
+
+## 5. Options (it is not all-or-nothing)
+
+| Option | Description | Effort | Cost | Notes |
+| --- | --- | --- | --- | --- |
+| **A. Stay, harden** | Keep Express+MySQL on a small host; fix images (S3), secrets, logging | Low | Lowest | Gets much of the benefit without a rewrite. |
+| **B. Host Express on AWS (preferred)** | Existing Express app on a small EC2 instance (or App Runner/Fargate) + RDS MySQL + S3, all in Terraform | Low–Med | ~$25–45/mo lean (see section 10) | Minimal code change; Cognito can be added later. |
+| **C. Incremental build-out (recommended if proceeding)** | Stand up each AWS service in order (S3 → RDS → Cognito → Lambda routes) and switch the app over as each is ready | Medium–High | Variable | Every phase is a working, testable stopping point. No live traffic, so no strangler/parallel running is needed. |
+| **D. Full greenfield serverless** | Build the whole target stack, then point the app at it | High | Variable | Now viable since nothing is deployed, but you get no working checkpoints and debug many new services at once. |
+
+---
+
+## 6. Proposed migration phases (Option B, greenfield)
+
+Because nothing is deployed, phases manage the complexity of the refactor rather than protecting live users. Dev data is re-seeded (`seed:products:v2`, `user:generate-insert`) instead of migrated. Each phase has an exit criterion and leaves a working system, so you can stop at any point.
+
+### Phase 0 – Foundations (no app change)
+- Dedicated AWS account, MFA on root, billing alarms and an AWS Budget (e.g. $30 / $50).
+- Terraform bootstrap: remote state (S3 with locking), GitHub Actions OIDC role, CloudTrail.
+- Repo structure per section 2.3; add `terraform fmt/validate`, `tflint` and `checkov`/`tfsec` to [ci.yml](../.github/workflows/ci.yml).
+- **Exit:** `terraform apply` builds an empty secure baseline; budget alert tested.
+
+### Phase 1 – Containerise the app locally (no AWS yet)
+- Add a server `Dockerfile` and `.dockerignore` (multi-stage, non-root user, Node LTS) plus a local `docker-compose` with MySQL for parity.
+- Add `/health` endpoint, graceful shutdown, `helmet`, rate limiting, `trust proxy` configuration.
+- Replace `console.log` with pino JSON logging (no PII in logs).
+- Load configuration from env vars with validation so SSM can inject them later.
+- **Exit:** `docker compose up` runs the full stack and the existing test suite passes in CI.
+
+### Phase 2 – Network and database
+- Terraform: VPC, public/private subnets, security groups, RDS MySQL (encrypted, automated backups, private, TLS), SSM parameters.
+- Point a locally run server at RDS through a temporary SSM port-forward or from the EC2 later; apply [phase1_schema_v2.sql](../server/scripts/migrations/phase1_schema_v2.sql) and seed.
+- Adopt a migration tool (Flyway or Atlas) to replace ad-hoc SQL scripts.
+- **Exit:** schema and seed data on RDS; backup and restore drill into a throwaway instance succeeds.
+
+### Phase 3 – Images to S3
+- Terraform: private S3 bucket (Block Public Access, SSE, versioning, lifecycle), CloudFront with OAC for `img.<domain>`.
+- Replace `multer.diskStorage` in [uploadImages/handler.ts](../server/src/routes/v2/products/images/uploadImages/handler.ts) and [upload-images-directory.ts](../server/src/ts-common/upload-images-directory.ts) with presigned PUT URLs plus a confirm endpoint; validate type and size; store object keys.
+- Update seed scripts and the client image URL helper.
+- **Exit:** no runtime writes to local disk; images served via CloudFront.
+
+### Phase 4 – Compute and deploy pipeline
+- Terraform: ECR, EC2 (`t4g.small`, or micro) with user-data to install Docker, Caddy and the CloudWatch agent; Elastic IP; instance role; Route 53 + ACM.
+- GitHub Actions: build image → push to ECR → deploy via SSM Run Command → smoke-test `/health`; rollback by redeploying the previous image tag.
+- Inject secrets from SSM at container start.
+- **Exit:** API reachable at `api.<domain>` over HTTPS, deploys via CI only, no SSH open.
+
+### Phase 5 – Frontend hosting
+- Terraform: S3 + CloudFront for the React build with security headers (CSP, HSTS, X-Content-Type-Options) and SPA fallback routing.
+- CI: build client, sync to S3, invalidate CloudFront; set `REACT_APP_API_URL`.
+- Verify CORS and cookie behaviour end to end (`Secure`, `SameSite`, shared parent domain for the auth cookie).
+- **Exit:** full user journeys (browse, basket, login, admin product upload) work on the AWS dev environment.
+
+### Phase 6 – Observability and security baseline
+- Log retention, metric filters (auth failures, 5xx), alarms to SNS email, EC2 auto-recover on status check failure.
+- GuardDuty enabled; SSM Patch Manager or unattended-upgrades; IMDSv2 enforced.
+- Short incident runbook, restore runbook, and a threat-model pass over auth, uploads and PII handling.
+- **Exit:** a forced error and a failed-login burst each produce an alert.
+
+### Phase 7 – Production cut-in
+- Create `prod` from the same Terraform modules with real domain and sizing; create the admin user with the existing generator script.
+- Pre-launch checklist: backup restore tested, budgets set, alarms verified, secrets rotated from dev values, dependency audit.
+- **Exit:** production live; dev stack destroyed when idle to save cost.
+
+### Phase 8 (optional, decision points) – Growth upgrades
+Take each only when a trigger is met:
+- **Cognito**: when MFA or managed password flows are wanted (no migration cost while users are few).
+- **WAF**: on abuse or bot traffic.
+- **Multi-AZ RDS, Fargate + ALB**: when uptime requirements outgrow a single instance.
+- **Customer-managed KMS / envelope encryption**: if compliance requires it.
+- **Reserved pricing / Savings Plan**: once usage is stable.
+
+---
+
+## 7. Rough monthly cost: serverless target (for comparison)
+
+The Option B estimate is in [10.4](#104-estimated-monthly-cost-illustrative-verify-with-the-aws-pricing-calculator).
+
+| Item | Estimate |
+| --- | --- |
+| RDS MySQL `db.t4g.micro` + 20 GB + backups | $15–30 |
+| RDS Proxy (if Lambda in VPC) | ~$15+ |
+| NAT Gateway (if Lambda in VPC, no endpoints) | ~$30+ (avoidable via VPC endpoints / Data API) |
+| Lambda + API Gateway (HTTP API) | ~$0–5 |
+| Cognito (small user base) | ~$0 within free allowance (verify current tiers) |
+| S3 + CloudFront | ~$1–5 |
+| CloudWatch logs/metrics/alarms | ~$2–10 |
+| Secrets Manager / KMS | ~$2–5 |
+| WAF | ~$6–15 |
+| GuardDuty / CloudTrail extras | ~$2–10 |
+| **Typical total** | **~$40–100/mo** (lower if NAT/Proxy avoided) |
+
+Option B (existing Express on App Runner/Fargate + RDS + S3) is typically similar or cheaper at low traffic for a fraction of the effort.
+
+---
+
+## 8. Open questions before committing
+
+1. **Traffic and growth**: hundreds of users or many more? Serverless benefits scale with size and spikiness.
+2. **Payments**: is a provider such as Stripe planned? Webhooks → Lambda is a strong fit.
+3. **Compliance drivers**: are GDPR, Cyber Essentials or ISO 27001 formally required?
+4. **Time budget**: roughly weeks per phase; is learning value part of the goal?
+5. **Auth UX**: is the Cognito hosted UI acceptable, or is a fully custom login needed?
+6. **Database choice**: stay on MySQL (least change); DynamoDB would be a large rewrite and is unlikely to be worth it for this relational schema.
+7. **Local dev/testing**: LocalStack/SAM vs. per-developer AWS sandbox.
+8. **Budget ceiling** and who monitors cost/security alerts.
+
+---
+
+## 9. Recommendation (original comparison)
+
+> Superseded by [10.7](#107-updated-recommendation): Option B is preferred. Below is the earlier serverless-focused summary.
+
+- The **highest-value, lowest-risk wins** are S3 for images, Secrets Manager/KMS for secrets and keys, RDS for the database, and CloudWatch for observability. All can be done with Terraform **without** rewriting the API.
+- **Cognito** is worthwhile mainly to offload security-sensitive auth code. With no users to migrate, now is the cheapest time ever to adopt it.
+- **Lambda + RDS** has the worst effort-to-benefit ratio for a small relational app (VPC/NAT/Proxy cost, cold starts). Treat it as optional and last; App Runner/ECS running the existing Express app is a credible end state.
+- Being pre-launch lowers the cost and risk of every phase (no migrations, no downtime, no legacy support), which strengthens the case for doing it **before** go-live rather than after. Phases 0–4 deliver most of the security and operability benefit; re-evaluate before Phase 5 using real dev-environment cost and latency data.
+
+---
+
+## 10. Option B in detail: cost-minimised hosting of Express + MySQL
+
+Architecture and phases are in [section 2](#2-proposed-target-architecture-option-b-cost-minimised) and [section 6](#6-proposed-migration-phases-option-b-greenfield). This section holds the cost, code-change and risk detail.
+
+Goal: get the security and operational benefits that matter (managed DB, S3 images, secrets, logging, IaC) at the lowest sensible monthly cost, for a small app with low growth expectations. Everything stays in Terraform.
+
+### 10.1 Compute choice (cost-driven)
+
+| Variant | Description | Approx. compute cost/mo | Notes |
+| --- | --- | --- | --- |
+| **B1 – Single EC2 (recommended for cost)** | One `t4g.small` (or `t4g.micro` if memory allows) running the Express container, Caddy/nginx for TLS, in a public subnet with a tight security group, managed via SSM Session Manager (no SSH). | ~$6–14 + public IPv4 (~$3.65) | Cheapest. No load balancer. You own OS patching (automate with unattended upgrades or a periodically rebuilt AMI/user-data) and a single point of failure (acceptable for a small shop; recover via Terraform re-apply). |
+| **B2 – App Runner** | Managed container service, auto TLS and deploys. | ~$5–25 | Less ops, but VPC connector forces all outbound traffic through the VPC, so reaching AWS APIs/Cognito/S3 needs NAT or VPC endpoints (extra $7–35/mo). Eliminates most of its savings. |
+| **B3 – ECS Fargate + ALB** | Standard production shape. | ~$35–55 (ALB alone ~$16–20) | Best resilience and deploy story; highest floor. Only worth it if uptime requirements grow. |
+
+**Recommendation: start with B1.** It has the lowest floor, avoids the ALB and NAT costs entirely, and the Terraform modules are easy to evolve into B3 later if needed (container image and RDS stay identical).
+
+### 10.2 Database choice
+
+| Variant | Approx. cost/mo | Trade-off |
+| --- | --- | --- |
+| **RDS MySQL `db.t4g.micro`, single-AZ, 20 GB gp3, 7-day backups (recommended)** | ~$14–20 | Managed patching, automated backups, point-in-time restore, encryption at rest. SQL and `mysql2` pool unchanged. |
+| MySQL in a container on the same EC2 | ~$0–2 (EBS only) | Cheapest, but you own backups, upgrades, corruption recovery and security of customer PII. Only acceptable with automated nightly dumps to S3 plus EBS snapshots (AWS Backup/DLM) and a tested restore. Revisit before taking real customer data/payments. |
+
+Keep RDS in a private subnet group (not publicly accessible); only the EC2 security group may connect on 3306. Reserved instances (1-year) can later cut RDS cost by roughly 30%.
+
+### 10.3 Cost-saving choices
+
+| Decision | Saves | Note |
+| --- | --- | --- |
+| EC2 instead of ALB + Fargate | ~$16–20+/mo | No load balancer needed for a single instance. |
+| SSM Parameter Store (SecureString) instead of Secrets Manager | ~$0.40/secret/mo | Free standard tier; use Secrets Manager only if you want automatic DB-password rotation. |
+| AWS-managed KMS keys instead of customer-managed | ~$1/key/mo | Switch to CMKs only if compliance requires key control. |
+| Skip WAF initially | ~$6–15/mo | Use nginx/Caddy rate limiting, CloudFront, tight SGs and Express hardening (helmet, rate limiting). Add WAF later if exposed to abuse. |
+| Single-AZ RDS, 7-day backups | ~50% of DB cost | Accepts a few minutes to hours of downtime on AZ failure; restore from backup. |
+| CloudWatch log retention 14–30 days, JSON logs, no debug in prod | Ongoing | Log ingestion (~$0.50/GB) is the usual surprise bill. |
+| CloudTrail (one management-event trail), GuardDuty 30-day trial then evaluate | Small | Keep CloudTrail; GuardDuty is low cost at this volume. |
+| S3 lifecycle rules + CloudFront | Pennies | Images are cheap to store and serve. |
+| Cognito Lite/Essentials free tier (verify current MAU allowance) | ~$0 | Well within free limits for a small shop. |
+| AWS Budgets with alarms (first budgets free) | Protects against surprises | Set at e.g. $30, $50. |
+| Compute Savings Plan / 1-yr RDS reservation (later) | ~30% | Only after usage is stable. |
+| New-account free tier (12 months, where eligible) | Varies | May cover a `t3.micro`/`t4g.micro`-class instance and RDS micro hours; check current terms. |
+
+### 10.4 Estimated monthly cost (illustrative, verify with the AWS Pricing Calculator)
+
+| Item | Lean (B1) |
+| --- | --- |
+| EC2 `t4g.small` (or `t4g.micro`) + 20 GB gp3 | ~$12–16 (~$6–9 for micro) |
+| Public IPv4 address | ~$3.65 |
+| RDS `db.t4g.micro` single-AZ + 20 GB + backups | ~$14–20 |
+| S3 + CloudFront (site + images) | ~$1–4 |
+| CloudWatch (logs, a few alarms) | ~$2–5 |
+| SSM Parameter Store, ECR, Route 53 hosted zone | ~$1–2 |
+| CloudTrail / GuardDuty / Budgets | ~$0–5 |
+| Cognito (small user base) | ~$0 |
+| **Total** | **~$35–55/mo, trending to ~$25–40 with micro sizing or free tier** |
+
+Even lower (~$15–25/mo) if MySQL runs on the EC2 box, at the cost of the trade-offs in 10.2. Compared with Lambda + RDS (VPC, NAT/Proxy, WAF), this is usually cheaper and much simpler.
+
+### 10.5 What changes in the codebase (small)
+
+| Area | Change | Size |
+| --- | --- | --- |
+| Images | Replace `multer.diskStorage` in [uploadImages/handler.ts](../server/src/routes/v2/products/images/uploadImages/handler.ts) and [upload-images-directory.ts](../server/src/ts-common/upload-images-directory.ts) with S3 presigned URLs; store object keys; serve via CloudFront. | Medium |
+| Config/secrets | Load DB credentials and JWT/encryption keys from SSM Parameter Store at startup (or inject as env vars from SSM in the container). | Small |
+| Logging | Replace `console.log` with a JSON logger (pino) writing to stdout; CloudWatch agent/awslogs driver ships it. Never log PII. | Small |
+| Health/ops | Add `/health` endpoint, graceful shutdown, `helmet`, rate limiting, trust-proxy setting behind Caddy/CloudFront. | Small |
+| Container | Add `Dockerfile` and `.dockerignore` for the server; build in CI and push to ECR. | Small |
+| Frontend | Build to S3 + CloudFront; set `REACT_APP_API_URL` to the API domain; confirm CORS and cookie settings (`SameSite`, `Secure`, shared parent domain for the auth cookie). | Small |
+| DB | Point `mysql2` at the RDS endpoint (TLS enabled, credentials from SSM). Run [phase1_schema_v2.sql](../server/scripts/migrations/phase1_schema_v2.sql) and seeds. | Small |
+| Auth (optional) | Cognito can be deferred: the existing JWT/bcrypt flow works unchanged on EC2. Adopt Cognito later if you want MFA and managed password flows. | Deferred |
+
+Express routers, SQL, `slonik`/`mysql2` usage and most tests remain as they are.
+
+### 10.6 Risks and mitigations
+
+| Risk | Mitigation |
+| --- | --- |
+| Single EC2 is a single point of failure | Terraform + AMI/user-data rebuilds in minutes; RDS holds the state; CloudWatch alarm on status checks with auto-recovery. |
+| OS and Docker patching is on you | Unattended security upgrades, rebuild/replace instance periodically, SSM Patch Manager. |
+| Public instance exposure | SG allows only 80/443 (ideally from CloudFront prefix list); no SSH (SSM Session Manager); IMDSv2 only; least-privilege instance role. |
+| Backups/restore never tested | Schedule a restore drill into a temporary RDS instance before launch. |
+| Cost drift (logs, data transfer, forgotten resources) | Budgets, log retention, tags, monthly cost review. |
+| Scope creep into serverless | Treat Cognito/WAF/Fargate as explicit later phases with a decision point. |
+
+### 10.7 Updated recommendation
+
+Adopt **Option B1**: containerise the existing Express app on a small EC2 instance behind CloudFront, use single-AZ RDS MySQL, S3 + CloudFront for images and the SPA, SSM Parameter Store for secrets, and CloudWatch/CloudTrail for visibility, all in Terraform. Expect roughly **$25–55/month**, a **small code change**, and an easy upgrade path (Cognito, WAF, Multi-AZ, Fargate) if the app grows. Defer the Lambda/serverless rewrite; it adds cost and complexity that a small, low-growth app does not need.
+
+---
+
+## Appendix A: Serverless alternative (deferred)
+
+Kept for reference if the app grows or the goals change. Not the preferred path.
+
+### A.1 Serverless target architecture
+
+```
+Browser (React SPA)
+   │
+   ├── S3 + CloudFront ........... static site hosting (+ WAF, TLS via ACM)
+   │
+   ├── API Gateway (HTTP API) ── AWS WAF
+   │        │  JWT authorizer (Cognito)
+   │        ▼
+   │     Lambda (Node.js/TS, per route group)
+   │        │            │               │
+   │        ▼            ▼               ▼
+   │   RDS / Aurora   S3 (images)   Secrets Manager / KMS
+   │   (MySQL)        presigned URLs
+   │
+   ├── Cognito User Pool ......... sign-up/sign-in, groups (admin/customer), MFA
+   │
+   └── CloudWatch Logs/Metrics/Alarms, X-Ray, CloudTrail, GuardDuty
+
+All provisioned with Terraform (remote state in S3 with locking).
+```
+
+| Today | AWS replacement |
+| --- | --- |
+| Express routers | API Gateway (HTTP API) + Lambda handlers (existing handler logic can largely be reused) |
+| Custom JWT/bcrypt/cookies | Cognito User Pool + groups (`admin`, `customer`) + API Gateway JWT authorizer |
+| `multer` disk storage | S3 bucket + presigned PUT URLs (browser uploads direct), CloudFront for delivery |
+| MySQL | RDS for MySQL (`db.t4g.micro`) or Aurora Serverless v2 – **keeps SQL as-is** |
+| `.env` secrets | Secrets Manager / SSM Parameter Store |
+| App-level field encryption key | KMS envelope encryption, or RDS encryption at rest plus selective field encryption |
+| `console.log` | Structured JSON logs → CloudWatch Logs, metric filters, alarms, dashboards |
+| `audit_events_v2` | Keep for business audit; add CloudTrail for infrastructure/API audit |
+| Manual deploy | Terraform + GitHub Actions (OIDC role, no long-lived keys) |
+
+Security tooling: WAF (rate limiting/managed rules), CloudTrail, GuardDuty, AWS Config and Security Hub (optional), KMS CMKs, least-privilege IAM per Lambda, security groups, S3 Block Public Access, Budgets/billing alarms.
+
+### A.2 Serverless migration phases (greenfield)
+
+Because nothing is deployed, phases are about managing complexity and risk of the refactor, not protecting live users. Dev data is re-seeded (existing scripts such as `seed:products:v2` and `user:generate-insert`, or Cognito users created directly) rather than migrated.
+
+#### Phase S0 – Foundations (no behaviour change)
+- Dedicated AWS account(s) (separate `dev` and `prod`), MFA on root, IAM Identity Center.
+- Terraform bootstrap: remote state (S3 + locking), GitHub Actions OIDC role, budgets + billing alarms, CloudTrail, GuardDuty.
+- Repo layout: `infra/modules/` (network, s3, cognito, rds, api, observability) and `infra/envs/dev|prod`.
+- Add `terraform fmt/validate/plan` plus `tflint` and `checkov`/`tfsec` to CI.
+- **Exit:** `terraform apply` creates a secure baseline; cost alarm active.
+
+#### Phase S1 – Images to S3 (low risk, high value)
+- Terraform: private S3 bucket (Block Public Access, SSE-KMS, versioning, lifecycle), CloudFront with OAC.
+- Change the upload endpoint to issue **presigned PUT URLs** (still on Express); DB stores object keys, not `/images/...` paths.
+- Upload any seed/sample images to S3 and update the seed scripts (no production backfill needed).
+- Validate content type/size; optionally malware-scan.
+- **Exit:** no runtime writes to local disk; images served via CloudFront.
+
+#### Phase S2 – Database to RDS
+- Terraform: RDS MySQL (`db.t4g.micro`, encrypted, automated backups, private subnets, not public) or Aurora Serverless v2.
+- Credentials in Secrets Manager; Express reads them at startup.
+- Create the schema from [phase1_schema_v2.sql](../server/scripts/migrations/phase1_schema_v2.sql) and re-seed; no data migration or cutover window.
+- Adopt a proper migration tool (Flyway/Atlas) instead of ad-hoc SQL scripts.
+- **Exit:** Express running unchanged against RDS.
+
+#### Phase S3 – Observability & security baseline
+- Structured logger (Powertools/pino) with correlation IDs; never log PII.
+- CloudWatch dashboards, metric filters (auth failures, 5xx), alarms → SNS/email.
+- WAF (managed rules + rate limiting) in front of the API/CDN.
+- **Exit:** actionable alerts and an incident runbook.
+
+#### Phase S4 – Authentication to Cognito
+- Terraform: User Pool (MFA for admins, password policy, groups `admin`/`customer`), app client(s).
+- No user migration: re-create your test users in Cognito (admin via group assignment).
+- Replace `verifyAuthToken` / `requireRole` with Cognito token verification (`aws-jwt-verify`) in Express first; map `user_roles_v2` to Cognito groups; key `users_v2` by Cognito `sub`.
+- Decide token storage (Bearer in memory + refresh via BFF vs. custom authorizer retaining httpOnly cookie).
+- Update client `authThunks`, `protectedRoutes`, `userAuth`.
+- Remove `bcryptjs`, password hashing and `verify-password` custom logic (replaced by Cognito flows) outright; no legacy window needed.
+- **Exit:** all logins via Cognito; custom auth code deleted.
+
+#### Phase S5 – API to API Gateway + Lambda (route by route)
+- Terraform: HTTP API, JWT authorizer, Lambda module (esbuild bundle, per-function IAM role, log group retention, X-Ray).
+- Port handlers via a thin adapter so business logic stays shared; start with read-only routes (`products/get`, `blog`), then writes (`basket`, `users`, `audit`).
+- Networking decision: Lambda in VPC + RDS Proxy (+ VPC endpoints/NAT), or Aurora with the **RDS Data API** to avoid VPC/NAT cost.
+- No parallel running required; switch the client's API base URL per environment. Drop the legacy `/api` alias and keep only `/api/v2` (or a single version) since there are no external consumers.
+- Tests: keep handler-logic unit tests; replace `supertest` flows with handler-level tests plus a few deployed smoke tests.
+- **Exit:** Express decommissioned (see [stage10-decommission-runbook.md](../server/docs/stage10-decommission-runbook.md) for the existing pattern).
+
+#### Phase S6 – PII encryption & hardening
+- Move field encryption to KMS envelope encryption (or RDS-at-rest plus column encryption for highest-risk fields).
+- No re-encryption of existing data needed; delete `ENCRYPTION_KEY*` handling and the repair scripts.
+- Optional Config/Security Hub; threat-model/pen-test; document retention and GDPR deletion/export across Cognito, DB, S3 and logs.
+
+#### Phase S7 – Frontend hosting & CI/CD
+- S3 + CloudFront for the React build with security headers (CSP, HSTS).
+- GitHub Actions: build → test → `terraform plan` on PR → `apply` on merge via OIDC; per-environment promotion.
