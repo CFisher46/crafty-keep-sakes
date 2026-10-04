@@ -3,7 +3,7 @@
 Status: **Exploratory – no implementation planned yet.**
 Purpose: Understand whether moving from Express + MySQL to an AWS-native, Terraform-managed stack is worth the refactor.
 
-**Preferred direction: Option B (host the existing Express app on AWS, cost-minimised). See [section 10](#10-option-b-in-detail-cost-minimised-hosting-of-express--mysql).** Sections 2 and 6 describe the Option B architecture and phases. Sections 3–5 and 7–9 are the original comparison against a full serverless stack, retained for context; the serverless architecture and phases are kept in [Appendix A](#appendix-a-serverless-alternative-deferred).
+**Preferred direction: Option A on AWS (lowest-cost: Express + MySQL on one small instance, with S3 for images and backups). See [section 11](#11-option-a-on-aws-preferred-lowest-cost).** Option B (RDS) in sections 2, 6 and 10 is the upgrade path once real customer data or uptime needs justify the extra cost. Sections 3–5 and 7–9 are the original comparison, and the serverless design is in [Appendix A](#appendix-a-serverless-alternative-deferred).
 
 **Key context: the app has not been deployed and the only existing users are test accounts.** This makes it a *greenfield* move: no user migration, no production data backfill, no zero-downtime cutover and no parallel running of old and new systems. Those costs are excluded below. Remaining effort is code refactoring, infrastructure, and learning.
 
@@ -164,7 +164,7 @@ Cognito (managed auth/MFA) → WAF → customer-managed KMS keys → Multi-AZ RD
 
 | Option | Description | Effort | Cost | Notes |
 | --- | --- | --- | --- | --- |
-| **A. Stay, harden** | Keep Express+MySQL on a small host; fix images (S3), secrets, logging | Low | Lowest | Gets much of the benefit without a rewrite. |
+| **A. Stay, harden (preferred for now)** | Keep Express+MySQL on one small AWS instance (Lightsail/EC2); images and backups on S3; secrets, logging, optional light Terraform | Low | ~$10–20/mo (see section 11) | Matches the cost of two separate hosts; upgrade to Option B (RDS) before real customer data. |
 | **B. Host Express on AWS (preferred)** | Existing Express app on a small EC2 instance (or App Runner/Fargate) + RDS MySQL + S3, all in Terraform | Low–Med | ~$25–45/mo lean (see section 10) | Minimal code change; Cognito can be added later. |
 | **C. Incremental build-out (recommended if proceeding)** | Stand up each AWS service in order (S3 → RDS → Cognito → Lambda routes) and switch the app over as each is ready | Medium–High | Variable | Every phase is a working, testable stopping point. No live traffic, so no strangler/parallel running is needed. |
 | **D. Full greenfield serverless** | Build the whole target stack, then point the app at it | High | Variable | Now viable since nothing is deployed, but you get no working checkpoints and debug many new services at once. |
@@ -270,7 +270,7 @@ Option B (existing Express on App Runner/Fargate + RDS + S3) is typically simila
 
 ## 9. Recommendation (original comparison)
 
-> Superseded by [10.7](#107-updated-recommendation): Option B is preferred. Below is the earlier serverless-focused summary.
+> Superseded by [11.10](#1110-recommendation) (Option A on AWS now preferred; Option B in [10.7](#107-updated-recommendation) is the upgrade path). Below is the earlier serverless-focused summary.
 
 - The **highest-value, lowest-risk wins** are S3 for images, Secrets Manager/KMS for secrets and keys, RDS for the database, and CloudWatch for observability. All can be done with Terraform **without** rewriting the API.
 - **Cognito** is worthwhile mainly to offload security-sensitive auth code. With no users to migrate, now is the cheapest time ever to adopt it.
@@ -280,6 +280,8 @@ Option B (existing Express on App Runner/Fargate + RDS + S3) is typically simila
 ---
 
 ## 10. Option B in detail: cost-minimised hosting of Express + MySQL
+
+> Upgrade path from [Option A](#11-option-a-on-aws-preferred-lowest-cost): use this when real customer data or uptime needs justify RDS (~+$15–20/month).
 
 Architecture and phases are in [section 2](#2-proposed-target-architecture-option-b-cost-minimised) and [section 6](#6-proposed-migration-phases-option-b-greenfield). This section holds the cost, code-change and risk detail.
 
@@ -366,6 +368,185 @@ Express routers, SQL, `slonik`/`mysql2` usage and most tests remain as they are.
 ### 10.7 Updated recommendation
 
 Adopt **Option B1**: containerise the existing Express app on a small EC2 instance behind CloudFront, use single-AZ RDS MySQL, S3 + CloudFront for images and the SPA, SSM Parameter Store for secrets, and CloudWatch/CloudTrail for visibility, all in Terraform. Expect roughly **$25–55/month**, a **small code change**, and an easy upgrade path (Cognito, WAF, Multi-AZ, Fargate) if the app grows. Defer the Lambda/serverless rewrite; it adds cost and complexity that a small, low-growth app does not need.
+
+---
+
+## 11. Option A on AWS (preferred, lowest cost)
+
+Goal: run on AWS for roughly the price of two small separate hosts (for example a frontend host plus a backend/DB host, typically **~$10–20/month**), without a big refactor. Terraform is optional; it is used lightly where it saves effort.
+
+### 11.1 Architecture
+
+```
+Browser ──► Route 53 / your DNS ──► one small instance (Lightsail or EC2 t4g)
+                                     Caddy (auto HTTPS)
+                                       ├── /          → React build (static files on the box)
+                                       ├── /api       → Express container
+                                       └── /images    → S3/CloudFront (or local disk at first)
+                                     MySQL container (data on the instance disk)
+                                          │
+Nightly mysqldump (encrypted) + weekly snapshot ──► S3 backup bucket (30-day lifecycle)
+Secrets: instance env file (root-only) or SSM Parameter Store
+Logs: Docker json logs → CloudWatch agent (short retention) or on-box logrotate
+Alerts: uptime check + CloudWatch/Lightsail alarms → email · AWS Budget alarm
+```
+
+Why this shape:
+- **One origin for site and API** (Caddy serves the SPA and proxies `/api`): no CORS, no cross-site cookie problems, no CloudFront needed for the SPA, so `auth_token` cookie behaviour stays as it is today.
+- **No load balancer, NAT, RDS or WAF**: those are the parts that make AWS cost more than simple hosts.
+- **Images on S3** (cents per month) so they survive instance rebuilds; the instance itself is disposable.
+- The app code stays almost unchanged and is identical to what B needs, so moving to RDS later is a connection-string change plus a data restore.
+
+### 11.2 Compute: Lightsail vs EC2
+
+| | Lightsail (recommended for cost) | EC2 `t4g.small`/`t4g.micro` |
+| --- | --- | --- |
+| Price | Fixed ~$7–12/mo (1 GB RAM plan suits Node + MySQL), static IP and data transfer allowance included | ~$6–14 + ~$3.65 public IPv4 + EBS + data transfer |
+| Setup | Simple; firewall, snapshots, static IP built in | More flexible (IAM roles, VPC, SSM, CloudWatch agent) |
+| Terraform | Supported (`aws_lightsail_*`) | Fully supported |
+| IAM for S3/backups | Uses an IAM user's access key (restrict to one bucket); no instance role | Instance role, no stored keys |
+| Growth path | Can later peer with VPC; migrating to EC2/Fargate is a rebuild | Natural path to B/Fargate |
+
+Choose **Lightsail** if the priority is lowest cost and least effort; choose **EC2** if you want instance roles (no stored keys), SSM and the same stack you would grow into. Prices are approximate and change; verify before deciding. Memory is the constraint: run Node and MySQL with 1 GB RAM plus a small swap file and a tuned `innodb_buffer_pool_size`.
+
+### 11.3 Estimated monthly cost (illustrative)
+
+| Item | Estimate |
+| --- | --- |
+| Lightsail 1 GB instance (or EC2 `t4g.small`) | ~$7–12 (EC2 ~$12–16 incl. IPv4/EBS) |
+| Instance snapshots (optional, 1–2 retained) | ~$1 |
+| S3 (images + backups) + CloudFront free tier | ~$0.50–2 |
+| Route 53 hosted zone (or use your registrar DNS) | $0–0.50 |
+| CloudWatch / SSM / budgets / CloudTrail (management events) | ~$0–3 |
+| **Total** | **~$10–20/mo** |
+
+Domain registration is separate. For comparison, a typical two-site setup (static frontend host free or ~$5, plus a ~$5–15 backend/DB host) lands in the same range, so this is cost-neutral while giving you S3, IAM, CloudWatch and (optionally) Terraform experience.
+
+### 11.4 Database on the box: safe-enough rules
+
+MySQL on the same instance is acceptable now (no real customers, no payments) if you:
+- Run MySQL bound to the Docker network only; never publish port 3306; use a strong generated root/app password; app user with least privilege.
+- Keep data on a named Docker volume or the instance disk, not the container layer.
+- **Back up nightly**: `mysqldump --single-transaction` → gzip → encrypt (age/gpg or S3 SSE) → upload to a private S3 bucket with versioning and a 30-day lifecycle; alert if no new backup in 26 hours.
+- Take a weekly full-instance snapshot (Lightsail snapshot or EBS/AWS Backup).
+- **Test a restore** into a throwaway container before launch and after any schema change.
+- Keep applying MySQL and OS security updates (unattended-upgrades; pin and periodically bump the MySQL image tag).
+- Accept the trade-off: potential loss of up to one day of data and a longer outage if the disk fails. Reduce this with more frequent dumps (every 4–6 hours) or binary log shipping if it matters.
+
+**Trigger to move to RDS (Option B):** first real customers, payments or PII at scale, or any need for point-in-time recovery or uptime guarantees. Cost impact is about +$15–20/month.
+
+### 11.5 Security baseline (kept proportionate)
+
+- Firewall allows only 80/443 publicly; SSH restricted to your IP or disabled in favour of SSM (EC2) / browser SSH (Lightsail).
+- MFA on the AWS root and admin users; no root access keys; a budget alarm.
+- S3 buckets private with Block Public Access; backup IAM credentials limited to one bucket/prefix (write-only for the backup job if possible).
+- Keep field-level encryption of PII in the app (`ENCRYPTION_KEY`); store keys **outside** the repo and **also** in an offline backup (losing the key makes the backups' PII unreadable).
+- `helmet`, rate limiting (Caddy + Express), strict CORS (same-origin makes this simple), `Secure`/`HttpOnly`/`SameSite` cookies.
+- Run containers as non-root, read-only filesystem where possible, pin image versions, scan images in CI (e.g. Trivy), `npm audit` in CI.
+- Unattended OS updates and a monthly patch/rebuild routine.
+
+### 11.6 Is Terraform worth it here?
+
+Optional. Suggested middle ground:
+- **Use Terraform for the small, stable foundation** (about 100–150 lines, local state at first, move to S3 state later): Lightsail/EC2 instance, static IP, firewall, S3 buckets (images, backups, lifecycle), the backup IAM user/policy, budget alarm, DNS records.
+- **Skip it for** anything fiddly or short-lived (container deploys, app config); use a simple deploy script or GitHub Actions + SSH/SSM.
+- Benefit: you can destroy and recreate the instance in minutes, and your setup is documented as code. Cost: a learning curve and state to look after. If it starts to feel heavy, console clicks plus a documented `bootstrap.sh` are fine for a one-instance system.
+
+### 11.7 What changes in the codebase
+
+Same list as [10.5](#105-what-changes-in-the-codebase-small), trimmed:
+- Add `Dockerfile` (server) and a `docker-compose.yml` (Caddy, Express, MySQL) used both locally and on the instance.
+- Images: replace `multer.diskStorage` ([uploadImages/handler.ts](../server/src/routes/v2/products/images/uploadImages/handler.ts), [upload-images-directory.ts](../server/src/ts-common/upload-images-directory.ts)) with S3 uploads (server-side upload via `@aws-sdk/client-s3` is simplest at this size; presigned URLs can come later). Store object keys.
+- `/health` endpoint, graceful shutdown, `helmet`, rate limiting, `trust proxy`, pino JSON logging.
+- Serve the built React app from Caddy; API base URL becomes relative (`/api`).
+- Backup script + cron/systemd timer, restore script, and a short runbook.
+- Cognito, WAF, RDS and CloudFront for the SPA are not needed.
+
+### 11.8 Migration phases (Option A)
+
+Because nothing is deployed, this is a build-out, not a live migration: no user or data migration (test data is re-seeded), no cutover window, no parallel running. Each phase ends with a working, verifiable state and can be a stopping point. Rough effort is per phase for one developer working part-time.
+
+#### Phase 1 – Decisions and AWS account setup (~0.5 day)
+- Decide: Lightsail vs EC2 (11.2), domain/DNS provider, single region close to users (e.g. `eu-west-2`), and whether to use Terraform for the foundation (11.6).
+- Create the AWS account: MFA on root, no root access keys, an admin IAM/Identity Center user with MFA, billing alerts and an AWS Budget (e.g. $15 / $25).
+- Register or point a domain; plan `www.<domain>` (site + `/api` on one origin) and optionally `img.<domain>`.
+- **Exit:** secure account, budget alarm tested, decisions recorded in this document.
+
+#### Phase 2 – Make the app container-ready (~1–2 days, no AWS needed)
+- Add a server `Dockerfile` (multi-stage, non-root, pinned Node LTS) and `.dockerignore`.
+- Add `docker-compose.yml`: Caddy, Express, MySQL (internal network only, named volume, 3306 not published) and a `Caddyfile` that serves the React build, proxies `/api`, and serves `/images` initially from a volume.
+- Server hardening and ops in [app.ts](../server/src/app.ts): `/health` endpoint, graceful shutdown, `helmet`, rate limiting, `trust proxy`, strict CORS (same origin makes this simple), `Secure`/`HttpOnly`/`SameSite` cookie settings in production.
+- Config: validate required env vars at startup (`DB_*`, `JWT_SECRET`, `ENCRYPTION_KEY`, `PORT`, S3 settings); add `.env.production.example`.
+- Logging: pino JSON to stdout (no PII).
+- Client: make `REACT_APP_API_URL` empty in production so calls are relative (`/api`), and confirm [apiPath.ts](../client/src/api/apiPath.ts) behaves; build the client into the Caddy image or a shared volume.
+- Schema and seeding: run [phase1_schema_v2.sql](../server/scripts/migrations/phase1_schema_v2.sql) automatically on first MySQL start (init scripts) and keep the seed scripts working against the container.
+- **Exit:** `docker compose up` runs the whole app locally over HTTPS-on-localhost; existing client and server tests pass in CI.
+
+#### Phase 3 – Images to S3 (~1–2 days)
+- Create a private S3 bucket (Block Public Access, SSE, versioning, lifecycle) and a scoped IAM policy (put/get/delete on the images prefix only).
+- Replace `multer.diskStorage` in [uploadImages/handler.ts](../server/src/routes/v2/products/images/uploadImages/handler.ts) with memory storage plus `@aws-sdk/client-s3` upload; validate type and size; store object keys; remove [upload-images-directory.ts](../server/src/ts-common/upload-images-directory.ts) usage and update its tests.
+- Serve images through Caddy proxying to S3, or CloudFront (free tier) with Origin Access Control; update how the client builds image URLs.
+- Update seed scripts to upload sample images, and the tests that mock multer/disk.
+- **Exit:** no runtime writes to local disk; admin upload works end to end; images survive a container rebuild.
+
+#### Phase 4 – Provision the instance (~1 day)
+- Create the instance (Lightsail 1 GB, or EC2 `t4g.small`) with a static/Elastic IP and a firewall allowing 80/443 only plus restricted admin access.
+- Optionally capture this in Terraform: instance, static IP, firewall, S3 buckets, backup IAM user/policy, budget, DNS records (local state first).
+- Bootstrap script (`bootstrap.sh`, or user-data) to: install Docker and the compose plugin, create a 1–2 GB swap file, enable unattended security upgrades, create an app user, and lay out `/opt/crafty` with a root-only `.env`.
+- Point DNS at the static IP; Caddy obtains HTTPS certificates automatically.
+- **Exit:** the instance can be destroyed and rebuilt from the script/Terraform in under 30 minutes.
+
+#### Phase 5 – First deploy and data seeding (~0.5–1 day)
+- Copy compose files and `.env` to the instance (manually the first time); generate production secrets (`npm run key:generate` for the encryption key, a long random `JWT_SECRET`, DB passwords) and store an offline copy of the encryption key and secrets.
+- `docker compose up -d`; schema auto-created; seed products; create the admin user with `npm run user:generate-insert` (see [README.md](../README.md)).
+- Smoke test the user journeys: browse, basket, register/login, admin product create and image upload, audit views.
+- **Exit:** the site is live on the real domain over HTTPS (private/soft launch, not announced).
+
+#### Phase 6 – Backups and restore (~1 day)
+- Nightly (and optionally every 4–6 hours) `mysqldump --single-transaction` → gzip → encrypt → private S3 backup bucket with versioning and a 30-day lifecycle, driven by a systemd timer or cron using a bucket-scoped credential.
+- Weekly full-instance snapshot (Lightsail snapshot schedule, or EBS snapshots via DLM/AWS Backup).
+- Missing-backup alert (e.g. the backup script pings a healthcheck URL, or a CloudWatch alarm on the last upload).
+- Write `restore.sh` and perform a restore drill into a throwaway container, then document the steps.
+- **Exit:** a restore from S3 succeeds and is timed; the missing-backup alert is verified by skipping a run.
+
+#### Phase 7 – CI/CD deploy pipeline (~1 day)
+- GitHub Actions in [ci.yml](../.github/workflows/ci.yml) (or a new workflow): lint and test (existing jobs), build and push images (GitHub Container Registry or ECR), then deploy to the instance (SSH with a restricted deploy key, or SSM for EC2) running `docker compose pull && docker compose up -d`.
+- Add a `/health` smoke test after deploy and rollback by redeploying the previous image tag.
+- Add `npm audit` and an image scan (e.g. Trivy) to CI; deploy only from `main`.
+- **Exit:** a merge to `main` deploys automatically; a bad deploy can be rolled back in minutes; no manual SSH needed for releases.
+
+#### Phase 8 – Monitoring and security hardening (~1 day)
+- External uptime check (free tier of an uptime service, or Route 53 health check) on `/health` with email alerts.
+- CPU, memory, disk and instance status alarms (CloudWatch agent on EC2, or Lightsail metric alarms); Docker log rotation and short retention.
+- Confirm firewall rules, SSH restricted or disabled, fail2ban (optional), non-root containers, patch routine (monthly rebuild or `apt` updates and image bumps).
+- CloudTrail management-events trail enabled; review IAM scope for the backup and S3 credentials; document key rotation (including `ENCRYPTION_KEY_PREVIOUS` flow).
+- Short runbook: deploy, rollback, restore, rotate secrets, rebuild instance.
+- **Exit:** a forced outage and a missed backup both alert you; runbook reviewed.
+
+#### Phase 9 – Go-live checklist and decision point (~0.5 day)
+- Pre-launch: fresh restore drill, secrets rotated from any dev values, test accounts removed, privacy/cookie notices in place, budgets and alarms verified, DNS TTLs lowered if switching any existing domain.
+- **Decision point:** if real customers, payments or uptime commitments are imminent, add RDS (Option B): create the RDS instance, restore the latest dump into it, change the DB connection settings, remove the MySQL container, and keep the same instance, images and pipeline (about +$15–20/month).
+- **Exit:** announced launch, or a documented decision to stay on A with the reasoning.
+
+**Rough total:** about 7–9 working days, spread however suits you. Phases 2–3 are the real refactor, and the rest is operations work.
+
+**Suggested order of risk:** Phases 2 and 3 change code and are covered by tests, Phases 4–5 are reversible infrastructure, and Phase 6 must be done before any data you care about lives on the box.
+
+### 11.9 Risks and mitigations
+
+| Risk | Mitigation |
+| --- | --- |
+| Data loss from on-box MySQL | Frequent dumps to S3, weekly snapshot, tested restore, move to RDS before real customers |
+| Single instance outage | Static IP + scripted rebuild (Terraform/bootstrap), uptime alert; accept short downtime at this scale |
+| Memory pressure (Node + MySQL on 1 GB) | Swap file, tune MySQL buffer pool, container memory limits; step up to the next plan if needed |
+| Public exposure of the DB/host | Never publish 3306; firewall 80/443 only; patching; fail2ban or provider firewall rules |
+| Lost encryption key | Offline copy of `ENCRYPTION_KEY`; document rotation using the existing scripts |
+| Stored cloud credentials on the box (Lightsail) | Scope the IAM user to one bucket, rotate keys, or use EC2 with an instance role |
+| Cost drift | Budget alarm, short log retention, S3 lifecycle rules |
+
+### 11.10 Recommendation
+
+Start with **Option A on AWS**: one Lightsail (or small EC2) instance running Caddy, Express and MySQL via Docker Compose, with S3 for images and backups, and light Terraform for the foundation. Expect **~$10–20/month**, in line with two separate hosts, and small code changes. Add RDS (Option B) at the go-live decision point if real customer data or uptime needs call for it; nothing in this design needs to be thrown away to do so.
 
 ---
 
