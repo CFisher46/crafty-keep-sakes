@@ -3,7 +3,7 @@
 Status: **Exploratory – no implementation planned yet.**
 Purpose: Understand whether moving from Express + MySQL to an AWS-native, Terraform-managed stack is worth the refactor.
 
-**Preferred direction: Option A on AWS (lowest-cost: Express + MySQL on one small instance, with S3 for images and backups). See [section 11](#11-option-a-on-aws-preferred-lowest-cost).** Option B (RDS) in sections 2, 6 and 10 is the upgrade path once real customer data or uptime needs justify the extra cost. Sections 3–5 and 7–9 are the original comparison, and the serverless design is in [Appendix A](#appendix-a-serverless-alternative-deferred).
+**Preferred direction: Option A on AWS (lowest-cost: Express + MySQL on one small instance, with S3 for images and backups). See [section 11](#11-option-a-on-aws-preferred-lowest-cost).** Option B (RDS) in sections 2, 6 and 10 is the upgrade path once real customer data or uptime needs justify the extra cost. Sections 3–5 and 7–9 are the original comparison, and the serverless design is in [Appendix A](#appendix-a-serverless-alternative-deferred) and non-AWS alternatives are in [Appendix B](#appendix-b-non-aws-alternatives).
 
 **Key context: the app has not been deployed and the only existing users are test accounts.** This makes it a *greenfield* move: no user migration, no production data backfill, no zero-downtime cutover and no parallel running of old and new systems. Those costs are excluded below. Remaining effort is code refactoring, infrastructure, and learning.
 
@@ -515,6 +515,21 @@ Because nothing is deployed, this is a build-out, not a live migration: no user 
 - Add `npm audit` and an image scan (e.g. Trivy) to CI; deploy only from `main`.
 - **Exit:** a merge to `main` deploys automatically; a bad deploy can be rolled back in minutes; no manual SSH needed for releases.
 
+#### Phase 7b (optional, not planned) – Cognito for authentication (~2–4 days)
+Captured so it is not forgotten at future reviews. Not required for Option A; the existing bcrypt + JWT flow works unchanged. Consider before launch (no users to migrate) or after go-live if MFA or managed password flows become important.
+- **Cost:** ~$0/month within the free allowance for a small user base (verify current tiers). Total Option A cost is unchanged.
+- **Setup (Terraform or console):** User Pool with password policy, email verification, optional MFA (required for admins), groups `admin` and `customer`, and an app client. Use a separate dev pool for local work, since Cognito cannot be fully emulated.
+- **Token handling (recommended):** keep the single-origin httpOnly cookie design. Express performs sign-in server-side (`InitiateAuth`) and sets the Cognito tokens in `Secure`/`HttpOnly`/`SameSite` cookies; this means using your own login form rather than the hosted UI.
+- **Server changes:**
+  - Replace login/register/`verify-password` handlers in [auth.ts](../server/src/routes/v2/auth.ts) with Cognito flows (sign-up, confirm, forgot/reset password).
+  - Replace `verifyAuthToken` / `requireRole` in [middleware.ts](../server/src/ts-common/middleware.ts) with Cognito token verification (e.g. `aws-jwt-verify`) and `cognito:groups` checks.
+  - Key `users_v2` by the Cognito `sub`; keep profile data and encrypted PII in MySQL; remove `bcryptjs` and password-hash columns.
+  - User admin (create/update/delete) calls the Cognito admin APIs plus the existing profile updates; keep audit events.
+- **Client changes:** `authThunks`, `protectedRoutes`, `userAuth`, login/register UI and the admin user-management screens; rework the related tests.
+- **IAM:** instance role (EC2) or a scoped IAM user (Lightsail) allowing only the required Cognito actions on that pool.
+- **Trade-offs:** removes password hashing/reset/verification code and adds MFA, but adds lock-in, a managed dependency and the largest code change in Option A.
+- **Exit:** all logins via Cognito; admin routes enforce the `admin` group; custom password code deleted.
+
 #### Phase 8 – Monitoring and security hardening (~1 day)
 - External uptime check (free tier of an uptime service, or Route 53 health check) on `/health` with email alerts.
 - CPU, memory, disk and instance status alarms (CloudWatch agent on EC2, or Lightsail metric alarms); Docker log rotation and short retention.
@@ -647,3 +662,61 @@ Because nothing is deployed, phases are about managing complexity and risk of th
 #### Phase S7 – Frontend hosting & CI/CD
 - S3 + CloudFront for the React build with security headers (CSP, HSTS).
 - GitHub Actions: build → test → `terraform plan` on PR → `apply` on merge via OIDC; per-environment promotion.
+
+---
+
+## Appendix B: Non-AWS alternatives
+
+Captured for future reviews. The goal is the same as Option A: low cost, one small host, durable image storage, tested backups, and optionally managed auth. Costs are rough and provider pricing changes, so verify before deciding.
+
+### B.1 Options compared
+
+| Approach | Rough cost/mo | What it is | Fit with this app |
+| --- | --- | --- | --- |
+| **Single VPS** (Hetzner, DigitalOcean, Vultr, OVH) | ~$5–12 | Same Docker Compose design as Option A (Caddy + Express + MySQL) on one VM | **Best fit and cheapest.** No code changes beyond Option A's container work. Hetzner is notably cheap and has EU regions. Images can stay on a volume or go to the provider's object storage (often a ~$5 minimum). You manage the firewall, patching and backups. |
+| **Managed PaaS** (Render, Railway, Fly.io) | ~$15–35 | Push a container, get HTTPS, deploys and optionally a managed database | Least ops. Managed DB adds cost, MySQL support varies (Postgres is more common), and free tiers may sleep or change. |
+| **Split hosting** (Netlify/Vercel/Cloudflare Pages for the site; API + DB on a VPS or PaaS) | ~$5–25 | Static frontend on a CDN, backend elsewhere | Good CDN and preview deploys, but reintroduces CORS and cross-site cookie issues that the single-origin design avoids. |
+| **Cloudflare stack** (Pages + R2 + Workers) | ~$5–10 | Edge hosting, S3-compatible storage with no egress fees | Express and MySQL do not map well (Workers runtime; D1 is SQLite). Would be a rewrite. Not recommended for this codebase. |
+| **Supabase / Firebase** | ~$0–25 | Managed database, auth and storage | Supabase is Postgres, so the MySQL SQL would need porting. Gives auth and storage cheaply but is a larger rewrite than Option A. |
+| **Azure / GCP** (Container Apps, Cloud Run) | ~$10–25 | Equivalent managed container services | No real advantage over AWS at this size unless existing credits or skills apply. |
+
+### B.2 Managed-auth alternatives to Cognito
+
+| Option | Notes |
+| --- | --- |
+| **Keep the current bcrypt + JWT flow** | Default for a small app; no new dependency, works on any host. |
+| **Auth0 / Clerk / Supabase Auth** | Polished hosted login and free tiers, but per-user pricing and lock-in. |
+| **Keycloak / Authentik (self-hosted)** | Free, but heavy for a 1 GB instance; not recommended at this size. |
+
+### B.3 How they compare to Option A on AWS
+
+| Consideration | Single VPS | Option A on AWS | Managed PaaS |
+| --- | --- | --- | --- |
+| Monthly cost | Lowest (~$5–12) | ~$10–20 | ~$15–35 |
+| Code change | Same as Option A | Same | Same, plus possible DB change |
+| Ops effort | Medium (you run everything) | Medium | Low |
+| Image storage | Volume or provider object storage | S3 | Usually external object storage |
+| Backups | Scripted dumps to object storage | Scripted dumps to S3 + snapshots | Often built in (managed DB) |
+| IAM, CloudWatch, Terraform ecosystem | Limited (provider-specific) | Full | Limited |
+| Path to managed DB / managed auth | Provider's DB, or move to AWS | RDS, Cognito | Built in |
+| Learning value (AWS skills) | Low | High | Low |
+
+### B.3.1 Portability
+
+Option A is plain Docker Compose, so the same stack runs on a VPS, Lightsail or EC2 with little change. Only three things are provider-specific:
+- **Image storage client:** the S3 SDK works against any S3-compatible store (Hetzner, DigitalOcean Spaces, Cloudflare R2, Backblaze B2) by changing the endpoint and credentials.
+- **Backup destination:** the same dump script can target any S3-compatible bucket.
+- **Provisioning:** Terraform has providers for Hetzner, DigitalOcean and others, but the modules would be different.
+
+Keeping the S3 endpoint, bucket and credentials as configuration, rather than hard-coding AWS, keeps this move cheap.
+
+### B.4 When to choose a non-AWS option
+
+- **Choose a single VPS** if minimum cost and simplicity matter most and AWS-specific learning is not a goal.
+- **Choose a managed PaaS** if you want the least operational work and accept ~2x the cost.
+- **Stay with Option A on AWS** if you want the AWS skills, easy upgrade paths (RDS, Cognito, WAF, Fargate), and a similar cost to the VPS route once monitoring and storage are included.
+- **Avoid** Cloudflare Workers and Supabase unless you are willing to rewrite the API or port the schema.
+
+### B.5 Recommendation
+
+Build Option A in a provider-neutral way (Docker Compose, configurable S3 endpoint, scripted backups) so the host can be chosen or changed late. If, at Phase 1 or later, cost or simplicity outweighs the AWS learning goal, run the identical stack on a single VPS instead.
