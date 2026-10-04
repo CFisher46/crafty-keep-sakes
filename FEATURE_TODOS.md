@@ -38,7 +38,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-012 : Add sale %, Price before and Price after to the scrolling onSale tiles of on the landing page
     -   AS a CUSTOMER, WHEN I am on the landing page, I WANT to see the reduction %, the original price (striked through) and the reduced price.
 
--   [ ] CKS-2-015 : Add navigation arrows to onSale items on landng page.
+-   [x] CKS-2-015 : Add navigation arrows to onSale items on landng page.
     -   AS a CUSTOMER, WHEN I am on the landing page AND viewing the onSale items, I WANT to be able to skip forward or backwards through them items.
 
 -   [ ] CKS-2-016 : Add in a 'Delete Comment' to the blog feature
@@ -57,13 +57,14 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-020 : Change the blog post table to be card/tiles instead
     -   AS a CUSTOMER, WHEN I view the Blogs page, I WANT it to be able to easily see individual blog posts.
 
-
 ## Bugs
 
--   [x] TotalDue on Invoice seems to be a different value to that of the product
+-   [x] TotalDue on Invoice seems to be a different value to that of the product.
     -   Issue was that Tax was being applied, i have set to zero as this might still be needed in the future.
 
--   [ ] Filters on the Admin Audit table dont seem to auto apply
+-   [ ] Filters on the Admin Audit table dont seem to auto apply.
+
+-   [ ] Adding an item to the basket before logging in, then logging in to checkout seems to not work correctly.
 
 ## Adhoc TODOs
 
@@ -78,3 +79,5 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price?
 
 -   [ ] CKS-2-014 : Introduce a change log that is updated with the branch name and title when merging to main
+
+-   [ ] CKS-2-021 : Check to make sure the API's cant be hit externally to scrap for information

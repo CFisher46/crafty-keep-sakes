@@ -1,5 +1,5 @@
 import { Header, Box, Button, Image, Text } from "grommet";
-import { Basket, User } from "grommet-icons";
+import { Basket, User, Notification } from "grommet-icons";
 import { useNavigate } from "react-router-dom";
 import { useRef } from "react";
 import NavigationBar from "../header/nav";
@@ -41,13 +41,23 @@ function PageHeader() {
             />
           </Button>
         </Box>
-        <Box direction="row" gap="small" margin={{ left: "auto" }}>
+        <Box direction="row" gap="medium" margin={{ left: "auto" }}>
+          <Box pad={{ left: "small" }} align="center" justify="center">
+            <Button
+              a11yTitle="Notifications"
+              onClick={() => navigate(`/notifications`)}
+              icon={<Notification />}
+              plain
+              disabled={!userId}
+            />
+          </Box>
           <Box style={{ position: "relative" }}>
             <Button
               //disabled={totalItems == 0}
               a11yTitle="Basket"
               icon={<Basket />}
               onClick={() => navigate("/Basket")}
+              plain
             />
             {totalItems > 0 && (
               <Box
@@ -72,7 +82,7 @@ function PageHeader() {
             onClick={() => navigate(`/profile/${userId}`)}
             icon={<User />}
             plain
-            //disabled={!isLoggedIn}
+          //disabled={!isLoggedIn}
           />
         </Box>
       </Header>
