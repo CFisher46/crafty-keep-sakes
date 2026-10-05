@@ -199,8 +199,8 @@ describe('Shop (products page)', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
-      expect(screen.getAllByText('Add to Basket')).toHaveLength(1);
     });
+    expect(screen.getAllByText('Add to Basket')).toHaveLength(1);
   });
 
   it('adds the product to the basket from the details modal', async () => {

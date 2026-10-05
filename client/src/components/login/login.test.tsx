@@ -162,6 +162,49 @@ describe('UserLogin', () => {
     );
   });
 
+  it('blocks login and keeps the guest basket when the basket sync fails', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: { id: 1, first_name: 'John', last_name: 'Doe', type: 'customer' },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Out of stock' }),
+      });
+
+    const { store } = renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: { user: null, isLoggedIn: false },
+          basket: {
+            items: [
+              { id: '5', image: '', product_name: 'Tea Set', price: 12.5, quantity: 2 },
+            ],
+            totalItems: 2,
+          },
+        },
+      }
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Username'), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByText('Login'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your basket could not be synced/)).toBeInTheDocument();
+    });
+    expect(store.getState().auth.isLoggedIn).toBe(false);
+    expect(store.getState().basket.items).toHaveLength(1);
+  });
+
   it('displays error message on failed login', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
