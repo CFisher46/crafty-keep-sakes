@@ -65,6 +65,13 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] Filters on the Admin Audit table dont seem to auto apply.
 
 -   [x] Adding an item to the basket before logging in, then logging in to checkout seems to not work correctly.
+    -   Guest basket items are synced to the account during login before the user is redirected.
+
+-   [x] The local basket was not cleared when the server returned an empty basket.
+    -   Basket hydration now replaces local items with the server basket, including when it is empty.
+
+-   [x] Button hover and pressed styling was not being applied consistently.
+    -   Button state styling is now applied through the Grommet button theme.
 
 ## Adhoc TODOs
 

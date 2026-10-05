@@ -198,6 +198,7 @@ function Shop() {
             type="viewProducts"
             values={selectedProduct}
             onClose={closeModal}
+            onAddToBasket={handleAddToCart}
           />
         )}
       </Box>
