@@ -1,14 +1,17 @@
 import { Form, Box, Text, TextInput, Button } from "grommet";
 import { useState } from "react";
-import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../store/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 import { buttonStyles } from "../../helpers/formatting";
+import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import { removeItemFromBasket } from "../../store/basket/basketSlice";
+import { addBasketItem } from "../../store/basket/basketThunks";
 
 function UserLogin() {
   const [formValues, setFormValues] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
+  const guestItems = useAppSelector((state) => state.basket.items);
   const navigate = useNavigate();
 
   const handleSubmit = async (event: any) => {
@@ -34,6 +37,19 @@ function UserLogin() {
       }
 
       const result = await response.json();
+      for (const item of guestItems) {
+        const syncResult = await dispatch(addBasketItem(item));
+        if (!addBasketItem.fulfilled.match(syncResult)) {
+          setError(
+            typeof syncResult.payload === "string"
+              ? `Your basket could not be synced: ${syncResult.payload}`
+              : "Your basket could not be synced. Please try again."
+          );
+          return;
+        }
+
+        dispatch(removeItemFromBasket(item.id));
+      }
       dispatch(loginSuccess(result.user));
 
       navigate("/Home");

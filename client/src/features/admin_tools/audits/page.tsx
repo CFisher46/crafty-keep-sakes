@@ -291,7 +291,7 @@ export const AuditLogs = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {auditLogs.map((log: AuditRow, index) => (
+                {filteredLogs.map((log: AuditRow, index) => (
                   <TableRow key={`audit-row-${index}`}>
                     {columnHeaders.map((header) => (
                       <TableCell

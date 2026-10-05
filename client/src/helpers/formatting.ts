@@ -5,8 +5,7 @@ export const buttonStyles = {
     size: "small",
     borderRadius: "4px",
     padding: "small",
-    gap: "medium",
-    backgroundColor: "#fce5f5"
+    gap: "medium"
   },
   activeButtons: {
     backgroundColor: "#fce5f5",

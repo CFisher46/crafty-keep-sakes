@@ -2,11 +2,12 @@ import { screen, fireEvent, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../test-utils/renderWithProviders';
 import Login from './login';
 
-jest.mock(
-  'react-router-dom',
-  () => require('../../test-utils/reactRouterDomMock'),
-  { virtual: true }
-);
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/', search: '' }),
+  useParams: () => ({}),
+  Navigate: () => null,
+}), { virtual: true });
 
 
 describe('UserLogin', () => {
@@ -92,6 +93,116 @@ describe('UserLogin', () => {
         expect.objectContaining({ id: 1, first_name: 'John' })
       );
     });
+  });
+
+  it('syncs guest basket items to the account before completing login', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: { id: 1, first_name: 'John', last_name: 'Doe', type: 'customer' },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'Basket item added',
+          basket_id: 1,
+          product_id: 5,
+          quantity: 2,
+          unit_price: 12.5,
+        }),
+      });
+
+    const { store } = renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: { user: null, isLoggedIn: false },
+          basket: {
+            items: [
+              {
+                id: '5',
+                image: 'tea.jpg',
+                product_name: 'Tea Set',
+                price: 12.5,
+                quantity: 2,
+              },
+            ],
+            totalItems: 2,
+          },
+        },
+      }
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Username'), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByText('Login'));
+
+    await waitFor(() => {
+      expect(store.getState().auth.isLoggedIn).toBe(true);
+    });
+    expect(store.getState().basket.items).toHaveLength(0);
+    expect(global.fetch).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/api/v2/basket/items'),
+      expect.objectContaining({
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({
+          product_id: 5,
+          quantity: 2,
+          unit_price: 12.5,
+        }),
+      })
+    );
+  });
+
+  it('blocks login and keeps the guest basket when the basket sync fails', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          user: { id: 1, first_name: 'John', last_name: 'Doe', type: 'customer' },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Out of stock' }),
+      });
+
+    const { store } = renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: { user: null, isLoggedIn: false },
+          basket: {
+            items: [
+              { id: '5', image: '', product_name: 'Tea Set', price: 12.5, quantity: 2 },
+            ],
+            totalItems: 2,
+          },
+        },
+      }
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Username'), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByText('Login'));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Your basket could not be synced/)).toBeInTheDocument();
+    });
+    expect(store.getState().auth.isLoggedIn).toBe(false);
+    expect(store.getState().basket.items).toHaveLength(1);
   });
 
   it('displays error message on failed login', async () => {
