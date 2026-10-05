@@ -193,6 +193,47 @@ describe('Shop (products page)', () => {
     fireEvent.click(screen.getByText('View Details'));
 
     expect(screen.getAllByText('Tea Mug').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('Add to Basket')).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    });
+    expect(screen.getAllByText('Add to Basket')).toHaveLength(1);
+  });
+
+  it('adds the product to the basket from the details modal', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: JSON.stringify([sampleProduct]) }),
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({
+      products: emptyProductsState,
+      auth: { isLoggedIn: false, user: null },
+    });
+
+    render(
+      <Provider store={store}>
+        <Shop />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('View Details')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('View Details'));
+    fireEvent.click(screen.getAllByText('Add to Basket')[1]);
+
+    expect(store.getState().basket.totalItems).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    });
   });
 
   it('adds an item to the server basket for logged-in users', async () => {

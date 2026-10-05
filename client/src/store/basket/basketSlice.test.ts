@@ -150,15 +150,16 @@ describe('basketSlice', () => {
       expect(state.items[0].product_name).toBe('Product');
     });
 
-    it('does not clear existing local items when server payload is empty', () => {
+    it('clears local items when the server basket is empty', () => {
       const initial: BasketState = {
         items: [{ id: '1', image: '', product_name: 'Mug', price: 10, quantity: 2 }],
         totalItems: 2,
       };
 
-      const state = basketReducer(initial, hydrateBasketFromServer({ items: [] }));
+      const state = basketReducer(initial, hydrateBasketFromServer({ items: [], total_items: 0 }));
 
-      expect(state).toBe(initial);
+      expect(state.items).toHaveLength(0);
+      expect(state.totalItems).toBe(0);
     });
 
     it('computes totalItems from items when total_items is absent', () => {

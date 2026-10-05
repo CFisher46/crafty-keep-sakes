@@ -6,11 +6,13 @@ function CommonModal({
   onClose,
   type,
   values,
+  onAddToBasket,
 }: {
   title: string;
   onClose: () => void;
   type: string;
   values?: any;
+  onAddToBasket?: (product: any) => void;
 }) {
   return (
     <Layer onEsc={onClose} onClickOutside={onClose}>
@@ -23,7 +25,12 @@ function CommonModal({
       >
         <Box>
           {type === 'viewProducts' && (
-            <ProductModal title={title} values={values} />
+            <ProductModal
+              title={title}
+              values={values}
+              onClose={onClose}
+              onAddToBasket={onAddToBasket}
+            />
           )}
         </Box>
       </Box>
