@@ -75,10 +75,6 @@ const basketSlice = createSlice({
     ) => {
       const items = action.payload.items ?? [];
 
-      if (items.length === 0 && state.items.length > 0) {
-        return;
-      }
-
       state.items = items.map((item) => ({
         id: String(item.product_id ?? item.id ?? ''),
         image: '',
