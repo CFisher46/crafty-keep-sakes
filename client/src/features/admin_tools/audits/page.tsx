@@ -4,7 +4,7 @@ import {
   fetchAuditFilterOptions,
   fetchAuditLogs,
 } from '../../../store/audits/auditThunks';
-import { Audit, AuditFilterField, auditFilterFields } from './types';
+import { Audit, AuditFilterField, auditFilterFields } from '../../../types';
 import {
   Table,
   TableBody,

@@ -3,7 +3,7 @@ import { Provider } from 'react-redux';
 import { Grommet } from 'grommet';
 import { buildTestStore } from '../../../test-utils/renderWithProviders';
 import AuditLogs from './page';
-import type { Audit } from './types';
+import type { Audit } from '../../../types';
 
 type SelectMultipleMockProps = {
   options: string[];

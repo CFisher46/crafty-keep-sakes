@@ -91,3 +91,4 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [ ] CKS-2-021 : Check to make sure the API's cant be hit externally to scrap for information
 
+-   [ ] CKS-2-022 : Add in a report for the admin to see all NEWLY place orders / orders that are not at a fulfilled status

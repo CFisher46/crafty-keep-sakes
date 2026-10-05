@@ -5,7 +5,7 @@ import {
   createAuditEntry,
   AuditLogResponse,
 } from './auditThunks';
-import { Audit, AuditFilterOptions } from '../../features/admin_tools/audits/types';
+import { Audit, AuditFilterOptions } from '../../types';
 
 interface AuditState {
   logs: Audit[];

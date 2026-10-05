@@ -1,11 +1,11 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { buildApiUrl } from '../../api/apiPath';
-import {
+import { auditFilterFields } from '../../types';
+import type {
   Audit,
   AuditFilterField,
   AuditFilterOptions,
-  auditFilterFields,
-} from '../../features/admin_tools/audits/types';
+} from '../../types';
 
 export type AuditLogResponse = {
   data: Audit[];
