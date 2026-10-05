@@ -18,19 +18,18 @@ const appTheme = {
         vertical: '8px',
         horizontal: '16px',
       },
-      extend: 'font-weight: 500;'
-    },
-    hover: {
-      background: {
-        color: '#f7d1e6',
-      },
-      color: 'black',
-    },
-    active: {
-      background: {
-        color: '#f3bfdc',
-      },
-      color: 'black',
+      // Grommet only themes hover via hoverIndicator, so state colours live here
+      extend: `
+        font-weight: 500;
+        transition: background-color 0.15s ease, transform 0.05s ease;
+        &:hover:not(:disabled) {
+          background-color: #f7d1e6;
+        }
+        &:active:not(:disabled) {
+          background-color: #f3bfdc;
+          transform: translateY(1px);
+        }
+      `,
     },
   },
 };
