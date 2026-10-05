@@ -62,9 +62,9 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] TotalDue on Invoice seems to be a different value to that of the product.
     -   Issue was that Tax was being applied, i have set to zero as this might still be needed in the future.
 
--   [ ] Filters on the Admin Audit table dont seem to auto apply.
+-   [x] Filters on the Admin Audit table dont seem to auto apply.
 
--   [ ] Adding an item to the basket before logging in, then logging in to checkout seems to not work correctly.
+-   [x] Adding an item to the basket before logging in, then logging in to checkout seems to not work correctly.
 
 ## Adhoc TODOs
 
