@@ -1,15 +1,34 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { Audit } from '../../types';
 import { buildApiUrl } from '../../api/apiPath';
+import {
+  Audit,
+  AuditFilterField,
+  AuditFilterOptions,
+  auditFilterFields,
+} from '../../features/admin_tools/audits/types';
 
 export type AuditLogResponse = {
   data: Audit[];
   total_count?: number;
 };
 
+export type AuditLogParams = {
+  page?: number;
+  pageSize?: number;
+  filters?: Partial<Record<AuditFilterField, string[]>>;
+};
+
+const emptyAuditFilterOptions = (): AuditFilterOptions => ({
+  actor_user_id: [],
+  actor_role: [],
+  action_type: [],
+  resource_type: [],
+  source_endpoint: [],
+});
+
 export const fetchAuditLogs = createAsyncThunk<
   AuditLogResponse,
-  { page?: number; pageSize?: number } | void
+  AuditLogParams | void
 >(
   'audit/fetchLogs',
   async (params = {}, { rejectWithValue }) => {
@@ -17,6 +36,9 @@ export const fetchAuditLogs = createAsyncThunk<
       const query = new URLSearchParams({
         page: String(params?.page ?? 1),
         pageSize: String(params?.pageSize ?? 10),
+      });
+      auditFilterFields.forEach((field) => {
+        (params?.filters?.[field] ?? []).forEach((value) => query.append(field, value));
       });
 
       const response = await fetch(buildApiUrl('audit', `?${query.toString()}`), {
@@ -34,6 +56,35 @@ export const fetchAuditLogs = createAsyncThunk<
       };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Failed to fetch audit logs');
+    }
+  }
+);
+
+export const fetchAuditFilterOptions = createAsyncThunk<AuditFilterOptions>(
+  'audit/fetchFilterOptions',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await fetch(buildApiUrl('audit', '/filters'), {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch audit filter options');
+      }
+
+      const options = await response.json();
+      return auditFilterFields.reduce((result, field) => {
+        const values = options[field];
+        if (!Array.isArray(values)) {
+          throw new Error(`Invalid audit filter options for ${field}`);
+        }
+        result[field] = values.map(String);
+        return result;
+      }, emptyAuditFilterOptions());
+    } catch (error: unknown) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Failed to fetch audit filter options'
+      );
     }
   }
 );

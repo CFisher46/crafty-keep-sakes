@@ -63,6 +63,34 @@ describe('v2 audit read routes', () => {
     expect(mockedDbQuery.mock.calls[1][1]).toEqual([5, 0]);
   });
 
+  it('returns complete distinct audit filter options to admins', async () => {
+    mockedDbQuery.mockImplementation(async (sql: string) => {
+      if (String(sql).includes('source_endpoint')) {
+        return [[
+          { value: '/api/v2/basket/checkout' },
+          { value: '/api/v2/users' },
+        ]];
+      }
+      return [[{ value: 'CREATE' }, { value: 'UPDATE' }]];
+    });
+
+    const response = await request(app)
+      .get('/api/v2/audit/filters')
+      .set('Cookie', authCookie(1, 'admin'));
+
+    expect(response.status).toBe(200);
+    expect(response.body.source_endpoint).toEqual([
+      '/api/v2/basket/checkout',
+      '/api/v2/users',
+    ]);
+    expect(mockedDbQuery).toHaveBeenCalledTimes(5);
+    expect(
+      mockedDbQuery.mock.calls.every(([sql]) =>
+        String(sql).includes('SELECT DISTINCT')
+      )
+    ).toBe(true);
+  });
+
   it('applies filters and pagination for admin audit reads', async () => {
     mockedDbQuery
       .mockResolvedValueOnce([[{ total_count: 2 }]])
@@ -112,5 +140,22 @@ describe('v2 audit read routes', () => {
     const rowSql = String(mockedDbQuery.mock.calls[1][0]);
     expect(rowSql).toContain('LIMIT ?');
     expect(rowSql).toContain('OFFSET ?');
+  });
+
+  it('applies multiple selected values within the same filter', async () => {
+    mockedDbQuery
+      .mockResolvedValueOnce([[{ total_count: 2 }]])
+      .mockResolvedValueOnce([[]]);
+
+    const response = await request(app)
+      .get('/api/v2/audit?action_type=CREATE&action_type=UPDATE')
+      .set('Cookie', authCookie(1, 'admin'));
+
+    expect(response.status).toBe(200);
+    expect(String(mockedDbQuery.mock.calls[0][0])).toContain(
+      'action_type IN (?, ?)'
+    );
+    expect(mockedDbQuery.mock.calls[0][1]).toEqual(['CREATE', 'UPDATE']);
+    expect(mockedDbQuery.mock.calls[1][1]).toEqual(['CREATE', 'UPDATE', 5, 0]);
   });
 });

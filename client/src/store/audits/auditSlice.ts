@@ -1,12 +1,20 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { fetchAuditLogs, createAuditEntry, AuditLogResponse } from './auditThunks';
-import { Audit } from '../../types';
+import {
+  fetchAuditFilterOptions,
+  fetchAuditLogs,
+  createAuditEntry,
+  AuditLogResponse,
+} from './auditThunks';
+import { Audit, AuditFilterOptions } from '../../features/admin_tools/audits/types';
 
 interface AuditState {
   logs: Audit[];
   totalCount: number;
   loading: boolean;
   error: string | null;
+  filterOptions: AuditFilterOptions;
+  filterOptionsLoading: boolean;
+  filterOptionsError: string | null;
 }
 
 const initialState: AuditState = {
@@ -14,6 +22,15 @@ const initialState: AuditState = {
   totalCount: 0,
   loading: false,
   error: null,
+  filterOptions: {
+    actor_user_id: [],
+    actor_role: [],
+    action_type: [],
+    resource_type: [],
+    source_endpoint: [],
+  },
+  filterOptionsLoading: false,
+  filterOptionsError: null,
 };
 
 const auditSlice = createSlice({
@@ -41,7 +58,20 @@ const auditSlice = createSlice({
       )
       .addCase(fetchAuditLogs.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch audit logs';
+        state.error = (action.payload as string) || action.error.message || 'Failed to fetch audit logs';
+      })
+      .addCase(fetchAuditFilterOptions.pending, (state) => {
+        state.filterOptionsLoading = true;
+        state.filterOptionsError = null;
+      })
+      .addCase(fetchAuditFilterOptions.fulfilled, (state, action) => {
+        state.filterOptionsLoading = false;
+        state.filterOptions = action.payload;
+      })
+      .addCase(fetchAuditFilterOptions.rejected, (state, action) => {
+        state.filterOptionsLoading = false;
+        state.filterOptionsError =
+          (action.payload as string) || action.error.message || 'Failed to fetch audit filter options';
       })
       .addCase(createAuditEntry.pending, (state) => {
         state.loading = true;

@@ -1,4 +1,5 @@
 import express from 'express';
+import { RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { verifyAuthToken, requireRole } from '../../ts-common/middleware';
 
@@ -12,6 +13,45 @@ const parseNumericParam = (value: unknown, fallback: number): number => {
 
   return parsed;
 };
+
+const auditFilterFields = [
+  'actor_user_id',
+  'actor_role',
+  'action_type',
+  'resource_type',
+  'source_endpoint',
+] as const;
+
+router.get('/filters', verifyAuthToken, requireRole('admin'), async (_req, res) => {
+  try {
+    const options: Record<(typeof auditFilterFields)[number], string[]> = {
+      actor_user_id: [],
+      actor_role: [],
+      action_type: [],
+      resource_type: [],
+      source_endpoint: [],
+    };
+
+    await Promise.all(
+      auditFilterFields.map(async (field) => {
+        const [rows] = await db.query<(RowDataPacket & { value: string | number })[]>(
+          `SELECT DISTINCT ${field} AS value
+           FROM audit_events_v2
+           WHERE ${field} IS NOT NULL
+           ORDER BY ${field}`
+        );
+        options[field] = Array.isArray(rows)
+          ? rows.map((row) => String(row.value))
+          : [];
+      })
+    );
+
+    res.json(options);
+  } catch (err) {
+    console.error('V2 Audit Filter Options Error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 router.get('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
   console.log('GET /api/v2/audit');
@@ -29,32 +69,45 @@ router.get('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
     const values: unknown[] = [];
 
     const addFilter = (field: string, value: unknown) => {
-      if (value === undefined || value === null || `${value}`.trim() === '') {
+      const normalizedValues = (Array.isArray(value) ? value : [value])
+        .filter((entry) => entry !== undefined && entry !== null)
+        .map((entry) => String(entry).trim())
+        .filter(Boolean);
+
+      if (!normalizedValues.length) {
         return;
       }
 
-      filters.push(`${field} = ?`);
-      values.push(value);
+      if (normalizedValues.length === 1) {
+        filters.push(`${field} = ?`);
+      } else {
+        filters.push(`${field} IN (${normalizedValues.map(() => '?').join(', ')})`);
+      }
+      values.push(...normalizedValues);
     };
 
     if (req.query.resource_type) {
-      addFilter('resource_type', String(req.query.resource_type));
+      addFilter('resource_type', req.query.resource_type);
     }
 
     if (req.query.action_type) {
-      addFilter('action_type', String(req.query.action_type));
+      addFilter('action_type', req.query.action_type);
+    }
+
+    if (req.query.actor_role) {
+      addFilter('actor_role', req.query.actor_role);
     }
 
     if (req.query.actor_user_id) {
-      addFilter('actor_user_id', String(req.query.actor_user_id));
+      addFilter('actor_user_id', req.query.actor_user_id);
     }
 
     if (req.query.source_endpoint) {
-      addFilter('source_endpoint', String(req.query.source_endpoint));
+      addFilter('source_endpoint', req.query.source_endpoint);
     }
 
     if (req.query.resource_id) {
-      addFilter('resource_id', String(req.query.resource_id));
+      addFilter('resource_id', req.query.resource_id);
     }
 
     if (req.query.created_after) {
