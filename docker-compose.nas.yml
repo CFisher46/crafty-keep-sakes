@@ -1,0 +1,41 @@
+# Runs the API on the NAS and exposes it publicly through a Cloudflare Tunnel.
+# Usage: docker compose -f docker-compose.nas.yml --env-file server/.env.nas up -d --build
+services:
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_API_SOURCE: ${AUTH_API_SOURCE:-v2}
+      PRODUCTS_API_SOURCE: ${PRODUCTS_API_SOURCE:-v2}
+      USERS_API_SOURCE: ${USERS_API_SOURCE:-v2}
+      AUDIT_API_SOURCE: ${AUDIT_API_SOURCE:-v2}
+      BASKET_API_SOURCE: ${BASKET_API_SOURCE:-v2}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    volumes:
+      - product-images:/app/client/public/images
+    # Only reachable from the tunnel container, never published on the LAN/WAN
+    expose:
+      - "3001"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - api
+
+volumes:
+  product-images:

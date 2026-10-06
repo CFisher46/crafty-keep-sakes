@@ -18,7 +18,7 @@ export function createApp() {
   app.use(cookieParser());
   app.use(
     cors({
-      origin: "http://localhost:3000",
+      origin: (process.env.CORS_ORIGIN || "http://localhost:3000").split(","),
       credentials: true
     })
   );
