@@ -1,10 +1,11 @@
 # Runs the API on the NAS and exposes it publicly through a Cloudflare Tunnel.
-# Usage: docker compose -f docker-compose.nas.yml --env-file server/.env.nas up -d --build
+# Image is built on a dev machine and pushed to Docker Hub:
+#   docker buildx build --platform linux/amd64 -f server/Dockerfile -t fisher46/cks-api:latest --push .
+# Then paste this file into QNAP Container Station (Applications > Create) or run:
+#   docker compose -f docker-compose.nas.yml --env-file server/.env.nas up -d
 services:
   api:
-    build:
-      context: .
-      dockerfile: server/Dockerfile
+    image: fisher46/cks-api:latest
     restart: unless-stopped
     environment:
       PORT: 3001
