@@ -202,12 +202,15 @@ function Home() {
   const scrollCarouselRef = useRef(scrollCarousel);
   scrollCarouselRef.current = scrollCarousel;
 
+  const updateCarouselButtonsRef = useRef(updateCarouselButtons);
+  updateCarouselButtonsRef.current = updateCarouselButtons;
+
   /*
    * Recalculate the button state whenever the products change.
    */
   useEffect(() => {
-    const frame = requestAnimationFrame(() => updateCarouselButtons());
-    const onResize = () => updateCarouselButtons();
+    const frame = requestAnimationFrame(() => updateCarouselButtonsRef.current());
+    const onResize = () => updateCarouselButtonsRef.current();
 
     window.addEventListener('resize', onResize);
 
