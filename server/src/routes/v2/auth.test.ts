@@ -23,6 +23,17 @@ describe('v2 auth routes', () => {
     jest.clearAllMocks();
   });
 
+  describe('POST /api/v2/auth/verify-password', () => {
+    it('requires authentication', async () => {
+      const response = await request(app)
+        .post('/api/v2/auth/verify-password')
+        .send({ userId: 1, currentPassword: 'password123' });
+
+      expect(response.status).toBe(401);
+      expect(mockDb.query).not.toHaveBeenCalled();
+    });
+  });
+
   describe('POST /api/v2/auth/login', () => {
     it('returns 400 when email is missing', async () => {
       const response = await request(app)

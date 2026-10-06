@@ -46,6 +46,7 @@ describe('v2 basket routes', () => {
 
   it('adds an item to the active basket for the authenticated customer', async () => {
     mockConnection.query
+      .mockResolvedValueOnce([[{ price: '12.50', on_sale: 0, sale_percent: 0 }]])
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([{ insertId: 1 }])
       .mockResolvedValueOnce([[]])
@@ -57,7 +58,7 @@ describe('v2 basket routes', () => {
       .send({
         product_id: 25,
         quantity: 2,
-        unit_price: 12.5,
+        unit_price: 0.01,
       });
 
     expect(response.status).toBe(201);
@@ -70,9 +71,37 @@ describe('v2 basket routes', () => {
       unit_price: 12.5,
     });
 
-    expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT id FROM baskets_v2');
-    expect(String(mockConnection.query.mock.calls[2][0])).toContain('SELECT id, quantity, unit_price_snapshot FROM basket_items_v2');
-    expect(String(mockConnection.query.mock.calls[3][0])).toContain('INSERT INTO basket_items_v2');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('FROM products_v2');
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain('SELECT id FROM baskets_v2');
+    expect(String(mockConnection.query.mock.calls[3][0])).toContain('SELECT id, quantity, unit_price_snapshot FROM basket_items_v2');
+    expect(String(mockConnection.query.mock.calls[4][0])).toContain('INSERT INTO basket_items_v2');
+    expect(mockConnection.query.mock.calls[4][1]).toEqual([1, 25, 2, 12.5]);
+  });
+
+  it('applies the sale discount from the product record and rejects unknown products', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ price: '20.00', on_sale: 1, sale_percent: 25 }]])
+      .mockResolvedValueOnce([[{ id: 1 }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([{ insertId: 78 }]);
+
+    const sale = await request(app)
+      .post('/api/v2/basket/items')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({ product_id: 25, quantity: 1, unit_price: 0 });
+
+    expect(sale.status).toBe(201);
+    expect(sale.body.unit_price).toBe(15);
+
+    mockConnection.query.mockReset();
+    mockConnection.query.mockResolvedValueOnce([[]]);
+
+    const missing = await request(app)
+      .post('/api/v2/basket/items')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({ product_id: 999, quantity: 1 });
+
+    expect(missing.status).toBe(400);
   });
 
   it('updates basket quantity for an existing item', async () => {

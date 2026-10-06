@@ -4,9 +4,11 @@ import jwt from 'jsonwebtoken';
 import { RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { decrypt } from '../../ts-common/helpers';
+import { JWT_SECRET } from '../../ts-common/jwt-secret';
+import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
 
 const router = express.Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
+
 
 type AuthSource = 'legacy' | 'dual' | 'v2';
 
@@ -204,6 +206,8 @@ async function findAuthUserById(
   return null;
 }
 
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('not-a-real-password', 10);
+
 type LoginRequestBody = {
   email?: string;
   password?: string;
@@ -222,6 +226,8 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
     const authUser = await findAuthUserByEmail(String(email));
 
     if (!authUser) {
+      // Same work as a real check so response time does not reveal valid emails
+      await bcrypt.compare(String(password), DUMMY_PASSWORD_HASH);
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -276,7 +282,6 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
     console.info('Auth login success', {
       source: authUser.source,
       user_id: user.id,
-      email_address: emailAddress,
       type: roleType,
     });
 
@@ -326,13 +331,11 @@ const meHandler: RequestHandler = (req, res): void => {
 };
 
 const verifyPasswordHandler: RequestHandler = async (req, res): Promise<void> => {
-  const { userId, currentPassword } = req.body as {
-    userId?: string | number;
-    currentPassword?: string;
-  };
+  const { currentPassword } = req.body as { currentPassword?: string };
+  const userId = getRequestUser(req)?.id;
 
   if (!userId || !currentPassword) {
-    res.status(400).json({ error: 'Missing userId or currentPassword' });
+    res.status(400).json({ error: 'Missing currentPassword' });
     return;
   }
 
@@ -372,7 +375,7 @@ const logoutHandler: RequestHandler = (_req, res): void => {
 
 router.post('/login', loginHandler);
 router.get('/me', meHandler);
-router.post('/verify-password', verifyPasswordHandler);
+router.post('/verify-password', verifyAuthToken, verifyPasswordHandler);
 router.post('/logout', logoutHandler);
 
 export default router;

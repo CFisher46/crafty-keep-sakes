@@ -2,6 +2,8 @@ import express from "express";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import path from "path";
 import v2AuthRoutes from "./routes/v2/auth";
 import v2ProductsRouter from "./routes/v2/products";
@@ -15,6 +17,9 @@ dotenv.config();
 export function createApp() {
   const app = express();
 
+  // Behind the Cloudflare tunnel, trust one proxy hop so req.ip is the client
+  app.set("trust proxy", 1);
+  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(cookieParser());
   app.use(
     cors({
@@ -22,7 +27,20 @@ export function createApp() {
       credentials: true
     })
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "100kb" }));
+
+  const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test",
+    message: { error: "Too many attempts, please try again later" }
+  });
+  app.use("/api/auth/login", authLimiter);
+  app.use("/api/v2/auth/login", authLimiter);
+  app.use("/api/auth/verify-password", authLimiter);
+  app.use("/api/v2/auth/verify-password", authLimiter);
 
   app.use("/api/products", v2ProductsRouter);
   app.use("/api/v2/products", v2ProductsRouter);
