@@ -6,6 +6,15 @@ const initialState = {
   totalCount: 0,
   loading: false,
   error: null,
+  filterOptions: {
+    actor_user_id: [],
+    actor_role: [],
+    action_type: [],
+    resource_type: [],
+    source_endpoint: [],
+  },
+  filterOptionsLoading: false,
+  filterOptionsError: null,
 };
 
 const sampleAudit = {
