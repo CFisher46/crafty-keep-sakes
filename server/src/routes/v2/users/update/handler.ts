@@ -33,6 +33,14 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
 
   const id = req.params.id;
   const updates = req.body as Partial<User>;
+  const requester = getRequestUser(req);
+  const isAdminRequest =
+    String(requester?.type || requester?.role_code || '').trim().toLowerCase() === 'admin';
+
+  if (!isAdminRequest && (updates.type !== undefined || updates.status !== undefined)) {
+    res.status(403).json({ error: 'Only an admin can change role or status' });
+    return;
+  }
   const connection = await db.getConnection();
 
   try {

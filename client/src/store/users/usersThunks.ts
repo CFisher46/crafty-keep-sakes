@@ -184,7 +184,8 @@ export const verifyCurrentPassword = async (
   const response = await fetch(buildApiUrl('auth', '/verify-password'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ userId, currentPassword }),
+    credentials: 'include',
+    body: JSON.stringify({ currentPassword }),
   });
   if (!response.ok) {
     throw new Error('Failed to verify password');

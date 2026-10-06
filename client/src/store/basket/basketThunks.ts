@@ -1,5 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { buildApiUrl } from '../../api/apiPath';
+import type { DeliveryAddress, InvoiceDetails, InvoiceOrder } from '../../types';
 
 export type BasketItemPayload = {
   id: string;
@@ -132,15 +133,6 @@ export const removeBasketItem = createAsyncThunk(
   }
 );
 
-export type DeliveryAddress = {
-  address_line1: string;
-  address_line2: string;
-  address_line3: string;
-  town: string;
-  county: string;
-  postcode: string;
-};
-
 export const checkoutBasket = createAsyncThunk<
   {
     message: string;
@@ -184,7 +176,7 @@ export const checkoutBasket = createAsyncThunk<
   }
 );
 
-export const fetchOrderHistory = createAsyncThunk(
+export const fetchOrderHistory = createAsyncThunk<InvoiceOrder[]>(
   'basket/fetchOrderHistory',
   async (_, { rejectWithValue }) => {
     try {
@@ -197,22 +189,14 @@ export const fetchOrderHistory = createAsyncThunk(
         return rejectWithValue(payload.error || 'Failed to load order history');
       }
 
-      return (await response.json()) as Array<{
-        id: number;
-        user_id: number;
-        order_status: string;
-        grand_total: number;
-        invoice_id?: number | null;
-        invoice_number?: string | null;
-        placed_at: string;
-      }>;
+      return (await response.json()) as InvoiceOrder[];
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
     }
   }
 );
 
-export const fetchInvoiceById = createAsyncThunk(
+export const fetchInvoiceById = createAsyncThunk<InvoiceDetails, string | number>(
   'basket/fetchInvoiceById',
   async (invoiceId: string | number, { rejectWithValue }) => {
     try {
@@ -225,17 +209,7 @@ export const fetchInvoiceById = createAsyncThunk(
         return rejectWithValue(payload.error || 'Failed to load invoice');
       }
 
-      return (await response.json()) as {
-        id: number;
-        order_id: number;
-        invoice_number: string;
-        invoice_status: string;
-        total_due: number;
-        issued_at: string;
-        user_id: number;
-        delivery_address?: DeliveryAddress;
-        tracking_info: string;
-      };
+      return (await response.json()) as InvoiceDetails;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
     }

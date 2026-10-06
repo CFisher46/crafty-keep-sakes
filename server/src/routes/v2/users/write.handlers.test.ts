@@ -221,6 +221,22 @@ describe('v2 users write routes', () => {
     expect(String(mockConnection.query.mock.calls[1][0])).toContain('customer_profiles_v2');
   });
 
+  it('blocks a customer from escalating their own role or status', async () => {
+    const roleResponse = await request(app)
+      .put('/api/v2/users/7')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({ type: 'admin' });
+
+    const statusResponse = await request(app)
+      .put('/api/v2/users/7')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({ status: 'active' });
+
+    expect(roleResponse.status).toBe(403);
+    expect(statusResponse.status).toBe(403);
+    expect(mockConnection.query).not.toHaveBeenCalled();
+  });
+
   it('blocks a customer from updating another users v2 profile', async () => {
     const response = await request(app)
       .put('/api/v2/users/99')

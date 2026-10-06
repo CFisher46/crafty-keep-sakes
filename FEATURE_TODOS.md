@@ -48,7 +48,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an ADMIN user, WHEN I make a new post, THEN there should be a 'NEW' label for the users to see.
     -   AS a CUSTOMER, WHEN a new blog is posted, THEN there should be a DOT on the Blog Menu AND THEN the post should have a 'NEW' label.
 
--   [ ] CKS-2-018 : Move Invoice feature into its own component
+-   [x] CKS-2-018 : Move Invoice feature into its own component
     -   AS a DEVELOPER, WHEN I come to make changes to the Invocies feature, I WANT to be able to quickly identify the Invoices component.
 
 -   [ ] CKS-2-019 : Add in an ADMIN report for ALL Invoices
@@ -73,6 +73,8 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] Button hover and pressed styling was not being applied consistently.
     -   Button state styling is now applied through the Grommet button theme.
 
+-   [ ] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
+
 ## Adhoc TODOs
 
 -   [ ] CKS-2-009 : Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
@@ -88,3 +90,4 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-014 : Introduce a change log that is updated with the branch name and title when merging to main
 
 -   [ ] CKS-2-021 : Check to make sure the API's cant be hit externally to scrap for information
+

@@ -30,11 +30,63 @@ export type Product = {
 };
 
 export type Audit = {
-  log_ref: number;
-  user: string;
-  field_changed: string;
+  id: number;
+  actor_user_id: number | null;
+  actor_role: string | null;
   action_type: string;
-  log_dttm: Date;
-  api_source: string;
-  changed_by?: string;
+  resource_type: string;
+  resource_id: string | null;
+  source_endpoint: string;
+  old_values_json?: unknown;
+  new_values_json?: unknown;
+  created_at: string;
 };
+
+export const auditFilterFields = [
+  'actor_user_id',
+  'actor_role',
+  'action_type',
+  'resource_type',
+  'source_endpoint',
+] as const;
+
+export type AuditFilterField = (typeof auditFilterFields)[number];
+export type AuditFilterOptions = Record<AuditFilterField, string[]>;
+
+export type DeliveryAddress = {
+  address_line1: string;
+  address_line2: string;
+  address_line3: string;
+  town: string;
+  county: string;
+  postcode: string;
+};
+
+export interface InvoiceOrder {
+  id: number;
+  user_id: number;
+  order_status: string;
+  grand_total: number;
+  invoice_id?: number | null;
+  invoice_number?: string | null;
+  placed_at: string;
+}
+
+export interface InvoiceDetails {
+  id: number;
+  order_id: number;
+  invoice_number: string;
+  invoice_status: string;
+  total_due: number;
+  issued_at: string;
+  user_id: number;
+  delivery_address?: DeliveryAddress;
+  tracking_info?: string;
+  items?: Array<{
+    id: number;
+    description: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+  }>;
+}

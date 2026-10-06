@@ -9,12 +9,12 @@ import {
   removeItemFromBasket,
 } from "../../store/basket/basketSlice";
 import {
-  DeliveryAddress,
   checkoutBasket,
   fetchBasket,
   removeBasketItem,
   updateBasketItem,
 } from "../../store/basket/basketThunks";
+import type { DeliveryAddress } from "../../types";
 import { buttonStyles } from "../../helpers/formatting";
 
 function Basket() {

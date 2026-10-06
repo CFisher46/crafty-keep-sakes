@@ -13,6 +13,7 @@ import {
   requireRole,
   getRequestUser,
 } from '../../../../../ts-common/middleware';
+import { imageFileFilter, IMAGE_UPLOAD_LIMITS } from '../../../../../ts-common/image-upload';
 import { getProductImagesDirectory } from '../../../../../ts-common/upload-images-directory';
 import { insertAuditEvent } from '../../../audit-events';
 
@@ -33,7 +34,11 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: imageFileFilter,
+  limits: IMAGE_UPLOAD_LIMITS,
+});
 
 router.post(
   '/:id/images/upload',

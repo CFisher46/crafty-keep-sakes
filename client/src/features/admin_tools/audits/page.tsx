@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { fetchAuditLogs } from '../../../store/audits/auditThunks';
-import { Audit } from './types';
+import {
+  fetchAuditFilterOptions,
+  fetchAuditLogs,
+} from '../../../store/audits/auditThunks';
+import { Audit, AuditFilterField, auditFilterFields } from '../../../types';
 import {
   Table,
   TableBody,
@@ -110,61 +113,38 @@ export const AuditLogs = () => {
   const dispatch = useAppDispatch();
   const logs = useAppSelector((state) => state.audit.logs);
   const totalCount = useAppSelector((state) => state.audit.totalCount);
+  const filterOptions = useAppSelector((state) => state.audit.filterOptions);
+  const filterOptionsError = useAppSelector((state) => state.audit.filterOptionsError);
   const auditLogs = useMemo(() => (Array.isArray(logs) ? logs : []), [logs]);
   const [selectedFilters, setSelectedFilters] = useState<
-    Partial<Record<keyof Audit, string[]>>
+    Partial<Record<AuditFilterField, string[]>>
   >({});
   const [page, setPage] = useState(1);
   const [showAuditTable, setShowAuditTable] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchAuditLogs({ page, pageSize: PAGE_SIZE }));
-  }, [dispatch, page]);
+    dispatch(fetchAuditLogs({ page, pageSize: PAGE_SIZE, filters: selectedFilters }));
+  }, [dispatch, page, selectedFilters]);
+
+  useEffect(() => {
+    dispatch(fetchAuditFilterOptions());
+  }, [dispatch]);
 
   const toggleAuditTable = () => {
     setShowAuditTable((prev) => !prev);
   };
-  const columnHeaders = useMemo(
-    () =>
-      auditLogs.length
-        ? (Object.keys(auditLogs[0]) as (keyof Audit)[])
-        : [],
-    [auditLogs]
-  );
-
-  const filterOptions = useMemo(
-    () =>
-      columnHeaders.reduce((options, header) => {
-        const values = Array.from(
-          new Set(
-            auditLogs
-              .map((log) => log[header])
-              .filter((value) => value !== null && value !== undefined)
-              .map((value) => String(value))
-          )
-        ).sort((left, right) => left.localeCompare(right));
-
-        options[header] = values;
-        return options;
-      }, {} as Record<keyof Audit, string[]>),
-    [auditLogs, columnHeaders]
-  );
-
-  const filteredLogs = useMemo(
-    () =>
-      auditLogs.filter((log) =>
-        columnHeaders.every((header) => {
-          const activeFilters = selectedFilters[header] ?? [];
-
-          if (!activeFilters.length) {
-            return true;
-          }
-
-          return activeFilters.includes(String(log[header] ?? ''));
-        })
-      ),
-    [auditLogs, columnHeaders, selectedFilters]
-  );
+  const columnHeaders: (keyof Audit)[] = [
+    'id',
+    'actor_user_id',
+    'actor_role',
+    'action_type',
+    'resource_type',
+    'resource_id',
+    'source_endpoint',
+    'old_values_json',
+    'new_values_json',
+    'created_at',
+  ];
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
@@ -209,7 +189,7 @@ export const AuditLogs = () => {
     (values) => Array.isArray(values) && values.length > 0
   );
 
-  const updateFilter = (header: keyof Audit, values: string[]) => {
+  const updateFilter = (header: AuditFilterField, values: string[]) => {
     setSelectedFilters((currentFilters) => ({
       ...currentFilters,
       [header]: values,
@@ -222,10 +202,6 @@ export const AuditLogs = () => {
     setPage(1);
   };
 
-  if (auditLogs.length === 0) {
-    return <p>No logs available.</p>;
-  }
-
   return (
     <>
     <Button
@@ -236,10 +212,10 @@ export const AuditLogs = () => {
     {showAuditTable && (
     <Box pad="medium" background="light-1" round="small" overflow={{ horizontal: 'auto' }}>
       <Box direction="row" gap="small" wrap margin={{ bottom: 'medium' }}>
-        {columnHeaders.map((header) => (
+        {auditFilterFields.map((header) => (
           <Box key={header as string} width="medium" gap="xsmall">
             <Text size="small" weight="bold">
-              {header === 'user' ? 'id' : String(header).replace(/_/g, ' ')}
+              {String(header).replace(/_/g, ' ')}
             </Text>
             <SelectMultiple
               placeholder={`Filter ${String(header).replace(/_/g, ' ')}`}
@@ -249,6 +225,9 @@ export const AuditLogs = () => {
             />
           </Box>
         ))}
+        {filterOptionsError && (
+          <Text color="status-critical">{filterOptionsError}</Text>
+        )}
         <Box justify="end">
           <Button
             label="Clear Filters"
@@ -259,9 +238,13 @@ export const AuditLogs = () => {
         </Box>
       </Box>
 
-      {filteredLogs.length === 0 ? (
+      {auditLogs.length === 0 ? (
         <Box pad="medium" align="center">
-          <Text weight="bold">No audit logs match the selected filters.</Text>
+          <Text weight="bold">
+            {totalCount === 0 && !hasActiveFilters
+              ? 'No logs available.'
+              : 'No audit logs match the selected filters.'}
+          </Text>
         </Box>
       ) : (
         <Box gap="small">
@@ -284,14 +267,14 @@ export const AuditLogs = () => {
                       }}
                     >
                       <Text weight="bold">
-                        {header === 'user' ? 'id' : header.replace(/_/g, ' ')}
+                        {header.replace(/_/g, ' ')}
                       </Text>
                     </TableCell>
                   ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLogs.map((log: AuditRow, index) => (
+                {auditLogs.map((log: AuditRow, index) => (
                   <TableRow key={`audit-row-${index}`}>
                     {columnHeaders.map((header) => (
                       <TableCell
