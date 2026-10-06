@@ -15,7 +15,7 @@ const useAuth = () => {
     const fetchSession = async () => {
       try {
         const response = await fetch(
-          `${process.env.REACT_APP_API_URL}/api/auth/me`,
+          `${process.env.REACT_APP_API_URL || ""}/api/auth/me`,
           {
             method: "GET",
             credentials: "include"

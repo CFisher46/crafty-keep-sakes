@@ -55,13 +55,30 @@ const parseQuantity = (value: unknown, fieldName: string): number => {
   return Math.trunc(parsed);
 };
 
-const parsePrice = (value: unknown, fieldName: string): number => {
-  const parsed = Number(value ?? 0);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(`Invalid ${fieldName}`);
+const getCurrentProductPrice = async (
+  connection: Awaited<ReturnType<typeof db.getConnection>>,
+  productId: number
+): Promise<number> => {
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `SELECT price, on_sale, sale_percent FROM products_v2 WHERE id = ? AND is_live = 1 LIMIT 1`,
+    [productId]
+  );
+  const product = Array.isArray(rows) ? rows[0] : undefined;
+
+  if (!product) {
+    throw new Error('Invalid product_id');
   }
 
-  return Number(parsed.toFixed(2));
+  const price = Number(product.price);
+  const salePercent = Number(product.sale_percent) || 0;
+  const onSale = Boolean(Number(product.on_sale));
+  const finalPrice = onSale ? price * (1 - salePercent / 100) : price;
+
+  if (!Number.isFinite(finalPrice) || finalPrice < 0) {
+    throw new Error('Invalid product price');
+  }
+
+  return Number(finalPrice.toFixed(2));
 };
 
 const normalizeBillingAddress = (value: unknown): Record<string, string> => {
@@ -514,7 +531,7 @@ router.post('/items', verifyAuthToken, async (req, res) => {
     }
 
     const quantity = parseQuantity(req.body.quantity ?? 1, 'quantity');
-    const unitPrice = parsePrice(req.body.unit_price ?? req.body.price ?? 0, 'unit_price');
+    const unitPrice = await getCurrentProductPrice(connection, productId);
 
     const basketId = await ensureActiveBasket(connection, userId);
     const [existingRows] = await connection.query<RowDataPacket[]>(

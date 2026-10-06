@@ -1,0 +1,42 @@
+# Runs the API on the NAS and exposes it publicly through a Cloudflare Tunnel.
+# Image is built on a dev machine and pushed to Docker Hub:
+#   docker buildx build --platform linux/amd64 -f server/Dockerfile -t fisher46/cks-api:latest --push .
+# Then paste this file into QNAP Container Station (Applications > Create) or run:
+#   docker compose -f docker-compose.nas.yml --env-file server/.env.nas up -d
+services:
+  api:
+    image: fisher46/cks-api:latest
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      NODE_ENV: production
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DATABASE: ${DB_DATABASE}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set}
+      AUTH_API_SOURCE: ${AUTH_API_SOURCE:-v2}
+      PRODUCTS_API_SOURCE: ${PRODUCTS_API_SOURCE:-v2}
+      USERS_API_SOURCE: ${USERS_API_SOURCE:-v2}
+      AUDIT_API_SOURCE: ${AUDIT_API_SOURCE:-v2}
+      BASKET_API_SOURCE: ${BASKET_API_SOURCE:-v2}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+    volumes:
+      - product-images:/app/client/public/images
+    # Only reachable from the tunnel container, never published on the LAN/WAN
+    expose:
+      - "3001"
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
+    depends_on:
+      - api
+
+volumes:
+  product-images:
