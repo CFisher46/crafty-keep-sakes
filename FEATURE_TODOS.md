@@ -18,7 +18,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Features
 
--   [ ] CKS-2-006 : Introduction of  User Notifications
+-   [ ] CKS-2-006 : Introduction of  User Notifications (Next Priority)
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
 
@@ -44,7 +44,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-016 : Add in a 'Delete Comment' to the blog feature
     -   AS an ADMIN user, WHEN someone leaves a comment on a blog post, I WANT to be able to remove the comment.
 
--   [ ] CKS-2-017 : Add in a 'NEW Post' flag to the blog feature
+-   [x] CKS-2-017 : Add in a 'NEW Post' flag to the blog feature
     -   AS an ADMIN user, WHEN I make a new post, THEN there should be a 'NEW' label for the users to see.
     -   AS a CUSTOMER, WHEN a new blog is posted, THEN there should be a DOT on the Blog Menu AND THEN the post should have a 'NEW' label.
 
