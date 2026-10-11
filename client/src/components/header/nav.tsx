@@ -13,8 +13,6 @@ type NavItem = {
   icon: JSX.Element;
 };
 
-const NEW_POST_AGE_MS = 1000 * 60 * 60 * 24 * 7;
-
 function NavigationBar({
   onNavigate,
   resetActive,
@@ -39,6 +37,11 @@ function NavigationBar({
       return;
     }
 
+    if (!isLoggedIn) {
+      setUnreadBlogCount(0);
+      return;
+    }
+
     let isMounted = true;
 
     const loadUnreadCount = () => {
@@ -55,14 +58,7 @@ function NavigationBar({
 
           const posts = Array.isArray(payload?.data) ? payload.data : [];
           setUnreadBlogCount(
-            posts.filter((post: { is_new?: boolean; created_at?: string }) => {
-              if (typeof post?.is_new === 'boolean') {
-                return post.is_new;
-              }
-
-              const timestamp = Date.parse(post?.created_at ?? '');
-              return !Number.isNaN(timestamp) && Date.now() - timestamp <= NEW_POST_AGE_MS;
-            }).length
+            posts.filter((post: { is_new?: boolean }) => post?.is_new === true).length
           );
         })
         .catch(() => {

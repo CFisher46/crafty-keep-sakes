@@ -100,10 +100,31 @@ describe('BlogPage', () => {
     });
   });
 
-  it('shows a NEW badge for posts published within the last week', async () => {
+  it('shows a NEW badge to logged-in users for unviewed posts', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ data: [recentPost] }),
+      json: async () => ({ data: [{ ...recentPost, is_new: true }] }),
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '1', type: 'customer' } },
+    });
+
+    render(
+      <Provider store={store}>
+        <BlogPage />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('NEW')).toBeInTheDocument();
+    });
+  });
+
+  it('never shows a NEW badge to guests', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ ...recentPost, is_new: true }] }),
     }) as unknown as typeof fetch;
 
     const store = buildStore({ auth: { isLoggedIn: false, user: null } });
@@ -115,8 +136,10 @@ describe('BlogPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('NEW')).toBeInTheDocument();
+      expect(screen.getByText('Latest Post')).toBeInTheDocument();
     });
+
+    expect(screen.queryByText('NEW')).not.toBeInTheDocument();
   });
 
   it('hides the "Create blog post" button for non-admin users', async () => {

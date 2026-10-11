@@ -172,7 +172,7 @@ router.get('/posts', async (req, res) => {
             likes: likeCount,
             dislikes: dislikeCount,
           },
-          is_new: isRecentPost(postRecord.created_at) && !hasViewed,
+          is_new: Boolean(viewerUserId) && isRecentPost(postRecord.created_at) && !hasViewed,
         };
       })
     );

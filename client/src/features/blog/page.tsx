@@ -46,21 +46,6 @@ type BlogPost = {
   };
 };
 
-const NEW_POST_AGE_MS = 1000 * 60 * 60 * 24 * 7;
-
-const isNewBlogPost = (createdAt?: string) => {
-  if (!createdAt) {
-    return false;
-  }
-
-  const timestamp = Date.parse(createdAt);
-  if (Number.isNaN(timestamp)) {
-    return false;
-  }
-
-  return Date.now() - timestamp <= NEW_POST_AGE_MS;
-};
-
 const getTileSize = (post: BlogPost) => {
   const hasImage = Boolean(post.images?.[0]?.image_url);
   const textLength = post.title.length + (post.summary?.length ?? 0);
@@ -399,7 +384,7 @@ function BlogPage() {
             <Box gap="small">
               <Box direction="row" align="center" gap="xsmall">
                 <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
-                {(selectedPost.is_new ?? isNewBlogPost(selectedPost.created_at)) && <NewBadge />}
+                {isLoggedIn && selectedPost.is_new && <NewBadge />}
               </Box>
               <Text size="small" color="dark-3">
                 By {selectedPost.author_name || 'Unknown author'} ·{' '}
@@ -608,7 +593,7 @@ function BlogPage() {
                   <BlogTile
                     key={post.id}
                     post={post}
-                    isNew={post.is_new ?? isNewBlogPost(post.created_at)}
+                    isNew={isLoggedIn && Boolean(post.is_new)}
                     onOpen={() => navigate(`/Blog/${post.id}`)}
                   />
                 ))}

@@ -93,6 +93,22 @@ describe('blog v2 routes', () => {
     });
   });
 
+  it('does not flag posts as new for guests', async () => {
+    mockedDbQuery
+      .mockResolvedValueOnce([
+        [{ id: 5, title: 'Recent post', summary: 'Intro', content: 'Body', author_id: 1, author_name: 'Admin User', created_at: new Date().toISOString() }],
+      ])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ count: 0 }]])
+      .mockResolvedValueOnce([[{ count: 0 }]]);
+
+    const response = await request(app).get('/api/v2/blog/posts');
+
+    expect(response.status).toBe(200);
+    expect(response.body.data[0].is_new).toBe(false);
+  });
+
   it('records a blog post view for a logged-in user', async () => {
     mockedDbQuery
       .mockResolvedValueOnce([[{ id: 5 }]])

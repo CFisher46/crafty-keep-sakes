@@ -108,4 +108,19 @@ describe('NavigationBar', () => {
       expect(screen.getByLabelText('2 unread blog posts')).toHaveTextContent('2');
     });
   });
+
+  it('does not fetch or show an unread blog count for guests', () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+
+    const store = buildStore({ auth: { isLoggedIn: false, user: null } });
+
+    render(
+      <Provider store={store}>
+        <NavigationBar onNavigate={jest.fn()} resetActive={jest.fn()} />
+      </Provider>
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/unread blog posts/)).not.toBeInTheDocument();
+  });
 });
