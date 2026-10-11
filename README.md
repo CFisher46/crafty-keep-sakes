@@ -34,6 +34,14 @@ In another terminal:
 
 The frontend reads `REACT_APP_API_URL` from `client/.env` and should point to your backend URL (default: `http://localhost:3001`).
 
+## Database schema recovery
+
+Reset or restore the v2 schema by running the bootstrap script from the project root:
+
+- `mysql -u <user> -p <server/scripts/migrations/phase1_schema_v2.sql`
+
+This bootstrap includes the standard v2 tables and the blog post tracking table used for NEW badges (`blog_post_views_v2`).
+
 ## Encrypted user data recovery
 
 If old encrypted user fields can no longer be decrypted (lost historical key), run the server repair script.

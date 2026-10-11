@@ -1,9 +1,17 @@
-import { Box, Nav, Button } from 'grommet';
+import { Box, Nav, Button, Text } from 'grommet';
 import { Book, Shop, Inbox, ShieldSecurity, Edit } from 'grommet-icons';
-import { useState, useRef, JSX } from 'react';
+import { useState, useRef, JSX, type ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { buildApiUrl } from '../../api/apiPath';
+import { BLOG_VIEWED_EVENT } from '../../features/blog/events';
 import { RootState } from '../../store';
+
+type NavItem = {
+  label: ReactNode;
+  route: string;
+  icon: JSX.Element;
+};
 
 function NavigationBar({
   onNavigate,
@@ -19,8 +27,55 @@ function NavigationBar({
 
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const userType = useSelector((state: RootState) => state.auth.user?.type);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const [unreadBlogCount, setUnreadBlogCount] = useState(0);
 
   const activeRoute = location.pathname;
+
+  useEffect(() => {
+    if (typeof fetch !== 'function') {
+      return;
+    }
+
+    if (!isLoggedIn) {
+      setUnreadBlogCount(0);
+      return;
+    }
+
+    let isMounted = true;
+
+    const loadUnreadCount = () => {
+      fetch(buildApiUrl('blog', '/posts'), { credentials: 'include' })
+        .then(async (response) => {
+          if (!response.ok) {
+            return;
+          }
+
+          const payload = await response.json().catch(() => ({ data: [] }));
+          if (!isMounted) {
+            return;
+          }
+
+          const posts = Array.isArray(payload?.data) ? payload.data : [];
+          setUnreadBlogCount(
+            posts.filter((post: { is_new?: boolean }) => post?.is_new === true).length
+          );
+        })
+        .catch(() => {
+          if (isMounted) {
+            setUnreadBlogCount(0);
+          }
+        });
+    };
+
+    loadUnreadCount();
+    window.addEventListener(BLOG_VIEWED_EVENT, loadUnreadCount);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(BLOG_VIEWED_EVENT, loadUnreadCount);
+    };
+  }, [isLoggedIn, userId]);
 
   const SidebarButton = ({
     label,
@@ -28,7 +83,7 @@ function NavigationBar({
     icon,
     ...rest
   }: {
-    label: string;
+    label: ReactNode;
     route: string;
     icon: JSX.Element;
     [key: string]: any;
@@ -45,7 +100,7 @@ function NavigationBar({
         backgroundColor:
           route === activeRoute
             ? '#fce5f5'
-            : hovered === label
+            : hovered === route
               ? '#a5effeff'
               : '',
         borderRadius: '4px',
@@ -56,7 +111,7 @@ function NavigationBar({
         navigate(route);
         resetActive?.();
       }}
-      onMouseEnter={() => setHovered(label)}
+      onMouseEnter={() => setHovered(route)}
       onMouseLeave={() => setHovered(undefined)}
     />
   );
@@ -70,7 +125,7 @@ function NavigationBar({
       margin={{ horizontal: 'auto' }}
     >
       <Nav direction="row" justify="evenly">
-        {[
+        {([
           {
             label: 'Shop',
             route: '/Shop',
@@ -82,7 +137,27 @@ function NavigationBar({
             icon: <Edit />,
           },
           {
-            label: 'Blog',
+            label: (
+              <Box direction="row" align="center" gap="xsmall">
+                <span>Blog</span>
+                {unreadBlogCount > 0 && (
+                  <Box
+                    background="status-critical"
+                    round
+                    pad={{ horizontal: 'xsmall' }}
+                    align="center"
+                    justify="center"
+                    style={{ minWidth: '18px', height: '18px' }}
+                    aria-label={`${unreadBlogCount} unread blog posts`}
+                    title={`${unreadBlogCount} unread blog posts`}
+                  >
+                    <Text size="xsmall" weight="bold" color="white">
+                      {unreadBlogCount > 99 ? '99+' : unreadBlogCount}
+                    </Text>
+                  </Box>
+                )}
+              </Box>
+            ),
             route: '/Blog',
             icon: <Book />,
           },
@@ -97,19 +172,11 @@ function NavigationBar({
             route: '/Contact',
             icon: <Inbox />,
           },
-        ]
-          .filter(
-            (
-              item
-            ): item is {
-              label: string;
-              route: string;
-              icon: JSX.Element;
-            } => Boolean(item)
-          )
+        ] as Array<NavItem | false>)
+          .filter((item): item is NavItem => Boolean(item))
           .map((item) => (
             <SidebarButton
-              key={item.label}
+              key={item.route}
               label={item.label}
               route={item.route}
               icon={item.icon}
