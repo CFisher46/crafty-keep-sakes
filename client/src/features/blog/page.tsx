@@ -8,11 +8,6 @@ import {
   TextInput,
   Image,
   Card,
-  Table,
-  TableBody,
-  TableCell,
-  TableHeader,
-  TableRow,
   Layer,
 } from 'grommet';
 import { useSelector } from 'react-redux';
@@ -20,6 +15,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../../store';
 import { buildApiUrl } from '../../api/apiPath';
 import { buttonStyles } from '../../helpers/formatting';
+import { BLOG_VIEWED_EVENT } from './events';
 
 type BlogImage = {
   id?: number;
@@ -43,11 +39,99 @@ type BlogPost = {
   created_at?: string;
   images: BlogImage[];
   comments: BlogComment[];
+  is_new?: boolean;
   reaction_counts: {
     likes: number;
     dislikes: number;
   };
 };
+
+const getTileSize = (post: BlogPost) => {
+  const hasImage = Boolean(post.images?.[0]?.image_url);
+  const textLength = post.title.length + (post.summary?.length ?? 0);
+
+  // Longer content gets a wider tile; images add height. Never smaller than 1x2.
+  const columns = textLength > 120 ? 2 : 1;
+  const rows = hasImage ? (textLength > 60 ? 3 : 2) : 2;
+
+  return { columns, rows };
+};
+
+function NewBadge() {
+  return (
+    <Box
+      pad={{ horizontal: 'xsmall', vertical: '2px' }}
+      round="xsmall"
+      background="status-critical"
+      align="center"
+      justify="center"
+    >
+      <Text size="xsmall" weight="bold" color="white">NEW</Text>
+    </Box>
+  );
+}
+
+function BlogTile({
+  post,
+  isNew,
+  onOpen,
+}: {
+  post: BlogPost;
+  isNew: boolean;
+  onOpen: () => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+  const size = getTileSize(post);
+  const image = post.images?.[0]?.image_url;
+  const isLarge = size.columns > 1 || size.rows > 2;
+
+  return (
+    <Card
+      background="white"
+      pad="small"
+      gap="small"
+      border={{ color: 'light-4', size: 'xsmall' }}
+      overflow="hidden"
+      onClick={onOpen}
+      style={{
+        gridColumn: `span ${size.columns}`,
+        gridRow: `span ${size.rows}`,
+        cursor: 'pointer',
+        boxShadow: hovered ? '0px 0px 20px rgb(45, 44, 45)' : 'none',
+        transform: hovered ? 'translateY(-4px)' : 'none',
+        transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {image && (
+        <Box flex overflow="hidden" round="xsmall" style={{ minHeight: '60px' }}>
+          <img
+            src={image}
+            alt={post.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </Box>
+      )}
+      <Box flex={false} gap="xsmall">
+        <Box direction="row" align="center" gap="xsmall" wrap>
+          <Text weight="bold" size={isLarge ? 'xlarge' : 'large'}>{post.title}</Text>
+          {isNew && <NewBadge />}
+        </Box>
+        <Text size="small" color="dark-3">
+          By {post.author_name || 'Unknown author'} ·{' '}
+          {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
+        </Text>
+        {(isLarge || !image) && post.summary && (
+          <Text size="medium" color="dark-4" truncate={!isLarge}>{post.summary}</Text>
+        )}
+        <Text size="small" color="dark-3">
+          👍 {post.reaction_counts?.likes || 0} · 👎 {post.reaction_counts?.dislikes || 0} · 💬 {post.comments?.length || 0}
+        </Text>
+      </Box>
+    </Card>
+  );
+}
 
 const emptyPostForm = {
   title: '',
@@ -100,9 +184,50 @@ function BlogPage() {
     }
   };
 
+  const markPostViewed = async (postId: number) => {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    try {
+      const response = await fetch(buildApiUrl('blog', `/posts/${postId}/views`), {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      window.dispatchEvent(new Event(BLOG_VIEWED_EVENT));
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                is_new: false,
+              }
+            : post
+        )
+      );
+    } catch {
+      // No-op: a failed view registration should not block the post from rendering.
+    }
+  };
+
   useEffect(() => {
     loadPosts();
   }, []);
+
+  useEffect(() => {
+    if (!selectedPost || !isLoggedIn || !selectedPost.is_new) {
+      return;
+    }
+
+    void markPostViewed(selectedPost.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPost, isLoggedIn]);
 
   const handleCreatePost = async () => {
     if (!postForm.title.trim() || !postForm.content.trim()) {
@@ -258,7 +383,10 @@ function BlogPage() {
 
           <Card pad="medium" background="white" round="small" elevation="small">
             <Box gap="small">
-              <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
+              <Box direction="row" align="center" gap="xsmall">
+                <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
+                {isLoggedIn && selectedPost.is_new && <NewBadge />}
+              </Box>
               <Text size="small" color="dark-3">
                 By {selectedPost.author_name || 'Unknown author'} ·{' '}
                 {selectedPost.created_at ? new Date(selectedPost.created_at).toLocaleDateString() : 'Recently'}
@@ -450,46 +578,28 @@ function BlogPage() {
           {loading ? (
             <Text>Loading blog posts...</Text>
           ) : (
-            <Card pad="small" background="white" round="small" elevation="small">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableCell scope="col">Title</TableCell>
-                    <TableCell scope="col">Posted</TableCell>
-                    <TableCell scope="col">Likes</TableCell>
-                    <TableCell scope="col">Dislikes</TableCell>
-                    <TableCell scope="col">Comments</TableCell>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {posts.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5}>
-                        <Text color="dark-3">No blog posts yet.</Text>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    posts.map((post) => (
-                      <TableRow
-                        key={post.id}
-                        onClick={() => navigate(`/Blog/${post.id}`)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <TableCell>
-                          <Text weight="bold">{post.title}</Text>
-                        </TableCell>
-                        <TableCell>
-                          {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
-                        </TableCell>
-                        <TableCell>{post.reaction_counts?.likes || 0}</TableCell>
-                        <TableCell>{post.reaction_counts?.dislikes || 0}</TableCell>
-                        <TableCell>{post.comments?.length || 0}</TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
+            posts.length === 0 ? (
+              <Text color="dark-3">No blog posts yet.</Text>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                  gridAutoRows: '120px',
+                  gridAutoFlow: 'dense',
+                  gap: '12px',
+                }}
+              >
+                {posts.map((post) => (
+                  <BlogTile
+                    key={post.id}
+                    post={post}
+                    isNew={isLoggedIn && Boolean(post.is_new)}
+                    onOpen={() => navigate(`/Blog/${post.id}`)}
+                  />
+                ))}
+              </div>
+            )
           )}
         </Box>
       )}
