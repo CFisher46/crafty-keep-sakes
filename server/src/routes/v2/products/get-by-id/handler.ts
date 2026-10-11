@@ -5,7 +5,7 @@ import { GetSpecificProductsQuery } from "../../../../ts-common/product-queries"
 const router = express.Router();
 
 router.get("/:id", async (req: Request, res: Response) => {  console.log(`GET /api/v2/products/${req.params.id}`);
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   try {
     const [rows] = await db.query(GetSpecificProductsQuery(id, "v2"));
