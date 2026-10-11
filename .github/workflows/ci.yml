@@ -9,7 +9,7 @@ on:
 jobs:
   lint-client:
     name: Lint Client
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
 
@@ -27,7 +27,7 @@ jobs:
 
   test-client:
     name: Test Client
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
 
@@ -45,7 +45,7 @@ jobs:
 
   lint-server:
     name: Lint Server
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
 
@@ -63,7 +63,7 @@ jobs:
 
   test-server:
     name: Test Server
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v3
 
