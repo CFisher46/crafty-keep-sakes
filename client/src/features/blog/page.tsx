@@ -115,16 +115,17 @@ function BlogTile({
       )}
       <Box flex={false} gap="xsmall">
         <Box direction="row" align="center" gap="xsmall" wrap>
-          <Text weight="bold" size={isLarge ? 'large' : 'medium'}>{post.title}</Text>
+          <Text weight="bold" size={isLarge ? 'xlarge' : 'large'}>{post.title}</Text>
           {isNew && <NewBadge />}
         </Box>
-        <Text size="xsmall" color="dark-3">
+        <Text size="small" color="dark-3">
+          By {post.author_name || 'Unknown author'} ·{' '}
           {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
         </Text>
         {(isLarge || !image) && post.summary && (
-          <Text size="small" color="dark-4" truncate={!isLarge}>{post.summary}</Text>
+          <Text size="medium" color="dark-4" truncate={!isLarge}>{post.summary}</Text>
         )}
-        <Text size="xsmall" color="dark-3">
+        <Text size="small" color="dark-3">
           👍 {post.reaction_counts?.likes || 0} · 👎 {post.reaction_counts?.dislikes || 0} · 💬 {post.comments?.length || 0}
         </Text>
       </Box>
