@@ -18,7 +18,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Features
 
--   [ ] CKS-2-006 : Introduction of  User Notifications
+-   [ ] CKS-2-006 : Introduction of  User Notifications (Next Priority)
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
 
