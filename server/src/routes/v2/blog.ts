@@ -1,9 +1,11 @@
 import express from 'express';
 import fs from 'fs';
+import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import path from 'path';
 import { db } from '../../ts-common/database';
 import { imageFileFilter, IMAGE_UPLOAD_LIMITS } from '../../ts-common/image-upload';
+import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, requireRole, getRequestUser } from '../../ts-common/middleware';
 
 const router = express.Router();
@@ -57,6 +59,35 @@ type InsertResult = {
   insertId?: number;
 };
 
+const getOptionalUserId = (req: express.Request): number | null => {
+  const token = req.cookies?.auth_token;
+
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { id?: string | number };
+    const userId = Number(decoded?.id ?? 0);
+    return Number.isFinite(userId) && userId > 0 ? userId : null;
+  } catch {
+    return null;
+  }
+};
+
+const isRecentPost = (createdAt?: string | null) => {
+  if (!createdAt) {
+    return false;
+  }
+
+  const timestamp = Date.parse(createdAt);
+  if (Number.isNaN(timestamp)) {
+    return false;
+  }
+
+  return Date.now() - timestamp <= 1000 * 60 * 60 * 24 * 7;
+};
+
 const normalizePostPayload = (body: BlogPostPayload | undefined) => {
   const title = String(body?.title ?? '').trim();
   const summary = String(body?.summary ?? '').trim();
@@ -73,7 +104,7 @@ const normalizePostPayload = (body: BlogPostPayload | undefined) => {
   };
 };
 
-router.get('/posts', async (_req, res) => {
+router.get('/posts', async (req, res) => {
   try {
     const [postsRows] = await db.query(
       `SELECT
@@ -90,6 +121,8 @@ router.get('/posts', async (_req, res) => {
     );
 
     const posts = Array.isArray(postsRows) ? (postsRows as BlogPostRecord[]) : [];
+
+    const viewerUserId = getOptionalUserId(req);
 
     const withDetails = await Promise.all(
       posts.map(async (post) => {
@@ -123,8 +156,13 @@ router.get('/posts', async (_req, res) => {
           [postRecord.id]
         );
 
+        const [viewRow] = viewerUserId
+          ? await db.query('SELECT id FROM blog_post_views_v2 WHERE post_id = ? AND user_id = ? LIMIT 1', [postRecord.id, viewerUserId])
+          : [[], null];
+
         const likeCount = Number((Array.isArray(likeRows) ? (likeRows[0] as CountRow | undefined) : undefined)?.count ?? 0);
         const dislikeCount = Number((Array.isArray(dislikeRows) ? (dislikeRows[0] as CountRow | undefined) : undefined)?.count ?? 0);
+        const hasViewed = viewerUserId && Array.isArray(viewRow) && viewRow.length > 0;
 
         return {
           ...postRecord,
@@ -134,6 +172,7 @@ router.get('/posts', async (_req, res) => {
             likes: likeCount,
             dislikes: dislikeCount,
           },
+          is_new: isRecentPost(postRecord.created_at) && !hasViewed,
         };
       })
     );
@@ -198,6 +237,40 @@ router.post('/posts', verifyAuthToken, requireRole('admin'), upload.array('image
   } catch (error) {
     console.error('Create blog post error:', error);
     res.status(400).json({ error: error instanceof Error ? error.message : 'Unable to create blog post' });
+  }
+});
+
+router.post('/posts/:id/views', verifyAuthToken, async (req, res) => {
+  const postId = Number(req.params.id);
+  const user = getRequestUser(req);
+  const userId = Number(user?.id ?? 0);
+
+  if (!Number.isFinite(postId) || postId <= 0) {
+    res.status(400).json({ error: 'Invalid post id' });
+    return;
+  }
+
+  if (!userId) {
+    res.status(401).json({ error: 'User not authenticated' });
+    return;
+  }
+
+  try {
+    const [postRows] = await db.query('SELECT id FROM blog_posts_v2 WHERE id = ?', [postId]);
+    if (!Array.isArray(postRows) || !postRows.length) {
+      res.status(404).json({ error: 'Blog post not found' });
+      return;
+    }
+
+    await db.query(
+      'INSERT INTO blog_post_views_v2 (post_id, user_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP',
+      [postId, userId]
+    );
+
+    res.status(201).json({ message: 'Post view recorded' });
+  } catch (error) {
+    console.error('Blog post view error:', error);
+    res.status(500).json({ error: 'Database error' });
   }
 });
 

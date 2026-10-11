@@ -43,10 +43,26 @@ type BlogPost = {
   created_at?: string;
   images: BlogImage[];
   comments: BlogComment[];
+  is_new?: boolean;
   reaction_counts: {
     likes: number;
     dislikes: number;
   };
+};
+
+const NEW_POST_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+
+const isNewBlogPost = (createdAt?: string) => {
+  if (!createdAt) {
+    return false;
+  }
+
+  const timestamp = Date.parse(createdAt);
+  if (Number.isNaN(timestamp)) {
+    return false;
+  }
+
+  return Date.now() - timestamp <= NEW_POST_AGE_MS;
 };
 
 const emptyPostForm = {
@@ -100,9 +116,48 @@ function BlogPage() {
     }
   };
 
+  const markPostViewed = async (postId: number) => {
+    if (!isLoggedIn) {
+      return;
+    }
+
+    try {
+      const response = await fetch(buildApiUrl('blog', `/posts/${postId}/views`), {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        return;
+      }
+
+      setPosts((currentPosts) =>
+        currentPosts.map((post) =>
+          post.id === postId
+            ? {
+                ...post,
+                is_new: false,
+              }
+            : post
+        )
+      );
+    } catch {
+      // No-op: a failed view registration should not block the post from rendering.
+    }
+  };
+
   useEffect(() => {
     loadPosts();
   }, []);
+
+  useEffect(() => {
+    if (!selectedPost || !isLoggedIn || !selectedPost.is_new) {
+      return;
+    }
+
+    void markPostViewed(selectedPost.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPost, isLoggedIn]);
 
   const handleCreatePost = async () => {
     if (!postForm.title.trim() || !postForm.content.trim()) {
@@ -258,7 +313,20 @@ function BlogPage() {
 
           <Card pad="medium" background="white" round="small" elevation="small">
             <Box gap="small">
-              <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
+              <Box direction="row" align="center" gap="xsmall">
+                <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
+                {(selectedPost.is_new ?? isNewBlogPost(selectedPost.created_at)) && (
+                  <Box
+                    pad={{ horizontal: 'xsmall', vertical: '2px' }}
+                    round="xsmall"
+                    background="status-critical"
+                    align="center"
+                    justify="center"
+                  >
+                    <Text size="xsmall" weight="bold" color="white">NEW</Text>
+                  </Box>
+                )}
+              </Box>
               <Text size="small" color="dark-3">
                 By {selectedPost.author_name || 'Unknown author'} ·{' '}
                 {selectedPost.created_at ? new Date(selectedPost.created_at).toLocaleDateString() : 'Recently'}
@@ -476,7 +544,20 @@ function BlogPage() {
                         style={{ cursor: 'pointer' }}
                       >
                         <TableCell>
-                          <Text weight="bold">{post.title}</Text>
+                          <Box direction="row" align="center" gap="xsmall">
+                            <Text weight="bold">{post.title}</Text>
+                            {(post.is_new ?? isNewBlogPost(post.created_at)) && (
+                              <Box
+                                pad={{ horizontal: 'xsmall', vertical: '2px' }}
+                                round="xsmall"
+                                background="status-critical"
+                                align="center"
+                                justify="center"
+                              >
+                                <Text size="xsmall" weight="bold" color="white">NEW</Text>
+                              </Box>
+                            )}
+                          </Box>
                         </TableCell>
                         <TableCell>
                           {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}

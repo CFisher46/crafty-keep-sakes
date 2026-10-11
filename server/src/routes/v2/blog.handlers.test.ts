@@ -69,6 +69,43 @@ describe('blog v2 routes', () => {
     });
   });
 
+  it('marks recent posts as new for the current user and records view status', async () => {
+    const recentCreatedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+    mockedDbQuery
+      .mockResolvedValueOnce([
+        [{ id: 5, title: 'Recent post', summary: 'Intro', content: 'Body', author_id: 1, author_name: 'Admin User', created_at: recentCreatedAt }],
+      ])
+      .mockResolvedValueOnce([[{ id: 9, image_url: '/images/blog-1.png', sort_order: 1 }]])
+      .mockResolvedValueOnce([[{ id: 11, user_name: 'Jane', comment: 'Nice post', created_at: '2026-08-23T12:05:00.000Z' }]])
+      .mockResolvedValueOnce([[{ count: 3 }]])
+      .mockResolvedValueOnce([[{ count: 1 }]])
+      .mockResolvedValueOnce([]);
+
+    const response = await request(app)
+      .get('/api/v2/blog/posts')
+      .set('Cookie', authCookie(42, 'customer'));
+
+    expect(response.status).toBe(200);
+    expect(response.body.data[0]).toMatchObject({
+      title: 'Recent post',
+      is_new: true,
+    });
+  });
+
+  it('records a blog post view for a logged-in user', async () => {
+    mockedDbQuery
+      .mockResolvedValueOnce([[{ id: 5 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const response = await request(app)
+      .post('/api/v2/blog/posts/5/views')
+      .set('Cookie', authCookie(12, 'customer'));
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({ message: 'Post view recorded' });
+  });
+
   it('allows admins to create a blog post', async () => {
     mockedDbQuery
       .mockResolvedValueOnce([{ insertId: 77 }])

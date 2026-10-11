@@ -32,6 +32,13 @@ const samplePost = {
   reaction_counts: { likes: 2, dislikes: 0 },
 };
 
+const recentPost = {
+  ...samplePost,
+  id: 2,
+  title: 'Latest Post',
+  created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+};
+
 describe('BlogPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
@@ -90,6 +97,25 @@ describe('BlogPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('First Post')).toBeInTheDocument();
+    });
+  });
+
+  it('shows a NEW badge for posts published within the last week', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [recentPost] }),
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({ auth: { isLoggedIn: false, user: null } });
+
+    render(
+      <Provider store={store}>
+        <BlogPage />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('NEW')).toBeInTheDocument();
     });
   });
 
