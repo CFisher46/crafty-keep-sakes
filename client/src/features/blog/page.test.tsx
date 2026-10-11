@@ -81,7 +81,7 @@ describe('BlogPage', () => {
     });
   });
 
-  it('renders a table row for each blog post', async () => {
+  it('renders a tile for each blog post', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ data: [samplePost] }),

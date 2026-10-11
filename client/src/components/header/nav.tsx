@@ -1,9 +1,10 @@
-import { Box, Nav, Button } from 'grommet';
+import { Box, Nav, Button, Text } from 'grommet';
 import { Book, Shop, Inbox, ShieldSecurity, Edit } from 'grommet-icons';
 import { useState, useRef, JSX, type ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { buildApiUrl } from '../../api/apiPath';
+import { BLOG_VIEWED_EVENT } from '../../features/blog/events';
 import { RootState } from '../../store';
 
 type NavItem = {
@@ -28,7 +29,8 @@ function NavigationBar({
 
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const userType = useSelector((state: RootState) => state.auth.user?.type);
-  const [hasNewBlogPosts, setHasNewBlogPosts] = useState(false);
+  const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const [unreadBlogCount, setUnreadBlogCount] = useState(0);
 
   const activeRoute = location.pathname;
 
@@ -39,43 +41,45 @@ function NavigationBar({
 
     let isMounted = true;
 
-    fetch(buildApiUrl('blog', '/posts'), { credentials: 'include' })
-      .then(async (response) => {
-        if (!response.ok) {
-          return;
-        }
+    const loadUnreadCount = () => {
+      fetch(buildApiUrl('blog', '/posts'), { credentials: 'include' })
+        .then(async (response) => {
+          if (!response.ok) {
+            return;
+          }
 
-        const payload = await response.json().catch(() => ({ data: [] }));
-        if (!isMounted) {
-          return;
-        }
+          const payload = await response.json().catch(() => ({ data: [] }));
+          if (!isMounted) {
+            return;
+          }
 
-        const posts = Array.isArray(payload?.data) ? payload.data : [];
-        setHasNewBlogPosts(
-          posts.some((post: { is_new?: boolean; created_at?: string }) => {
-            if (typeof post?.is_new === 'boolean') {
-              return post.is_new;
-            }
+          const posts = Array.isArray(payload?.data) ? payload.data : [];
+          setUnreadBlogCount(
+            posts.filter((post: { is_new?: boolean; created_at?: string }) => {
+              if (typeof post?.is_new === 'boolean') {
+                return post.is_new;
+              }
 
-            if (!post?.created_at) {
-              return false;
-            }
+              const timestamp = Date.parse(post?.created_at ?? '');
+              return !Number.isNaN(timestamp) && Date.now() - timestamp <= NEW_POST_AGE_MS;
+            }).length
+          );
+        })
+        .catch(() => {
+          if (isMounted) {
+            setUnreadBlogCount(0);
+          }
+        });
+    };
 
-            const timestamp = Date.parse(post.created_at);
-            return !Number.isNaN(timestamp) && Date.now() - timestamp <= NEW_POST_AGE_MS;
-          })
-        );
-      })
-      .catch(() => {
-        if (isMounted) {
-          setHasNewBlogPosts(false);
-        }
-      });
+    loadUnreadCount();
+    window.addEventListener(BLOG_VIEWED_EVENT, loadUnreadCount);
 
     return () => {
       isMounted = false;
+      window.removeEventListener(BLOG_VIEWED_EVENT, loadUnreadCount);
     };
-  }, []);
+  }, [isLoggedIn, userId]);
 
   const SidebarButton = ({
     label,
@@ -140,15 +144,21 @@ function NavigationBar({
             label: (
               <Box direction="row" align="center" gap="xsmall">
                 <span>Blog</span>
-                {hasNewBlogPosts && (
+                {unreadBlogCount > 0 && (
                   <Box
-                    width="8px"
-                    height="8px"
-                    round
                     background="status-critical"
-                    aria-label="New blog posts available"
-                    title="New blog posts available"
-                  />
+                    round
+                    pad={{ horizontal: 'xsmall' }}
+                    align="center"
+                    justify="center"
+                    style={{ minWidth: '18px', height: '18px' }}
+                    aria-label={`${unreadBlogCount} unread blog posts`}
+                    title={`${unreadBlogCount} unread blog posts`}
+                  >
+                    <Text size="xsmall" weight="bold" color="white">
+                      {unreadBlogCount > 99 ? '99+' : unreadBlogCount}
+                    </Text>
+                  </Box>
                 )}
               </Box>
             ),
