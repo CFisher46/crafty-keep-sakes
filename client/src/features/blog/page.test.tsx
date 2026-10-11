@@ -32,6 +32,13 @@ const samplePost = {
   reaction_counts: { likes: 2, dislikes: 0 },
 };
 
+const recentPost = {
+  ...samplePost,
+  id: 2,
+  title: 'Latest Post',
+  created_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+};
+
 describe('BlogPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
@@ -74,7 +81,7 @@ describe('BlogPage', () => {
     });
   });
 
-  it('renders a table row for each blog post', async () => {
+  it('renders a tile for each blog post', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ data: [samplePost] }),
@@ -91,6 +98,48 @@ describe('BlogPage', () => {
     await waitFor(() => {
       expect(screen.getByText('First Post')).toBeInTheDocument();
     });
+  });
+
+  it('shows a NEW badge to logged-in users for unviewed posts', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ ...recentPost, is_new: true }] }),
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '1', type: 'customer' } },
+    });
+
+    render(
+      <Provider store={store}>
+        <BlogPage />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('NEW')).toBeInTheDocument();
+    });
+  });
+
+  it('never shows a NEW badge to guests', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [{ ...recentPost, is_new: true }] }),
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({ auth: { isLoggedIn: false, user: null } });
+
+    render(
+      <Provider store={store}>
+        <BlogPage />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Latest Post')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('NEW')).not.toBeInTheDocument();
   });
 
   it('hides the "Create blog post" button for non-admin users', async () => {

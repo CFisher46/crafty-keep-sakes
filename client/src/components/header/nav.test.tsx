@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import NavigationBar from './nav';
@@ -84,5 +84,43 @@ describe('NavigationBar', () => {
     expect(onNavigate).toHaveBeenCalledWith('/Blog');
     expect(mockNavigate).toHaveBeenCalledWith('/Blog');
     expect(resetActive).toHaveBeenCalled();
+  });
+
+  it('shows the unread blog count in a red badge', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ is_new: true }, { is_new: true }, { is_new: false }],
+      }),
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '1', type: 'customer' } },
+    });
+
+    render(
+      <Provider store={store}>
+        <NavigationBar onNavigate={jest.fn()} resetActive={jest.fn()} />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('2 unread blog posts')).toHaveTextContent('2');
+    });
+  });
+
+  it('does not fetch or show an unread blog count for guests', () => {
+    global.fetch = jest.fn() as unknown as typeof fetch;
+
+    const store = buildStore({ auth: { isLoggedIn: false, user: null } });
+
+    render(
+      <Provider store={store}>
+        <NavigationBar onNavigate={jest.fn()} resetActive={jest.fn()} />
+      </Provider>
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/unread blog posts/)).not.toBeInTheDocument();
   });
 });

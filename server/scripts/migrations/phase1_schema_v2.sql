@@ -256,6 +256,18 @@ CREATE TABLE IF NOT EXISTS blog_posts_v2 (
   CONSTRAINT fk_blog_posts_v2_author FOREIGN KEY (author_id) REFERENCES users_v2(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS blog_post_views_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  post_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_blog_post_views_v2_post_user (post_id, user_id),
+  KEY idx_blog_post_views_v2_user (user_id, viewed_at),
+  CONSTRAINT fk_blog_post_views_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_blog_post_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS blog_post_images_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
