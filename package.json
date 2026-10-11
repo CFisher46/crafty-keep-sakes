@@ -6,9 +6,9 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "eslint": "^9.28.0",
-    "jest": "^30.5.2",
+    "jest": "^30.0.0",
     "supertest": "^7.1.1",
-    "ts-jest": "^29.1.2"
+    "ts-jest": "^29.4.14"
   },
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.10",
