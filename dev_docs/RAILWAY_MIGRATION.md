@@ -20,15 +20,36 @@ The live database also contains tables the server no longer uses. Leave these ou
 - `users_legacy_archive`, `products_legacy_archive`, `product_images_legacy_archive`, `invoices_legacy_archive`
 - `server/scripts/archive-legacy-tables.sql` is only for the old database and is not needed
 
+### Connect to the Railway MySQL from your laptop
+Railway's MySQL is only reachable on the private network (`mysql.railway.internal`) by default. To run scripts from your laptop, use the public TCP proxy:
+
+1. In Railway, open the MySQL service and go to **Settings > Networking > TCP Proxy**. Enable it for port `3306`. Railway gives you a public host and port, for example `<name>.proxy.rlwy.net:12345`.
+2. Open the service's **Variables** tab and note `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE` (usually `railway`) and `MYSQL_PUBLIC_URL`. The public URL already contains the proxy host and port.
+3. Install a client if you don't have one: `brew install mysql-client` (or use the Railway CLI below).
+4. Test the connection:
+   `mysql -h <proxy-host> -P <proxy-port> -u root -p --database railway`
+   Enter `MYSQLPASSWORD` when prompted. Run `SELECT 1;` to confirm.
+
+Alternative: install the Railway CLI (`brew install railway`), run `railway login`, `railway link`, then `railway connect MySQL`. It opens a `mysql` shell through the proxy without handling the host or port yourself.
+
+Notes:
+- The proxy is open to the internet and protected only by the password. Keep it enabled for the setup and data import, then **disable it** afterwards. The API on Railway uses the private address.
+- Never commit the password or `MYSQL_PUBLIC_URL`. Use your shell or an untracked env file.
+- The proxy counts as egress traffic on Railway, so avoid leaving large imports running repeatedly.
+
 ### Create the schema
-1. Add a MySQL service in Railway and copy its connection details.
-2. Run the schema script against it, for example with the `mysql` client:
-   `mysql -h <host> -P <port> -u <user> -p <database> < server/scripts/migrations/phase1_schema_v2.sql`
-3. Check that `roles_v2` contains `admin` and `customer`. Registration relies on the `customer` role.
+Run these from the repository root with the proxy connection above.
+
+1. Apply the schema. The script has no `CREATE DATABASE` or `USE`, so it runs in the database you name:
+   `mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
+2. Check the tables: `SHOW TABLES;` should list 21 `_v2` tables and nothing else.
+3. Check the roles: `SELECT name FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
+4. Every `CREATE TABLE` uses `IF NOT EXISTS`, so the script can be re-run safely after a partial failure.
 
 ### First admin and sample data
-- A fresh database has no users, and self-registration only creates customers. Create the first admin with `npm run user:v2:generate-insert` (in `server/`) and run the generated SQL.
-- Optional: `npm run seed:products:v2` loads sample products and categories.
+- A fresh database has no users, and self-registration only creates customers. Create the first admin with `npm run user:v2:generate-insert` (in `server/`). It needs `JWT_SECRET` and `ENCRYPTION_KEY` to match the API, so use the same values you set on Railway. Run the generated SQL through the same `mysql` connection.
+- Optional: `npm run seed:products:v2` loads sample products and categories. It reads the `DB_*` variables, so point them at the proxy for the run:
+  `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run seed:products:v2`
 
 ## 2. API service
 
@@ -36,7 +57,7 @@ Settings to set on the Railway service:
 
 | Variable | Notes |
 |----------|-------|
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` | From the Railway MySQL service |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` | Use Railway reference variables, e.g. `${{MySQL.MYSQLHOST}}`, `${{MySQL.MYSQLPORT}}`, `${{MySQL.MYSQLUSER}}`, `${{MySQL.MYSQLPASSWORD}}`, `${{MySQL.MYSQLDATABASE}}`. This uses the private address, not the proxy |
 | `JWT_SECRET` | Required. Reuse the current value to keep existing sessions valid |
 | `ENCRYPTION_KEY` | Reuse the current value. Also set `ENCRYPTION_KEY_PREVIOUS` if encrypted data exists |
 | `AUTH_SOURCE` | Set to `v2` (see below) |
@@ -78,11 +99,14 @@ Export from the NAS database and import into Railway after the schema is created
 6. `audit_events_v2`
 
 ## 6. Checklist
-- [ ] Railway MySQL created and schema script applied
+- [ ] Railway MySQL created and TCP proxy enabled
+- [ ] Connected from the laptop with `mysql` and `SELECT 1` works
+- [ ] Schema script applied, 21 `_v2` tables present
 - [ ] `roles_v2` has `admin` and `customer`
 - [ ] First admin user created
 - [ ] API variables set, including `AUTH_SOURCE=v2`
 - [ ] Image volume attached and files copied
 - [ ] Client points at the new API and CORS matches
 - [ ] Login, registration, shop, basket, checkout and blog checked on the new environment
+- [ ] TCP proxy disabled once setup and data import are done
 - [ ] NAS left running until Railway is verified
