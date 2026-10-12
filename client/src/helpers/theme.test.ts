@@ -5,8 +5,8 @@ describe('button theme', () => {
   it('defines hover and pressed styles for enabled buttons', () => {
     const extend = appTheme.button.default.extend;
 
-    expect(extend).toMatch(/&:hover:not\(:disabled\)\s*{[^}]*background-color:\s*#f7d1e6/);
-    expect(extend).toMatch(/&:active:not\(:disabled\)\s*{[^}]*background-color:\s*#f3bfdc/);
+    expect(extend).toMatch(/&:hover:not\(:disabled\)\s*{[^}]*background-color:\s*#ebafaf/);
+    expect(extend).toMatch(/&:active:not\(:disabled\)\s*{[^}]*background-color:\s*#e09d9d/);
   });
 
   it('does not set an inline background that would override the hover styles', () => {

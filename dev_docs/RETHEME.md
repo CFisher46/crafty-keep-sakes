@@ -7,15 +7,19 @@ Products are hand crafted wedding items
 
 # Primary colours
 - White
-- Pale / Baby Pink
-- Pale / Baby Blue
-- Pale / Baby Yellow
+- Pale / Baby Pink #F4C2C2
+- Pale / Baby Blue #89CFF0
+- Pale / Baby Yellow #FFFCC9
+- Pale / Baby Green #D1F3C5
 
 # Navigation
 - Simple
 - Collapsable
 - Logo Central and locked to the top
     - Click event  = homepage redirect
+
+# Modals
+- Consistent style regardless of use
 
 # Homepage
 - login, logout and profile 
