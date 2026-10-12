@@ -1,13 +1,12 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { Text, Box, Button, Card } from 'grommet';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
+import { Text, Box, Card } from 'grommet';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchAllProducts } from '../../store/products/productsThunks';
 import { checkAuth, performLogout } from '../../store/auth/authThunks';
 import { clearSelectedUser } from '../../store/users/usersSlice';
 import { Product } from '../../types';
-import Login from '../../components/login/login';
-import Register from '../../components/login/register';
+import AuthPanel from '../../components/login/authPanel';
 import {
   selectAllProducts,
   selectProductsLoading,
@@ -32,6 +31,7 @@ function Home() {
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
 
+  const accountPanelRef = useRef<HTMLDivElement>(null);
   const [authView, setAuthView] = useState<'none' | 'login' | 'register'>('none');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -77,6 +77,19 @@ function Home() {
 
     dispatch(addItemToBasket(basketItem));
   };
+
+  // The header profile icon asks the landing page to show its own sign-in panel
+  useEffect(() => {
+    const focusLogin = () => {
+      setAuthView('login');
+      accountPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      window.setTimeout(() => {
+        accountPanelRef.current?.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+      }, 50);
+    };
+    window.addEventListener('cks:focus-login', focusLogin);
+    return () => window.removeEventListener('cks:focus-login', focusLogin);
+  }, []);
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -195,6 +208,7 @@ function Home() {
         </Box>
 
         <Box
+          ref={accountPanelRef}
           flex={{ grow: 1, shrink: 1 }}
           basis="1/3"
           background="white"
@@ -221,19 +235,7 @@ function Home() {
               </Box>
             </Box>
           ) : authView !== 'none' ? (
-            <Box align="stretch" gap="small">
-              {authView === 'login' ? <Login /> : <Register onRegistered={() => setAuthView('login')} />}
-              <Box direction="row" justify="center" gap="small" margin={{ top: 'xsmall' }}>
-                <Button
-                  plain
-                  label={authView === 'login' ? 'Create an account' : 'I already have an account'}
-                  size="xsmall"
-                  onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}
-                  style={{ color: ui.muted, textDecoration: 'underline' }}
-                />
-                <Button plain label="Back" size="xsmall" onClick={() => setAuthView('none')} style={{ color: ui.muted, textDecoration: 'underline' }} />
-              </Box>
-            </Box>
+            <AuthPanel key={authView} initialView={authView} onBack={() => setAuthView('none')} />
           ) : (
             <Box gap="small">
               <Text size="xsmall" weight="bold" style={{ letterSpacing: '0.2em', textTransform: 'uppercase', color: ui.accent }}>

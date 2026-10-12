@@ -1,7 +1,7 @@
 import { Form, Box, Text, TextInput } from "grommet";
 import { useState } from "react";
 import { loginSuccess } from "../../store/auth/authSlice";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ui } from "../../helpers/theme";
 import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
@@ -14,6 +14,7 @@ function UserLogin() {
   const dispatch = useAppDispatch();
   const guestItems = useAppSelector((state) => state.basket.items);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -53,7 +54,10 @@ function UserLogin() {
       }
       dispatch(loginSuccess(result.user));
 
-      navigate("/Home");
+      // Stay on the current page unless signing in from the standalone /Login route
+      if (location.pathname.toLowerCase() === "/login") {
+        navigate("/Home");
+      }
     } catch (error) {
       setError("Failed to login. Please try again.");
       console.error("Login error:", error);

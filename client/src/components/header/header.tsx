@@ -1,7 +1,8 @@
 import { Box, Button, Image, Text, ResponsiveContext } from "grommet";
 import { Basket, User, Menu, Close, Notification } from "grommet-icons";
-import { useNavigate } from "react-router-dom";
-import { useContext, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import AuthPanel from "../login/authPanel";
 import NavigationBar from "../header/nav";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
@@ -11,9 +12,24 @@ function PageHeader() {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const { totalItems } = useSelector((state: RootState) => state.basket);
   const navigate = useNavigate();
+  const location = useLocation();
   const size = useContext(ResponsiveContext);
   const isMobile = size === "small";
   const [menuOpen, setMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  useEffect(() => {
+    if (userId) setAuthOpen(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!authOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAuthOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [authOpen]);
 
   const closeMenu = () => setMenuOpen(false);
   const iconColor = ui.ink;
@@ -116,15 +132,52 @@ function PageHeader() {
           </Box>
           <Button
             a11yTitle="Profile"
+            aria-expanded={userId ? undefined : authOpen}
             onClick={() => {
               closeMenu();
-              navigate(userId ? `/profile/${userId}` : "/Home");
+              if (userId) {
+                navigate(`/profile/${userId}`);
+              } else if (location.pathname.toLowerCase() === "/home") {
+                // The landing page has its own sign-in panel
+                setAuthOpen(false);
+                window.dispatchEvent(new Event("cks:focus-login"));
+              } else {
+                setAuthOpen((open) => !open);
+              }
             }}
             icon={<User color={iconColor} size="20px" />}
             plain
           />
         </Box>
       </Box>
+
+      {authOpen && !userId && (
+        <>
+          <div
+            data-testid="auth-backdrop"
+            onClick={() => setAuthOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: -1 }}
+          />
+          <Box
+            background="white"
+            pad="large"
+            role="dialog"
+            aria-label="Sign in"
+            border={{ color: ui.line }}
+            style={{
+              position: "absolute",
+              top: "100%",
+              right: "16px",
+              width: "min(380px, calc(100vw - 32px))",
+              maxHeight: "calc(100vh - 160px)",
+              overflowY: "auto",
+              boxShadow: "0 12px 32px rgba(43, 38, 35, 0.14)",
+            }}
+          >
+            <AuthPanel onBack={() => setAuthOpen(false)} />
+          </Box>
+        </>
+      )}
 
       {isMobile && menuOpen && (
         <Box pad={{ horizontal: "medium", vertical: "xsmall" }} border={{ color: ui.line, side: "top" }}>
