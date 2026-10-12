@@ -13,6 +13,32 @@ Before migrating, the server must only use the `_v2` tables. This was done in th
 
 A search of `server/src` and `server/scripts` finds no references to `users`, `products`, `product_images`, `invoices`, `sales`, `audit_logs`, `discount_codes` or `login_attempts`. Only the schema script's `_v2` tables are needed, so Railway starts with a clean database.
 
+## 0. Create the Railway project and link the repo
+
+Do this first. The most common failure is setting the service's **Root Directory** to `/server`.
+
+**Do not set a Root Directory.** [`server/Dockerfile`](../server/Dockerfile) is written to build from the repository root (its first line says so). It copies both `server/...` and `client/public/images`, and the image folder lives outside `server/`. With Root Directory set to `/server`, Railway only sees that folder, so `COPY server/package*.json` and `COPY client/public/images` fail and the build errors out.
+
+1. In Railway, **New Project > Deploy from GitHub repo**, and pick `CFisher46/crafty-keep-sakes`. Authorise the Railway GitHub app for the repo if it isn't listed.
+2. Add the database: **New > Database > MySQL** in the same project. This is the `MySQL` service the variable references below point to.
+3. Open the API service (the one created from the repo) and set:
+   - **Settings > Source > Root Directory:** leave empty (the repo root).
+   - **Settings > Build:** Builder `Dockerfile`, with the Dockerfile path `server/Dockerfile`. The same thing can be set with the service variable `RAILWAY_DOCKERFILE_PATH=server/Dockerfile`. Without it Railway looks for a root `Dockerfile` and falls back to Nixpacks, which also fails because the root `package.json` is not the server.
+   - **Settings > Networking > Generate Domain** to get the public URL. Railway injects `PORT`, and the server reads it, so no port needs setting.
+   - **Settings > Deploy > Pre-deploy Command:** `node scripts/apply-schema.js` (see Create the schema below). Add this once the variables in section 2 are set, otherwise the deploy fails on the missing database settings.
+   - **Variables:** everything in section 2.
+4. Optional: under **Settings > Source > Watch Paths** use `/server/**` and `/client/public/images/**` so docs-only commits do not trigger a deploy.
+5. Deploy and read the **Build Logs** and **Deploy Logs**.
+
+### If it still fails
+| Symptom in the log | Cause |
+|--------------------|-------|
+| `COPY server/package*.json: not found` or `client/public/images: not found` | Root Directory is set. Clear it |
+| `Nixpacks was unable to generate a build plan` | No Dockerfile path set. Set `RAILWAY_DOCKERFILE_PATH=server/Dockerfile` |
+| Build passes but the deploy is "crashed" with `ECONNREFUSED` or `ENOTFOUND` | `DB_*` variables missing or wrong. Use the reference variables in section 2 |
+| `JWT_SECRET` or other missing-variable errors at start | Add the variable in section 2 |
+| Healthy deploy but the site shows 502 | The domain was generated for the wrong port. Remove it and generate again, or check that the app logs `Server running on port <n>` |
+
 ## 1. Database
 
 ### Schema source of truth
@@ -113,6 +139,7 @@ Export from the NAS database and import into Railway after the schema is created
 6. `audit_events_v2`
 
 ## 6. Checklist
+- [ ] Railway project created from the repo with no Root Directory and Dockerfile path `server/Dockerfile`
 - [ ] Railway MySQL created
 - [ ] Schema script applied, 21 `_v2` tables present
 - [ ] `roles_v2` has `admin` and `customer`
