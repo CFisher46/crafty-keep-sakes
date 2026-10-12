@@ -267,8 +267,9 @@ function Shop() {
                             bottom: 0,
                             padding: '10px',
                             display: 'flex',
+                            flexDirection: 'column',
                             gap: '6px',
-                            background: 'linear-gradient(to top, rgba(43,38,35,0.45), rgba(43,38,35,0))',
+                            background: 'linear-gradient(to top, rgba(43,38,35,0.6), rgba(43,38,35,0))',
                             opacity: hovered ? 1 : 0,
                             transform: hovered ? 'none' : 'translateY(8px)',
                             transition: 'all 0.25s ease',
@@ -276,11 +277,12 @@ function Shop() {
                         >
                           <ActionButton
                             label="Add to Basket"
+                            compact
                             onClick={() => handleAddToCart(product)}
                           />
                           <ActionButton
                             label="View Details"
-                            secondary
+                            compact
                             onClick={() => openModal(product)}
                           />
                         </div>

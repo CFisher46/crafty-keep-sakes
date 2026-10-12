@@ -33,7 +33,9 @@ export const ui = {
 };
 
 export const appTheme = {
+  layer: { zIndex: '200' },
   global: {
+    drop: { zIndex: '300' },
     colors: {
       brand: ui.accent,
       background: ui.page,

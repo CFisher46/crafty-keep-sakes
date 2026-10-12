@@ -8,9 +8,10 @@ interface ActionButtonProps {
   secondary?: boolean;
   disabled?: boolean;
   fixed?: boolean;
+  compact?: boolean;
 }
 
-export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary, disabled, fixed }) => {
+export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary, disabled, fixed, compact }) => {
   const [hovered, setHovered] = useState(false);
 
   const primary = {
@@ -33,15 +34,15 @@ export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, seco
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        flex: fixed ? '0 0 auto' : '1 1 0',
-        minWidth: fixed ? '130px' : '120px',
+        flex: fixed || compact ? '0 0 auto' : '1 1 0',
+        minWidth: compact ? 0 : fixed ? '130px' : '120px',
         whiteSpace: 'nowrap',
-        height: '44px',
-        padding: '0 20px',
+        height: compact ? '36px' : '44px',
+        padding: compact ? '0 8px' : '0 20px',
         borderRadius: '2px',
-        fontSize: '12px',
+        fontSize: compact ? '11px' : '12px',
         fontWeight: 600,
-        letterSpacing: '0.12em',
+        letterSpacing: compact ? '0.06em' : '0.12em',
         textTransform: 'uppercase',
         textAlign: 'center',
         transition: 'all 0.2s ease',

@@ -1,9 +1,9 @@
-import { Box, Text, Select, Button, TextInput, Grid, FileInput } from 'grommet';
+import { Box, Text, Select, TextInput, Grid, FileInput } from 'grommet';
+import ActionButton from '../../landingPage/components/ActionButton';
 import { Product } from '../../../types';
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../store/hooks';
 import { fetchAllProductsForAdmin, updateProduct, uploadProductImages } from '../../../store/products/productsThunks';
-import { buttonStyles } from '../../../helpers/formatting';
 
 const UpdateProduct = () => {
   const dispatch = useAppDispatch();
@@ -131,12 +131,7 @@ const UpdateProduct = () => {
             onChange={({ value }) => setSelectedProductId(value)}
             placeholder="Select a product..."
           />
-          <Button
-            label="Load Product Details"
-            onClick={() => handlerLoadProductDetails(selectedProductId)}
-            disabled={!selectedProductId}
-            style={buttonStyles.default}
-          />
+          <ActionButton label="Load Product Details" onClick={() => handlerLoadProductDetails(selectedProductId)} disabled={!selectedProductId} fixed />
         </Box>
       ) : (
         <Box gap="medium">
@@ -207,18 +202,14 @@ const UpdateProduct = () => {
                 ))}
           </Grid>
           <Box direction="row" gap="small" margin={{ top: 'medium' }}>
-            <Button label="Save Changes" onClick={handleSave} style={buttonStyles.default} />
-            <Button
-              label="Cancel"
-              onClick={() => {
+            <ActionButton label="Save Changes" onClick={handleSave} fixed />
+            <ActionButton secondary label="Cancel" onClick={() => {
                 setSelectedProduct(null);
                 setEditedProduct(null);
                 setSelectedProductId('');
                 setSelectedImages([]);
                 setFileInputResetKey((prev) => prev + 1);
-              }}
-              style={buttonStyles.default}
-            />
+              }} fixed />
           </Box>
         </Box>
       )}
