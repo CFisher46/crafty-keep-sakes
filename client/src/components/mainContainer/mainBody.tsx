@@ -8,6 +8,7 @@ import Blog from '../../features/blog/page';
 import Profile from "../../features/profile/page";
 import Admin from "../../features/admin_tools/page";
 import Login from "../../components/login/login";
+import Register from "../../components/login/register";
 import ProtectedRoute from "../../helpers/protectedRoutes";
 // import ContactUs from '../../pages/contactUs/contactUs';
 import { Box } from "grommet";
@@ -17,7 +18,7 @@ function MainBody() {
   const location = useLocation();
   return (
     <Box pad="xsmall">
-      <Box pad="small" round="small" fill>
+      <Box pad="xsmall" round="small" fill>
         <Routes key={location.pathname}>
           <Route path="/" element={<Navigate to="/Home" />} />
           <Route path="/Home" element={<LandingPage />} />
@@ -46,7 +47,7 @@ function MainBody() {
           />
           {/* <Route path="/Contact" element={<ContactUs />} /> */}
           <Route path="/Login" element={<Login />} />
-          {/* <Route path="/Register" element={<UserRegistration />} /> */}
+          <Route path="/Register" element={<Register />} />
         </Routes>
       </Box>
     </Box>

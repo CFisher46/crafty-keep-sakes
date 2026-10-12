@@ -1,75 +1,128 @@
-import { Header, Box, Button, Image, Text } from "grommet";
-import { Basket, User, Notification } from "grommet-icons";
-import { useNavigate } from "react-router-dom";
-import { useRef } from "react";
+import { Box, Button, Image, Text, ResponsiveContext } from "grommet";
+import { Basket, User, Menu, Close, Notification } from "grommet-icons";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import AuthPanel from "../login/authPanel";
 import NavigationBar from "../header/nav";
-import { NavigationBarProps } from "../header/types";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
+import { ui } from "../../helpers/theme";
 
 function PageHeader() {
-  const navigationRef = useRef<NavigationBarProps>(null);
   const userId = useSelector((state: RootState) => state.auth.user?.id);
-  const navigate = useNavigate();
-  // Removed items for linting
   const { totalItems } = useSelector((state: RootState) => state.basket);
-  const resetNavigationActive = () => {
-    if (navigationRef.current) {
-      navigationRef.current.resetActive?.();
-    }
-  };
+  const navigate = useNavigate();
+  const location = useLocation();
+  const size = useContext(ResponsiveContext);
+  const isMobile = size === "small";
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
 
-  // const isLoggedIn = useAppSelector(
-  //   (state: RootState) => state.auth.isLoggedIn
-  // );
+  useEffect(() => {
+    if (userId) setAuthOpen(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!authOpen) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAuthOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [authOpen]);
+
+  const closeMenu = () => setMenuOpen(false);
+  const iconColor = ui.ink;
 
   return (
     <Box
-      pad="xsmall"
-      //style={headerStyles.container as React.CSSProperties}
-      background={"white"}
-      elevation="small"
-      round="small"
+      as="header"
+      background="white"
+      style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+        borderBottom: `1px solid ${ui.line}`,
+      }}
     >
-      <Header pad="xsmall">
-        <Box pad={{ left: "small" }} align="center" justify="center">
-          <Button onClick={() => navigate("/Home")} plain>
+      <Box
+        background={ui.ink}
+        align="center"
+        pad={{ vertical: "6px", horizontal: "small" }}
+      >
+        <Text
+          size="xsmall"
+          color="white"
+          style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}
+        >
+          Handcrafted wedding keepsakes · Made with love
+        </Text>
+      </Box>
+
+      <Box
+        direction="row"
+        align="center"
+        pad={{ horizontal: "medium", vertical: "xsmall" }}
+        style={{ minHeight: isMobile ? "116px" : "140px" }}
+      >
+        <Box flex basis="0" align="start">
+          {isMobile ? (
+            <Button
+              plain
+              a11yTitle={menuOpen ? "Close menu" : "Open menu"}
+              aria-expanded={menuOpen}
+              icon={menuOpen ? <Close color={iconColor} /> : <Menu color={iconColor} />}
+              onClick={() => setMenuOpen((open) => !open)}
+              style={{ padding: "8px" }}
+            />
+          ) : (
+            <NavigationBar onNavigate={() => undefined} resetActive={() => undefined} />
+          )}
+        </Box>
+
+        <Box flex={false}>
+          <Button
+            onClick={() => {
+              closeMenu();
+              navigate("/Home");
+            }}
+            plain
+          >
             <Image
               src="/images/Logo/Logo.PNG"
               alt="Logo"
-              style={{ width: "150px", height: "auto" }}
+              style={{ height: isMobile ? "104px" : "128px", width: "auto" }}
             />
           </Button>
         </Box>
-        <Box direction="row" gap="medium" margin={{ left: "auto" }}>
-          <Box pad={{ left: "small" }} align="center" justify="center">
-            <Button
-              a11yTitle="Notifications"
-              onClick={() => navigate(`/notifications`)}
-              icon={<Notification />}
-              plain
-              disabled={!userId}
-            />
-          </Box>
+
+        <Box flex basis="0" direction="row" gap="medium" align="center" justify="end">
+          <Button
+            a11yTitle="Notifications"
+            onClick={() => {
+              closeMenu();
+              navigate("/notifications");
+            }}
+            icon={<Notification color={iconColor} size="20px" />}
+            plain
+            disabled={!userId}
+          />
           <Box style={{ position: "relative" }}>
             <Button
-              //disabled={totalItems == 0}
               a11yTitle="Basket"
-              icon={<Basket />}
-              onClick={() => navigate("/Basket")}
+              icon={<Basket color={iconColor} size="20px" />}
+              onClick={() => {
+                closeMenu();
+                navigate("/Basket");
+              }}
               plain
             />
             {totalItems > 0 && (
               <Box
-                background="status-critical"
+                background={ui.accent}
                 pad={{ horizontal: "xsmall" }}
                 round
-                style={{
-                  position: "absolute",
-                  top: "-5px",
-                  right: "-5px",
-                  fontSize: "12px"
-                }}
+                style={{ position: "absolute", top: "-8px", right: "-10px" }}
               >
                 <Text size="xsmall" color="white">
                   {totalItems}
@@ -79,23 +132,58 @@ function PageHeader() {
           </Box>
           <Button
             a11yTitle="Profile"
-            onClick={() => navigate(`/profile/${userId}`)}
-            icon={<User />}
+            aria-expanded={userId ? undefined : authOpen}
+            onClick={() => {
+              closeMenu();
+              if (userId) {
+                navigate(`/profile/${userId}`);
+              } else if (location.pathname.toLowerCase() === "/home") {
+                // The landing page has its own sign-in panel
+                setAuthOpen(false);
+                window.dispatchEvent(new Event("cks:focus-login"));
+              } else {
+                setAuthOpen((open) => !open);
+              }
+            }}
+            icon={<User color={iconColor} size="20px" />}
             plain
-          //disabled={!isLoggedIn}
           />
         </Box>
-      </Header>
+      </Box>
 
-      <Box
-        border={{ color: "light-4", size: "small", side: "bottom" }}
-        margin={{ vertical: "small" }}
-      />
+      {authOpen && !userId && (
+        <>
+          <div
+            data-testid="auth-backdrop"
+            onClick={() => setAuthOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: -1 }}
+          />
+          <Box
+            background="white"
+            pad="large"
+            role="dialog"
+            aria-label="Sign in"
+            border={{ color: ui.line }}
+            style={{
+              position: "absolute",
+              top: "100%",
+              right: "16px",
+              width: "min(380px, calc(100vw - 32px))",
+              maxHeight: "calc(100vh - 160px)",
+              overflowY: "auto",
+              boxShadow: "0 12px 32px rgba(43, 38, 35, 0.14)",
+            }}
+          >
+            <AuthPanel onBack={() => setAuthOpen(false)} />
+          </Box>
+        </>
+      )}
 
-      <NavigationBar
-        onNavigate={(route) => console.log(`Navigated to ${route}`)}
-        resetActive={resetNavigationActive}
-      />
+      {isMobile && menuOpen && (
+        <Box pad={{ horizontal: "medium", vertical: "xsmall" }} border={{ color: ui.line, side: "top" }}>
+          <NavigationBar vertical onNavigate={closeMenu} resetActive={closeMenu} />
+        </Box>
+      )}
     </Box>
   );
 }

@@ -31,7 +31,7 @@ const normalizeOptionalText = (value: unknown): string | null => {
 router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
   console.log(`PUT /api/v2/users/${req.params.id}`);
 
-  const id = req.params.id;
+  const id = String(req.params.id);
   const updates = req.body as Partial<User>;
   const requester = getRequestUser(req);
   const isAdminRequest =

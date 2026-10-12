@@ -5,10 +5,10 @@ import {
   Grid,
   TextInput,
   Text,
-  Button,
   FileInput,
   Layer,
 } from 'grommet';
+import ActionButton from '../../landingPage/components/ActionButton';
 import { Product } from '../../../types';
 import { useAppDispatch } from '../../../store/hooks';
 import { useState } from 'react';
@@ -16,7 +16,6 @@ import {
   createProduct,
   uploadProductImages,
 } from '../../../store/products/productsThunks';
-import { buttonStyles } from '../../../helpers/formatting';
 
 const CreateNewProduct = () => {
   const dispatch = useAppDispatch();
@@ -152,8 +151,8 @@ const CreateNewProduct = () => {
     <>
       <Card
         pad="small"
-        background="light-2"
-        elevation="small"
+        background="white"
+        elevation="none" round="none"
         overflow="auto"
       >
         <Box pad="small" margin={{ bottom: 'medium' }}>
@@ -209,11 +208,7 @@ const CreateNewProduct = () => {
               </Box>
             ))}
 
-          <Button
-            label="Create Product"
-            onClick={handleCreateProductClick}
-            style={buttonStyles.default}
-          />
+          <ActionButton label="Create Product" onClick={handleCreateProductClick} fixed />
         </Grid>
       </Card>
 
@@ -241,11 +236,7 @@ const CreateNewProduct = () => {
               ))}
             </Box>
 
-            <Button
-              label="OK"
-              onClick={() => setShowValidationWarning(false)}
-              style={buttonStyles.default}
-            />
+            <ActionButton label="OK" onClick={() => setShowValidationWarning(false)} fixed />
           </Box>
         </Layer>
       )}
@@ -267,14 +258,10 @@ const CreateNewProduct = () => {
               Product added successfully.
             </Text>
 
-            <Button
-              label="OK"
-              onClick={() => {
+            <ActionButton label="OK" onClick={() => {
                 setShowSuccessModal(false);
                 resetForm();
-              }}
-              style={buttonStyles.default}
-            />
+              }} fixed />
           </Box>
         </Layer>
       )}

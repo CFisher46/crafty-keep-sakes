@@ -1,9 +1,9 @@
-import { Box, Button, Card, Grid, Layer, Text, TextInput, Notification } from 'grommet';
+import { Box, Card, Grid, Layer, Text, TextInput, Notification } from 'grommet';
+import ActionButton from '../../landingPage/components/ActionButton';
 import { useState, useEffect } from 'react';
 import { User } from '../../../types';
 import { deleteUser } from '../../../store/users/usersThunks';
 import { useAppDispatch, useAppSelector } from '../../../store/hooks';
-import { buttonStyles } from '../../../helpers/formatting';
 
 function DeleteExistingUser(fetchedUserData: User) {
   const dispatch = useAppDispatch();
@@ -69,7 +69,7 @@ function DeleteExistingUser(fetchedUserData: User) {
             onClose={() => setStatusMessage(null)}
         />
       )}
-      <Card pad="small" background="light-2" elevation="small" overflow="auto">
+      <Card pad="small" background="white" elevation="none" round="none" overflow="auto">
         <Grid
           columns={['1/2', '1/2']}
           gap="small"
@@ -102,12 +102,11 @@ function DeleteExistingUser(fetchedUserData: User) {
                 You cannot delete your own account.
               </Text>
             )}
-            <Button
+            <ActionButton
               label="Delete User"
               onClick={handleDeleteClick}
               disabled={!validDelete || isSelfDelete}
-              color="status-critical"
-              style={buttonStyles.default}
+              fixed
             />
           </Box>
 
@@ -153,16 +152,8 @@ function DeleteExistingUser(fetchedUserData: User) {
               justify="end"
               margin={{ top: 'medium' }}
             >
-              <Button
-                label="Cancel"
-                onClick={handleCancelDelete}
-                style={buttonStyles.default}
-              />
-              <Button
-                label="Confirm Delete"
-                onClick={handleConfirmDelete}
-                style={buttonStyles.default}
-              />
+              <ActionButton secondary label="Cancel" onClick={handleCancelDelete} fixed />
+              <ActionButton label="Confirm Delete" onClick={handleConfirmDelete} fixed />
             </Box>
           </Box>
         </Layer>

@@ -2,6 +2,7 @@ import express from "express";
 import { db } from "../../../../ts-common/database";
 import { GetAllProductsQuery } from "../../../../ts-common/product-queries";
 import { DefaultQueryParams } from "../../../../ts-common/types";
+import { parseJsonResult } from "../../../../ts-common/parse-json-result";
 
 const router = express.Router();
 
@@ -13,8 +14,8 @@ router.get("/filter", async (req, res) => {
 
     const [rows] = await db.query(GetAllProductsQuery(queryStringParams, "v2"));
 
-    const parsedResult = JSON.parse(
-      (rows as { result: string }[])?.[0]?.result || "{}"
+    const parsedResult = parseJsonResult(
+      (rows as { result: unknown }[])?.[0]?.result
     );
 
     if (Array.isArray(parsedResult?.data)) {
