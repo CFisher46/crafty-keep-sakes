@@ -13,6 +13,33 @@ Before migrating, the server must only use the `_v2` tables. This was done in th
 
 A search of `server/src` and `server/scripts` finds no references to `users`, `products`, `product_images`, `invoices`, `sales`, `audit_logs`, `discount_codes` or `login_attempts`. Only the schema script's `_v2` tables are needed, so Railway starts with a clean database.
 
+## Progress log
+
+**Last updated 2026-10-12.**
+
+Done:
+- [x] Server no longer depends on any legacy table (Priority 1).
+- [x] Schema script and runner fixed and tested against the NAS database.
+- [x] Railway project created from the repo. The build now works with `railway.json` (Dockerfile build from the repo root, no Root Directory).
+
+Where it stopped: the build succeeds, then the deploy crashes on missing environment variables. The MySQL service has not been added yet, so the `DB_*` reference variables have nothing to point at.
+
+Likely causes, in order:
+1. `JWT_SECRET` is missing. In production the server throws at start unless it is set and at least 16 characters (`server/src/ts-common/jwt-secret.ts`). This is a certain crash if it is unset.
+2. `DB_*` variables are missing. The pre-deploy schema step (`node scripts/apply-schema.js`) fails without them, so the deploy never starts.
+
+Next steps, in order:
+1. In the Railway project, add **New > Database > MySQL**.
+2. On the API service, add variables:
+   - `DB_HOST=${{MySQL.MYSQLHOST}}`, `DB_PORT=${{MySQL.MYSQLPORT}}`, `DB_USER=${{MySQL.MYSQLUSER}}`, `DB_PASSWORD=${{MySQL.MYSQLPASSWORD}}`, `DB_DATABASE=${{MySQL.MYSQLDATABASE}}` (if the MySQL service is named differently, use that name instead of `MySQL`)
+   - `JWT_SECRET` set to a long random string, or the current NAS value to keep sessions valid
+   - `CORS_ORIGIN` set to the site's public URL
+   - `NODE_ENV=production`
+3. Redeploy. The deploy logs should show `Applied phase1_schema_v2.sql: 21 tables` and `Roles: admin, customer`, then `Server running on port <n>`.
+4. Generate a public domain and check `/api/v2/products` returns 200.
+5. Create the first admin (section 1, "First admin and sample data").
+6. Then continue with images (section 3), the client (section 4) and the data move (section 5).
+
 ## 0. Create the Railway project and link the repo
 
 Do this first. The most common failure is setting the service's **Root Directory** to `/server`.
