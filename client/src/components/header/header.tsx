@@ -5,7 +5,7 @@ import { useContext, useState } from "react";
 import NavigationBar from "../header/nav";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
-import { themeColors } from "../../helpers/theme";
+import { ui } from "../../helpers/theme";
 
 function PageHeader() {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
@@ -16,6 +16,7 @@ function PageHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const closeMenu = () => setMenuOpen(false);
+  const iconColor = ui.ink;
 
   return (
     <Box
@@ -25,38 +26,52 @@ function PageHeader() {
         position: "sticky",
         top: 0,
         zIndex: 100,
-        borderBottom: `3px solid ${themeColors.palePink}`,
-        boxShadow: "0px 2px 8px rgba(0, 0, 0, 0.05)",
+        borderBottom: `1px solid ${ui.line}`,
       }}
     >
       <Box
+        background={ui.ink}
+        align="center"
+        pad={{ vertical: "6px", horizontal: "small" }}
+      >
+        <Text
+          size="xsmall"
+          color="white"
+          style={{ letterSpacing: "0.16em", textTransform: "uppercase" }}
+        >
+          Handcrafted wedding keepsakes · Made with love
+        </Text>
+      </Box>
+
+      <Box
         direction="row"
         align="center"
-        justify="between"
         pad={{ horizontal: "medium", vertical: "xsmall" }}
-        style={{ position: "relative", minHeight: isMobile ? "116px" : "140px" }}
+        style={{ minHeight: isMobile ? "116px" : "140px" }}
       >
-        <Box width={{ min: "96px" }} align="start">
-          {isMobile && (
+        <Box flex basis="0" align="start">
+          {isMobile ? (
             <Button
               plain
               a11yTitle={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              icon={menuOpen ? <Close /> : <Menu />}
+              icon={menuOpen ? <Close color={iconColor} /> : <Menu color={iconColor} />}
               onClick={() => setMenuOpen((open) => !open)}
               style={{ padding: "8px" }}
             />
+          ) : (
+            <NavigationBar onNavigate={() => undefined} resetActive={() => undefined} />
           )}
         </Box>
 
-        <Box
-          style={{
-            position: "absolute",
-            left: "50%",
-            transform: "translateX(-50%)",
-          }}
-        >
-          <Button onClick={() => { closeMenu(); navigate("/Home"); }} plain>
+        <Box flex={false}>
+          <Button
+            onClick={() => {
+              closeMenu();
+              navigate("/Home");
+            }}
+            plain
+          >
             <Image
               src="/images/Logo/Logo.PNG"
               alt="Logo"
@@ -65,24 +80,30 @@ function PageHeader() {
           </Button>
         </Box>
 
-        <Box direction="row" gap="medium" align="center" justify="end" width={{ min: "96px" }}>
+        <Box flex basis="0" direction="row" gap="medium" align="center" justify="end">
           <Button
             a11yTitle="Notifications"
-            onClick={() => { closeMenu(); navigate("/notifications"); }}
-            icon={<Notification />}
+            onClick={() => {
+              closeMenu();
+              navigate("/notifications");
+            }}
+            icon={<Notification color={iconColor} size="20px" />}
             plain
             disabled={!userId}
           />
           <Box style={{ position: "relative" }}>
             <Button
               a11yTitle="Basket"
-              icon={<Basket />}
-              onClick={() => { closeMenu(); navigate("/Basket"); }}
+              icon={<Basket color={iconColor} size="20px" />}
+              onClick={() => {
+                closeMenu();
+                navigate("/Basket");
+              }}
               plain
             />
             {totalItems > 0 && (
               <Box
-                background="status-critical"
+                background={ui.accent}
                 pad={{ horizontal: "xsmall" }}
                 round
                 style={{ position: "absolute", top: "-8px", right: "-10px" }}
@@ -95,30 +116,19 @@ function PageHeader() {
           </Box>
           <Button
             a11yTitle="Profile"
-            onClick={() => { closeMenu(); navigate(userId ? `/profile/${userId}` : "/Home"); }}
-            icon={<User />}
+            onClick={() => {
+              closeMenu();
+              navigate(userId ? `/profile/${userId}` : "/Home");
+            }}
+            icon={<User color={iconColor} size="20px" />}
             plain
           />
         </Box>
       </Box>
 
-      {isMobile ? (
-        menuOpen && (
-          <Box
-            pad="small"
-            background="white"
-            border={{ color: "#f0e6ec", side: "top" }}
-          >
-            <NavigationBar vertical onNavigate={closeMenu} resetActive={closeMenu} />
-          </Box>
-        )
-      ) : (
-        <Box
-          pad={{ vertical: "xsmall" }}
-          background="white"
-          border={{ color: "#f0e6ec", side: "top" }}
-        >
-          <NavigationBar onNavigate={() => undefined} resetActive={() => undefined} />
+      {isMobile && menuOpen && (
+        <Box pad={{ horizontal: "medium", vertical: "xsmall" }} border={{ color: ui.line, side: "top" }}>
+          <NavigationBar vertical onNavigate={closeMenu} resetActive={closeMenu} />
         </Box>
       )}
     </Box>

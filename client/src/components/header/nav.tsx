@@ -5,7 +5,7 @@ import { useSelector } from 'react-redux';
 import { buildApiUrl } from '../../api/apiPath';
 import { BLOG_VIEWED_EVENT } from '../../features/blog/events';
 import { RootState } from '../../store';
-import { themeColors } from '../../helpers/theme';
+import { ui } from '../../helpers/theme';
 
 type NavItem = {
   label: ReactNode;
@@ -111,8 +111,7 @@ function NavigationBar({
   return (
     <Nav
       direction={vertical ? 'column' : 'row'}
-      gap={vertical ? 'xsmall' : 'medium'}
-      justify="center"
+      gap={vertical ? 'none' : 'medium'}
       align={vertical ? 'stretch' : 'center'}
     >
       {items.map((item) => {
@@ -131,16 +130,16 @@ function NavigationBar({
             onMouseEnter={() => setHovered(item.route)}
             onMouseLeave={() => setHovered(undefined)}
             style={{
-              padding: vertical ? '12px 16px' : '6px 14px',
-              borderRadius: '999px',
-              fontWeight: isActive ? 700 : 500,
-              color: '#1a1a1a',
-              backgroundColor: isActive
-                ? themeColors.palePink
-                : isHovered
-                  ? themeColors.paleBlueLight
-                  : 'transparent',
-              transition: 'background-color 0.2s ease',
+              padding: vertical ? '14px 4px' : '6px 0',
+              fontSize: '12px',
+              fontWeight: 600,
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: isActive || isHovered ? ui.ink : ui.muted,
+              borderBottom: vertical
+                ? `1px solid ${ui.line}`
+                : `2px solid ${isActive ? ui.ink : 'transparent'}`,
+              transition: 'color 0.2s ease, border-color 0.2s ease',
             }}
           />
         );

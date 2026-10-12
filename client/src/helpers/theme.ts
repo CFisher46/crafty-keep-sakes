@@ -2,8 +2,8 @@ export const themeColors = {
   white: '#ffffff',
   // Pale / Baby Pink #F4C2C2
   palePink: '#F4C2C2',
-  palePinkHover: '#ebafaf',
-  palePinkActive: '#e09d9d',
+  palePinkHover: '#d9cebe',
+  palePinkActive: '#cdc0ad',
   // Pale / Baby Blue #89CFF0
   paleBlue: '#89CFF0',
   paleBlueHover: '#76bfe4',
@@ -20,10 +20,24 @@ export const themeColors = {
   borderSoft: '#f0e6ec',
 };
 
+// Atelier palette: warm ivory, ink and sage
+export const ui = {
+  page: '#FAF8F5',
+  sand: '#F1ECE4',
+  line: '#E4DDD3',
+  ink: '#2B2623',
+  inkHover: '#4A413B',
+  muted: '#6F675F',
+  accent: '#5E7060',
+  serif: 'Georgia, "Times New Roman", serif',
+};
+
 export const appTheme = {
   global: {
     colors: {
-      brand: themeColors.palePink,
+      brand: ui.accent,
+      background: ui.page,
+      text: ui.ink,
       'pale-pink': themeColors.palePink,
       'pale-blue': themeColors.paleBlue,
       'pale-yellow': themeColors.paleYellow,
@@ -36,13 +50,13 @@ export const appTheme = {
   button: {
     default: {
       background: {
-        color: '#F4C2C2',
+        color: '#E6DDD0',
       },
       border: {
         radius: '4px',
         width: '0px',
       },
-      color: '#1a1a1a',
+      color: ui.ink,
       padding: {
         vertical: '8px',
         horizontal: '16px',
@@ -52,10 +66,10 @@ export const appTheme = {
         font-weight: 500;
         transition: background-color 0.15s ease, transform 0.05s ease;
         &:hover:not(:disabled) {
-          background-color: #ebafaf;
+          background-color: #d9cebe;
         }
         &:active:not(:disabled) {
-          background-color: #e09d9d;
+          background-color: #cdc0ad;
           transform: translateY(1px);
         }
       `,

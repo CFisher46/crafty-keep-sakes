@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Card, CardBody, Text, Button } from 'grommet';
+import { Box, Card, CardBody, Text } from 'grommet';
 import { Product } from '../../../types';
-import { buttonStyles } from '../../../helpers/formatting';
+import { ui } from '../../../helpers/theme';
+import ActionButton from './ActionButton';
 
 interface ProductCardProps {
   product: Product;
@@ -38,15 +39,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     <Card
       background="white"
       pad="small"
-      border={{ color: '#f0e6ec', size: 'xsmall' }}
-      round="small"
+      border={{ color: ui.line, size: 'xsmall' }}
+      round="xsmall"
       style={{
         display: 'inline-block',
         width: '220px',
         minWidth: '220px',
         flexShrink: 0,
-        boxShadow: hovered ? '0px 6px 16px rgba(0, 0, 0, 0.12)' : '0px 2px 6px rgba(0, 0, 0, 0.04)',
-        transform: hovered ? 'translateY(-3px)' : 'none',
+        boxShadow: hovered ? '0px 8px 20px rgba(43, 38, 35, 0.10)' : 'none',
+        transform: hovered ? 'translateY(-2px)' : 'none',
         transition: 'all 0.25s ease',
       }}
       onMouseEnter={onMouseEnter}
@@ -54,11 +55,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     >
       <CardBody onClick={() => onOpenModal(product)} style={{ cursor: 'pointer' }}>
         <Box
-          height="140px"
+          height="160px"
           width="100%"
           overflow="hidden"
-          round="xsmall"
-          background="#fafafa"
+          round="none"
+          background={ui.sand}
           align="center"
           justify="center"
           margin={{ bottom: 'small' }}
@@ -79,7 +80,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </Box>
 
         <Box gap="xxsmall">
-          <Text weight="bold" size="medium" truncate>
+          <Text size="medium" truncate style={{ fontFamily: ui.serif }}>
             {product.product_name}
           </Text>
 
@@ -87,7 +88,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {product.description}
           </Text>
 
-          <Box direction="row" align="center" gap="xsmall" margin={{ top: 'xsmall' }}>
+          <Box direction="row" align="center" gap="small" margin={{ top: 'xsmall' }} wrap>
             {product.on_sale ? (
               <>
                 <Text size="small" style={{ textDecoration: 'line-through' }} color="dark-4">
@@ -97,11 +98,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   £{salePrice(product).toFixed(2)}
                 </Text>
                 <Box
-                  background="#fce5f5"
+                  background={ui.sand}
                   pad={{ horizontal: 'xxsmall', vertical: '2px' }}
                   round="xsmall"
                 >
-                  <Text size="xsmall" weight="bold" color="brand">
+                  <Text size="xsmall" weight="bold" color="dark-2">
                     {product.sale_percent}% off
                   </Text>
                 </Box>
@@ -116,9 +117,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </CardBody>
 
       <Box margin={{ top: 'small' }}>
-        <Button
+        <ActionButton
           label="Add to Basket"
-          style={buttonStyles.default}
+          secondary
           onClick={() => onAddToCart(product)}
         />
       </Box>

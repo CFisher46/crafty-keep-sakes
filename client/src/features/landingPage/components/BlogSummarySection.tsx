@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Card, Text } from 'grommet';
 import { useNavigate } from 'react-router-dom';
+import { ui } from '../../../helpers/theme';
+import SectionHeading from './SectionHeading';
 
 export interface HomepageBlogItem {
   id: number;
@@ -35,43 +37,36 @@ export const BlogSummarySection: React.FC<BlogSummarySectionProps> = ({
   return (
     <Box gap="medium">
       <Box direction="row" justify="between" align="baseline">
-        <Box>
-          <Text size="large" weight="bold">
-            From The Keepsake Journal
-          </Text>
-          <Text size="small" color="dark-4">
-            Inspiration, wedding craft ideas, and our latest journal entries
-          </Text>
-        </Box>
+        <SectionHeading
+          title="The Keepsake Journal"
+          subtitle="Inspiration, craft ideas and our latest entries"
+        />
         <Text
           size="small"
-          color="brand"
-          style={{ cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}
+          style={{ cursor: 'pointer', fontWeight: 600, color: ui.ink, letterSpacing: '0.08em', textTransform: 'uppercase', borderBottom: `1px solid ${ui.ink}` }}
           onClick={() => navigate('/Blog')}
         >
-          View all posts →
+          View all
         </Text>
       </Box>
 
       <Box direction="column" gap="medium">
         {/* Newest blog panel (Featured) */}
         <Box flex={{ grow: 0, shrink: 0 }}>
-          <Text size="medium" weight="bold" margin={{ bottom: 'xsmall' }}>
+          <Text size="xsmall" weight="bold" margin={{ bottom: 'xsmall' }} style={{ letterSpacing: '0.14em', textTransform: 'uppercase', color: ui.muted }}>
             Latest Post
           </Text>
           {newestBlog ? (
             <Card
               background="white"
               pad="medium"
-              round="small"
-              border={{ color: '#f0e6ec', size: 'xsmall' }}
+              round="xsmall"
+              border={{ color: ui.line, size: 'xsmall' }}
               onClick={() => navigate(`/Blog/${newestBlog.id}`)}
               style={{
                 cursor: 'pointer',
-                boxShadow: hoveredId === newestBlog.id
-                  ? '0px 8px 20px rgba(0, 0, 0, 0.12)'
-                  : '0px 2px 8px rgba(0, 0, 0, 0.05)',
-                transform: hoveredId === newestBlog.id ? 'translateY(-3px)' : 'none',
+                boxShadow: hoveredId === newestBlog.id ? '0px 8px 20px rgba(43, 38, 35, 0.10)' : 'none',
+                transform: hoveredId === newestBlog.id ? 'translateY(-2px)' : 'none',
                 transition: 'all 0.25s ease',
                 height: '100%',
               }}
@@ -94,16 +89,16 @@ export const BlogSummarySection: React.FC<BlogSummarySectionProps> = ({
               )}
               <Box gap="xsmall">
                 <Box direction="row" align="center" gap="xsmall" wrap>
-                  <Text weight="bold" size="large">
+                  <Text size="xlarge" style={{ fontFamily: ui.serif }}>
                     {newestBlog.title}
                   </Text>
                   {isLoggedIn && newestBlog.is_new && (
                     <Box
                       pad={{ horizontal: 'xsmall', vertical: '2px' }}
                       round="xsmall"
-                      background="#F4C2C2"
+                      background={ui.accent}
                     >
-                      <Text size="xsmall" weight="bold" color="dark-1">
+                      <Text size="xsmall" weight="bold" color="white">
                         NEW
                       </Text>
                     </Box>
@@ -131,9 +126,9 @@ export const BlogSummarySection: React.FC<BlogSummarySectionProps> = ({
           ) : (
             <Box
               pad="medium"
-              background="#fbfbfd"
-              round="small"
-              border={{ color: '#f0e6ec', size: 'xsmall' }}
+              background={ui.sand}
+              round="xsmall"
+              border={{ color: ui.line, size: 'xsmall' }}
             >
               <Text color="dark-4">No journal posts yet.</Text>
             </Box>
@@ -142,17 +137,16 @@ export const BlogSummarySection: React.FC<BlogSummarySectionProps> = ({
 
         {/* Top 5 popular blogs panel */}
         <Box flex={{ grow: 1, shrink: 1 }} basis="auto">
-          <Text size="medium" weight="bold" margin={{ bottom: 'xsmall' }}>
+          <Text size="xsmall" weight="bold" margin={{ bottom: 'xsmall' }} style={{ letterSpacing: '0.14em', textTransform: 'uppercase', color: ui.muted }}>
             Popular Reads
           </Text>
           <Box
             background="white"
-            round="small"
-            border={{ color: '#f0e6ec', size: 'xsmall' }}
+            round="xsmall"
+            border={{ color: ui.line, size: 'xsmall' }}
             pad="small"
             gap="xsmall"
             style={{
-              boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.04)',
               height: '100%',
             }}
           >
@@ -174,7 +168,7 @@ export const BlogSummarySection: React.FC<BlogSummarySectionProps> = ({
                   onClick={() => navigate(`/Blog/${blog.id}`)}
                   style={{
                     cursor: 'pointer',
-                    background: hoveredId === blog.id ? '#FFFCC9' : 'transparent',
+                    background: hoveredId === blog.id ? ui.sand : 'transparent',
                     transition: 'background-color 0.2s ease',
                   }}
                   onMouseEnter={() => setHoveredId(blog.id)}
@@ -184,7 +178,7 @@ export const BlogSummarySection: React.FC<BlogSummarySectionProps> = ({
                     width="26px"
                     height="26px"
                     round="full"
-                    background="#F4C2C2"
+                    background={ui.sand}
                     align="center"
                     justify="center"
                     flex={false}

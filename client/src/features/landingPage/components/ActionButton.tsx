@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from 'grommet';
+import { ui } from '../../../helpers/theme';
 
 interface ActionButtonProps {
   label: string;
@@ -7,28 +8,43 @@ interface ActionButtonProps {
   secondary?: boolean;
 }
 
-const baseStyle: React.CSSProperties = {
-  flex: '1 1 0',
-  minWidth: '120px',
-  height: '40px',
-  padding: '0 16px',
-  borderRadius: '4px',
-  fontWeight: 500,
-  textAlign: 'center',
-  color: '#1a1a1a',
-};
+export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary }) => {
+  const [hovered, setHovered] = useState(false);
 
-export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary }) => (
-  <Button
-    plain
-    label={label}
-    onClick={onClick}
-    style={
-      secondary
-        ? { ...baseStyle, background: 'white', border: '1px solid #e6d3dc' }
-        : { ...baseStyle, background: '#F4C2C2', border: '1px solid #F4C2C2' }
-    }
-  />
-);
+  const primary = {
+    background: hovered ? ui.inkHover : ui.ink,
+    color: 'white',
+    border: `1px solid ${hovered ? ui.inkHover : ui.ink}`,
+  };
+  const outline = {
+    background: hovered ? ui.ink : 'transparent',
+    color: hovered ? 'white' : ui.ink,
+    border: `1px solid ${ui.ink}`,
+  };
+
+  return (
+    <Button
+      plain
+      label={label}
+      onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        flex: '1 1 0',
+        minWidth: '120px',
+        height: '44px',
+        padding: '0 20px',
+        borderRadius: '2px',
+        fontSize: '12px',
+        fontWeight: 600,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        textAlign: 'center',
+        transition: 'all 0.2s ease',
+        ...(secondary ? outline : primary),
+      }}
+    />
+  );
+};
 
 export default ActionButton;

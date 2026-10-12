@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Box, Button, Text } from 'grommet';
 import { Product } from '../../../types';
-import { buttonStyles } from '../../../helpers/formatting';
 import ProductCard from './ProductCard';
+import SectionHeading from './SectionHeading';
+import { ui } from '../../../helpers/theme';
 
 interface ProductCarouselProps {
   products: Product[];
@@ -126,40 +127,41 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
   return (
     <Box gap="small">
       <Box direction="row" justify="between" align="center">
-        <Box>
-          <Text size="large" weight="bold">
-            {title}
-          </Text>
-          {subtitle && (
-            <Text size="small" color="dark-4">
-              {subtitle}
-            </Text>
-          )}
-        </Box>
+        <SectionHeading title={title} subtitle={subtitle} />
         {products.length > 0 && (
           <Box direction="row" gap="xsmall">
             <Button
+              plain
               label="‹"
               disabled={!canScrollLeft}
               onClick={() => scrollCarousel(-1)}
               style={{
-                ...buttonStyles.default,
                 minWidth: '36px',
-                padding: '4px 10px',
+                height: '36px',
+                padding: '0 10px',
                 fontSize: '18px',
                 lineHeight: '1',
+                borderRadius: '2px',
+                color: ui.ink,
+                background: 'transparent',
+                border: `1px solid ${ui.line}`,
               }}
             />
             <Button
+              plain
               label="›"
               disabled={!canScrollRight}
               onClick={() => scrollCarousel(1)}
               style={{
-                ...buttonStyles.default,
                 minWidth: '36px',
-                padding: '4px 10px',
+                height: '36px',
+                padding: '0 10px',
                 fontSize: '18px',
                 lineHeight: '1',
+                borderRadius: '2px',
+                color: ui.ink,
+                background: 'transparent',
+                border: `1px solid ${ui.line}`,
               }}
             />
           </Box>
@@ -169,10 +171,10 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
       {products.length === 0 ? (
         <Box
           pad="medium"
-          background="#fafafa"
-          round="small"
+          background={ui.sand}
+          round="xsmall"
           align="center"
-          border={{ color: '#f0e6ec', size: 'xsmall' }}
+          border={{ color: ui.line, size: 'xsmall' }}
         >
           <Text color="dark-4">{emptyText}</Text>
         </Box>
@@ -183,7 +185,7 @@ export const ProductCarousel: React.FC<ProductCarouselProps> = ({
           ref={carouselRef}
           onScroll={updateCarouselButtons}
           pad={{ vertical: 'xsmall' }}
-          gap="medium"
+          gap="small"
           style={{
             whiteSpace: 'nowrap',
             scrollBehavior: 'smooth',

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Box, Text } from 'grommet';
 import { Product } from '../../../types';
+import { ui } from '../../../helpers/theme';
+import SectionHeading from './SectionHeading';
 
 interface PopularGalleryProps {
   products: Product[];
@@ -26,10 +28,7 @@ export const PopularGallery: React.FC<PopularGalleryProps> = ({ products, onOpen
 
   return (
     <Box gap="medium" fill>
-      <Box>
-        <Text size="large" weight="bold">Most Popular</Text>
-        <Text size="small" color="dark-4">Our five best-selling keepsakes</Text>
-      </Box>
+      <SectionHeading title="Most Popular" subtitle="Our five best-selling keepsakes" />
 
       {products.length === 0 ? (
         <Text size="small" color="dark-4">No sales yet - check back soon!</Text>
@@ -65,12 +64,12 @@ export const PopularGallery: React.FC<PopularGalleryProps> = ({ products, onOpen
                   gridRow: featured ? 'span 2' : 'span 1',
                   position: 'relative',
                   overflow: 'hidden',
-                  borderRadius: '8px',
+                  borderRadius: '2px',
                   cursor: 'pointer',
-                  background: '#FFFCC9',
+                  background: ui.sand,
                   boxShadow: hovered
-                    ? '0px 6px 16px rgba(0, 0, 0, 0.15)'
-                    : '0px 2px 6px rgba(0, 0, 0, 0.06)',
+                    ? '0px 8px 20px rgba(43, 38, 35, 0.18)'
+                    : 'none',
                   transition: 'box-shadow 0.25s ease',
                 }}
               >
@@ -103,10 +102,10 @@ export const PopularGallery: React.FC<PopularGalleryProps> = ({ products, onOpen
                     color: 'white',
                   }}
                 >
-                  <Text size={featured ? 'medium' : 'small'} weight="bold" color="white" truncate>
+                  <Text as="div" size={featured ? 'medium' : 'small'} color="white" truncate style={{ fontFamily: ui.serif }}>
                     {product.product_name}
                   </Text>
-                  <Text size="xsmall" color="white">
+                  <Text as="div" size="xsmall" color="white">
                     £{price(product).toFixed(2)}
                   </Text>
                 </div>
@@ -115,9 +114,10 @@ export const PopularGallery: React.FC<PopularGalleryProps> = ({ products, onOpen
                     position: 'absolute',
                     top: 8,
                     left: 8,
-                    background: '#F4C2C2',
-                    color: '#1a1a1a',
+                    background: 'white',
+                    color: ui.ink,
                     borderRadius: '50%',
+                    fontFamily: ui.serif,
                     width: 24,
                     height: 24,
                     display: 'flex',

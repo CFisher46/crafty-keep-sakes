@@ -15,6 +15,7 @@ import CommonModal from '../../components/modals/common-modal';
 import { addBasketItem } from '../../store/basket/basketThunks';
 import { addItemToBasket } from '../../store/basket/basketSlice';
 import { buildApiUrl } from '../../api/apiPath';
+import { ui } from '../../helpers/theme';
 import PopularGallery from './components/PopularGallery';
 import ActionButton from './components/ActionButton';
 import ProductCarousel from './components/ProductCarousel';
@@ -152,78 +153,67 @@ function Home() {
     <Box pad={{ horizontal: 'medium', vertical: 'xsmall' }} gap="small">
       {/* Hero & Account / Profile row */}
       <Box direction="row-responsive" gap="small" align="stretch">
-        {/* Hero banner */}
         <Box
           flex={{ grow: 2, shrink: 1 }}
-          background="#FFFCC9"
-          pad="large"
-          round="small"
-          border={{ color: '#f0e6ec', size: 'xsmall' }}
+          basis="2/3"
+          background={ui.sand}
+          pad={{ horizontal: 'large', vertical: 'xlarge' }}
+          round="xsmall"
           justify="center"
-          style={{
-            boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.03)',
-            minHeight: '220px',
-          }}
+          style={{ minHeight: '300px' }}
         >
-          <Box gap="small">
-            <Box
-              background="#F4C2C2"
-              pad={{ horizontal: 'small', vertical: 'xsmall' }}
-              round="small"
-              alignSelf="start"
+          <Box gap="small" style={{ maxWidth: '560px' }}>
+            <Text
+              size="xsmall"
+              weight="bold"
+              style={{ letterSpacing: '0.2em', textTransform: 'uppercase', color: ui.accent }}
             >
-              <Text size="xsmall" weight="bold" color="dark-1">
-                Handmade Wedding Keepsakes
-              </Text>
-            </Box>
-            <Text size="xxlarge" weight="bold">
-              Crafted With Love for Your Special Day
+              Handmade Wedding Keepsakes
             </Text>
-            <Text size="medium" color="dark-3">
-              Explore bespoke, artisanal keepsakes made to cherish memories for a lifetime.
+            <Text
+              as="h1"
+              margin="none"
+              style={{
+                fontFamily: ui.serif,
+                fontWeight: 400,
+                fontSize: '44px',
+                lineHeight: 1.15,
+                color: ui.ink,
+              }}
+            >
+              Crafted with love for your special day
             </Text>
-            <Box direction="row" gap="small" margin={{ top: 'small' }}>
-              <ActionButton label="Explore Collection" onClick={() => navigate('/Shop')} />
+            <Text size="medium" style={{ color: ui.muted }}>
+              Bespoke, artisan keepsakes made to be cherished for a lifetime.
+            </Text>
+            <Box direction="row" gap="small" margin={{ top: 'small' }} style={{ maxWidth: '420px' }}>
+              <ActionButton label="Shop Collection" onClick={() => navigate('/Shop')} />
               <ActionButton label="Read Journal" secondary onClick={() => navigate('/Blog')} />
             </Box>
           </Box>
         </Box>
 
-        {/* User Account / Login Widget */}
         <Box
           flex={{ grow: 1, shrink: 1 }}
-          background="#eef7fd"
-          pad="medium"
-          round="small"
-          border={{ color: '#f0e6ec', size: 'xsmall' }}
+          basis="1/3"
+          background="white"
+          pad="large"
+          round="xsmall"
+          border={{ color: ui.line, size: 'xsmall' }}
           justify="center"
-          style={{
-            boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.03)',
-            minWidth: '280px',
-          }}
+          style={{ minWidth: '280px' }}
         >
           {isLoggedIn ? (
             <Box gap="small">
-              <Text size="large" weight="bold">
-                Welcome back, {userDetails ? userDetails.first_name : 'Friend'}!
+              <Text size="xsmall" weight="bold" style={{ letterSpacing: '0.2em', textTransform: 'uppercase', color: ui.accent }}>
+                {userType === 'admin' ? 'Admin account' : 'Your account'}
               </Text>
-              <Text size="small" color="dark-3">
-                Manage your orders, saved wedding items, and addresses.
+              <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontWeight: 400, fontSize: '26px', color: ui.ink }}>
+                Welcome back, {userDetails ? userDetails.first_name : 'Friend'}
               </Text>
-
-              {userType === 'admin' && (
-                <Box
-                  background="#F4C2C2"
-                  pad={{ horizontal: 'small', vertical: 'xsmall' }}
-                  round="xsmall"
-                  alignSelf="start"
-                >
-                  <Text size="xsmall" weight="bold" color="status-critical">
-                    Admin Access
-                  </Text>
-                </Box>
-              )}
-
+              <Text size="small" style={{ color: ui.muted }}>
+                Manage your orders, saved items and addresses.
+              </Text>
               <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <ActionButton label="My Profile" onClick={() => navigate('/profile/' + (userDetails?.id ?? ''))} />
                 <ActionButton label="Log Out" secondary onClick={handleLogout} />
@@ -233,23 +223,21 @@ function Home() {
             <Box align="stretch">
               <Login />
               <Box margin={{ top: 'xsmall' }} align="center">
-                <Button
-                  plain
-                  label="Back"
-                  size="xsmall"
-                  onClick={() => setShowLogin(false)}
-                />
+                <Button plain label="Back" size="xsmall" onClick={() => setShowLogin(false)} />
               </Box>
             </Box>
           ) : (
             <Box gap="small">
-              <Text size="large" weight="bold">
-                Member Area
+              <Text size="xsmall" weight="bold" style={{ letterSpacing: '0.2em', textTransform: 'uppercase', color: ui.accent }}>
+                Member area
               </Text>
-              <Text size="small" color="dark-3">
-                Sign in to view orders, track packages, or review products.
+              <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontWeight: 400, fontSize: '26px', color: ui.ink }}>
+                Sign in to your account
               </Text>
-              <Box direction="row" gap="small" margin={{ top: 'xsmall' }}>
+              <Text size="small" style={{ color: ui.muted }}>
+                View orders, track packages and review products.
+              </Text>
+              <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <ActionButton label="Sign In" onClick={() => setShowLogin(true)} />
                 <ActionButton label="Register" secondary onClick={() => navigate('/Login')} />
               </Box>
@@ -265,9 +253,9 @@ function Home() {
           basis="1/2"
           background="white"
           pad="medium"
-          round="small"
-          border={{ color: '#f0e6ec', size: 'xsmall' }}
-          style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.03)' }}
+          round="xsmall"
+          border={{ color: ui.line, size: 'xsmall' }}
+          elevation="none"
         >
           <PopularGallery products={popularProducts} onOpenModal={openModal} />
         </Card>
@@ -276,9 +264,9 @@ function Home() {
           basis="1/2"
           background="white"
           pad="medium"
-          round="small"
-          border={{ color: '#f0e6ec', size: 'xsmall' }}
-          style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.03)' }}
+          round="xsmall"
+          border={{ color: ui.line, size: 'xsmall' }}
+          elevation="none"
         >
           <BlogSummarySection
             newestBlog={newestBlog}
@@ -292,9 +280,9 @@ function Home() {
       <Card
         background="white"
         pad="medium"
-        round="small"
-        border={{ color: '#f0e6ec', size: 'xsmall' }}
-        style={{ boxShadow: '0px 2px 8px rgba(0, 0, 0, 0.03)' }}
+        round="xsmall"
+        border={{ color: ui.line, size: 'xsmall' }}
+        elevation="none"
       >
         <ProductCarousel
           products={onSaleProducts}
