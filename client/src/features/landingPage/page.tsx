@@ -7,6 +7,7 @@ import { checkAuth, performLogout } from '../../store/auth/authThunks';
 import { clearSelectedUser } from '../../store/users/usersSlice';
 import { Product } from '../../types';
 import Login from '../../components/login/login';
+import Register from '../../components/login/register';
 import {
   selectAllProducts,
   selectProductsLoading,
@@ -31,7 +32,7 @@ function Home() {
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
 
-  const [showLogin, setShowLogin] = useState(false);
+  const [authView, setAuthView] = useState<'none' | 'login' | 'register'>('none');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [blogs, setBlogs] = useState<HomepageBlogItem[]>([]);
@@ -219,11 +220,18 @@ function Home() {
                 <ActionButton label="Log Out" secondary onClick={handleLogout} />
               </Box>
             </Box>
-          ) : showLogin ? (
-            <Box align="stretch">
-              <Login />
-              <Box margin={{ top: 'xsmall' }} align="center">
-                <Button plain label="Back" size="xsmall" onClick={() => setShowLogin(false)} />
+          ) : authView !== 'none' ? (
+            <Box align="stretch" gap="small">
+              {authView === 'login' ? <Login /> : <Register onRegistered={() => setAuthView('login')} />}
+              <Box direction="row" justify="center" gap="small" margin={{ top: 'xsmall' }}>
+                <Button
+                  plain
+                  label={authView === 'login' ? 'Create an account' : 'I already have an account'}
+                  size="xsmall"
+                  onClick={() => setAuthView(authView === 'login' ? 'register' : 'login')}
+                  style={{ color: ui.muted, textDecoration: 'underline' }}
+                />
+                <Button plain label="Back" size="xsmall" onClick={() => setAuthView('none')} style={{ color: ui.muted, textDecoration: 'underline' }} />
               </Box>
             </Box>
           ) : (
@@ -238,8 +246,8 @@ function Home() {
                 View orders, track packages and review products.
               </Text>
               <Box direction="row" gap="small" margin={{ top: 'small' }}>
-                <ActionButton label="Sign In" onClick={() => setShowLogin(true)} />
-                <ActionButton label="Register" secondary onClick={() => navigate('/Login')} />
+                <ActionButton label="Sign In" onClick={() => setAuthView('login')} />
+                <ActionButton label="Register" secondary onClick={() => setAuthView('register')} />
               </Box>
             </Box>
           )}

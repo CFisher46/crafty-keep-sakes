@@ -3,7 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import dotenv from "dotenv";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import path from "path";
 import v2AuthRoutes from "./routes/v2/auth";
 import v2ProductsRouter from "./routes/v2/products";
@@ -37,6 +37,32 @@ export function createApp() {
     skip: () => process.env.NODE_ENV === "test",
     message: { error: "Too many attempts, please try again later" }
   });
+  const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test",
+    message: { error: "Too many sign-up attempts, please try again later" }
+  });
+
+  // Counts only failed logins, per IP + email, so guessing one account is throttled
+  const failedLoginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true,
+    skip: () => process.env.NODE_ENV === "test",
+    keyGenerator: (req) =>
+      `${ipKeyGenerator(req.ip ?? "")}|${String(req.body?.email ?? "").toLowerCase()}`,
+    message: { error: "Too many failed login attempts, please try again later" }
+  });
+
+  app.use("/api/auth/login", failedLoginLimiter);
+  app.use("/api/v2/auth/login", failedLoginLimiter);
+  app.use("/api/auth/register", registerLimiter);
+  app.use("/api/v2/auth/register", registerLimiter);
   app.use("/api/auth/login", authLimiter);
   app.use("/api/v2/auth/login", authLimiter);
   app.use("/api/auth/verify-password", authLimiter);

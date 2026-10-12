@@ -28,6 +28,14 @@ export const ACTIVE_ENDPOINTS: Record<
         source: 'canonical',
         notes: 'Login using the selected auth source',
       },
+      {
+        domain: 'auth',
+        method: 'POST',
+        path: '/api/auth/register',
+        role: 'public',
+        source: 'canonical',
+        notes: 'Self-service customer registration',
+      },
     ],
     authenticated: [
       {

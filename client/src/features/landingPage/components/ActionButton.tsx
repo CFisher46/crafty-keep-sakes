@@ -9,9 +9,10 @@ interface ActionButtonProps {
   disabled?: boolean;
   fixed?: boolean;
   compact?: boolean;
+  type?: 'button' | 'submit';
 }
 
-export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary, disabled, fixed, compact }) => {
+export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary, disabled, fixed, compact, type }) => {
   const [hovered, setHovered] = useState(false);
 
   const primary = {
@@ -29,6 +30,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, seco
     <Button
       plain
       label={label}
+      type={type}
       onClick={onClick}
       disabled={disabled}
       onMouseEnter={() => setHovered(true)}

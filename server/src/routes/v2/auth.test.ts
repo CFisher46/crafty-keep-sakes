@@ -34,6 +34,81 @@ describe('v2 auth routes', () => {
     });
   });
 
+  describe('POST /api/v2/auth/register', () => {
+    const body = {
+      email: 'new@example.com',
+      password: 'password123',
+      first_name: 'A',
+      last_name: 'B',
+      started_at: Date.now() - 10000,
+    };
+
+    it('returns 400 when fields are missing', async () => {
+      const response = await request(app).post('/api/v2/auth/register').send({ email: 'a@b.co', started_at: Date.now() - 10000 });
+      expect(response.status).toBe(400);
+      expect(mockDb.getConnection).not.toHaveBeenCalled();
+    });
+
+    it('returns 400 for short passwords', async () => {
+      const response = await request(app)
+        .post('/api/v2/auth/register')
+        .send({ ...body, password: 'short' });
+      expect(response.status).toBe(400);
+    });
+
+    it('silently ignores honeypot and too-fast submissions', async () => {
+      const filled = await request(app)
+        .post('/api/v2/auth/register')
+        .send({ ...body, website: 'http://spam.example' });
+      const fast = await request(app)
+        .post('/api/v2/auth/register')
+        .send({ ...body, started_at: Date.now() });
+      const missing = await request(app)
+        .post('/api/v2/auth/register')
+        .send({ ...body, started_at: undefined });
+
+      expect([filled.status, fast.status, missing.status]).toEqual([201, 201, 201]);
+      expect(mockDb.getConnection).not.toHaveBeenCalled();
+    });
+
+    it('creates a customer account', async () => {
+      const connection = {
+        beginTransaction: jest.fn(),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([{ insertId: 9 }])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([[{ id: 2 }]])
+          .mockResolvedValueOnce([{}]),
+        commit: jest.fn(),
+        rollback: jest.fn(),
+        release: jest.fn(),
+      };
+      mockDb.getConnection.mockResolvedValue(connection);
+
+      const response = await request(app).post('/api/v2/auth/register').send(body);
+
+      expect(response.status).toBe(201);
+      expect(connection.commit).toHaveBeenCalled();
+    });
+
+    it('returns 409 for duplicate emails', async () => {
+      const connection = {
+        beginTransaction: jest.fn(),
+        query: jest.fn().mockRejectedValue({ code: 'ER_DUP_ENTRY' }),
+        commit: jest.fn(),
+        rollback: jest.fn(),
+        release: jest.fn(),
+      };
+      mockDb.getConnection.mockResolvedValue(connection);
+
+      const response = await request(app).post('/api/v2/auth/register').send(body);
+
+      expect(response.status).toBe(409);
+      expect(connection.rollback).toHaveBeenCalled();
+    });
+  });
+
   describe('POST /api/v2/auth/login', () => {
     it('returns 400 when email is missing', async () => {
       const response = await request(app)

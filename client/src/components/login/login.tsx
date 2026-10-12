@@ -1,8 +1,9 @@
-import { Form, Box, Text, TextInput, Button } from "grommet";
+import { Form, Box, Text, TextInput } from "grommet";
 import { useState } from "react";
 import { loginSuccess } from "../../store/auth/authSlice";
 import { useNavigate } from "react-router-dom";
-import { buttonStyles } from "../../helpers/formatting";
+import { ui } from "../../helpers/theme";
+import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { removeItemFromBasket } from "../../store/basket/basketSlice";
 import { addBasketItem } from "../../store/basket/basketThunks";
@@ -59,49 +60,68 @@ function UserLogin() {
     }
   };
 
+  const labelStyle = {
+    fontSize: "12px",
+    letterSpacing: "0.08em",
+    textTransform: "uppercase" as const,
+    color: ui.muted,
+  };
+  const inputStyle = { backgroundColor: "white", borderRadius: 0 };
+
   return (
     <Form
       value={formValues}
       onChange={(nextValue) => setFormValues(nextValue)}
       onSubmit={handleSubmit}
     >
-      <Text>Please enter your details!</Text>
-      <Box pad="small" gap="xsmall">
-        <TextInput
-          name="email"
-          placeholder="Username"
-          type="email"
-          value={formValues.email}
-          onChange={(e) =>
-            setFormValues({ ...formValues, email: e.target.value })
-          }
-          style={{ backgroundColor: "white" }}
-        />
-
-        <TextInput
-          name="password"
-          placeholder="Password"
-          type="password"
-          value={formValues.password}
-          onChange={(e) =>
-            setFormValues({ ...formValues, password: e.target.value })
-          }
-          style={{ backgroundColor: "white" }}
-        />
-
-        {error && <Text color="status-critical">{error}</Text>}
-        <Box
-          direction="row"
-          gap="small"
-          margin={{ top: "xsmall" }}
-          justify="center"
+      <Box gap="small">
+        <Text
+          size="xsmall"
+          weight="bold"
+          style={{ letterSpacing: "0.2em", textTransform: "uppercase", color: ui.accent }}
         >
-          <Button
-            name="login"
-            type="submit"
-            label="Login"
-            style={buttonStyles.default}
+          Welcome back
+        </Text>
+        <Text
+          as="h2"
+          margin="none"
+          style={{ fontFamily: ui.serif, fontWeight: 400, fontSize: "26px", color: ui.ink }}
+        >
+          Sign in to your account
+        </Text>
+
+        <Box gap="xxsmall" margin={{ top: "xsmall" }}>
+          <Text as="label" style={labelStyle}>Email</Text>
+          <TextInput
+            name="email"
+            placeholder="Username"
+            type="email"
+            value={formValues.email}
+            onChange={(e) =>
+              setFormValues({ ...formValues, email: e.target.value })
+            }
+            style={inputStyle}
           />
+        </Box>
+
+        <Box gap="xxsmall">
+          <Text as="label" style={labelStyle}>Password</Text>
+          <TextInput
+            name="password"
+            placeholder="Password"
+            type="password"
+            value={formValues.password}
+            onChange={(e) =>
+              setFormValues({ ...formValues, password: e.target.value })
+            }
+            style={inputStyle}
+          />
+        </Box>
+
+        {error && <Text size="small" color="status-critical">{error}</Text>}
+
+        <Box direction="row" margin={{ top: "xsmall" }}>
+          <ActionButton label="Login" type="submit" onClick={() => undefined} />
         </Box>
       </Box>
     </Form>
