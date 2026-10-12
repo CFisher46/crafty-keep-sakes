@@ -52,9 +52,12 @@ Notes:
 ### Create the schema
 Run these from the repository root with the proxy connection above.
 
-1. Apply the schema. The script has no `CREATE DATABASE` or `USE`, so it runs in the database you name:
-   `mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
-2. Check the tables: `SHOW TABLES;` should list 21 `_v2` tables and nothing else.
+1. Apply the schema from `server/` with the Node runner. It reads the `DB_*` variables, so point them at the Railway proxy for this one command (or use a temporary `.env`):
+   `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run db:apply-schema`
+   It prints the table count and the roles it found.
+   Alternatively use the `mysql` client: `mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
+   **Do not paste the script into Railway's web query box.** It sends the text as one statement, which fails with "You have an error in your SQL syntax ... near 'CREATE TABLE IF NOT EXISTS roles_v2'". Use the runner or the `mysql` client, which both handle multiple statements.
+2. Check the tables: should list 21 `_v2` tables and nothing else on a fresh database.
 3. Check the roles: `SELECT name FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
 4. Every `CREATE TABLE` uses `IF NOT EXISTS`, so the script can be re-run safely after a partial failure.
 

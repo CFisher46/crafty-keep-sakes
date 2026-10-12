@@ -1,7 +1,6 @@
 -- Phase 1 schema bootstrap
 -- Creates parallel v2 tables so migration can happen incrementally with zero naming conflicts.
 
-START TRANSACTION;
 
 CREATE TABLE IF NOT EXISTS roles_v2 (
   id TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -312,4 +311,3 @@ VALUES
 ON DUPLICATE KEY UPDATE
   description = VALUES(description);
 
-COMMIT;

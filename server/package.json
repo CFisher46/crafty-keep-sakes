@@ -10,6 +10,7 @@
     "lint": "eslint 'src/**/*.ts'",
     "test": "jest --passWithNoTests",
     "test:ci": "jest --coverage --runInBand --passWithNoTests && node scripts/report-coverage-by-domain.js",
+    "db:apply-schema": "node scripts/apply-schema.js",
     "seed:products:v2": "node scripts/seed-products-v2.js",
     "user:generate-insert": "node scripts/generate-user-insert.js"
   },
