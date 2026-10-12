@@ -2,6 +2,17 @@
 
 Steps and findings for moving the API and MySQL database from the NAS to Railway.
 
+## Priority 1: remove all dependencies on legacy tables (done)
+Before migrating, the server must only use the `_v2` tables. This was done in this PR:
+
+- **Login and verify-password** (`server/src/routes/v2/auth.ts`): removed the fallback to the old `users` table and the `AUTH_SOURCE` setting. Unknown emails now return 401 instead of 500.
+- **Product queries** (`server/src/ts-common/product-queries.ts`): removed the `legacy` read source and the unused `createProductQuery` / `updateProductQuery`, which wrote to the old `products` table. Product reads use `products_v2` and `product_images_v2` only.
+- **Encryption**: the AES helpers (`ts-common/helpers.ts`) only existed to read the old encrypted `users` rows, so they, `ENCRYPTION_KEY` and the key and repair scripts were removed. `_v2` data is not encrypted.
+- **Admin script**: `generate-user-insert.js` only writes `users_v2` rows. The `:legacy` npm script is gone.
+- **Config**: removed the unused `*_API_SOURCE` variables from `.env.example` and `docker-compose.nas.yml`.
+
+A search of `server/src` and `server/scripts` finds no references to `users`, `products`, `product_images`, `invoices`, `sales`, `audit_logs`, `discount_codes` or `login_attempts`. Only the schema script's `_v2` tables are needed, so Railway starts with a clean database.
+
 ## 1. Database
 
 ### Schema source of truth
@@ -19,6 +30,7 @@ The live database also contains tables the server no longer uses. Leave these ou
 - `audit_logs`, `discount_codes`, `login_attempts`, `sales`
 - `users_legacy_archive`, `products_legacy_archive`, `product_images_legacy_archive`, `invoices_legacy_archive`
 - `server/scripts/archive-legacy-tables.sql` is only for the old database and is not needed
+- No server code reads these tables any more (see Priority 1)
 
 ### Connect to the Railway MySQL from your laptop
 Railway's MySQL is only reachable on the private network (`mysql.railway.internal`) by default. To run scripts from your laptop, use the public TCP proxy:
@@ -47,7 +59,7 @@ Run these from the repository root with the proxy connection above.
 4. Every `CREATE TABLE` uses `IF NOT EXISTS`, so the script can be re-run safely after a partial failure.
 
 ### First admin and sample data
-- A fresh database has no users, and self-registration only creates customers. Create the first admin with `npm run user:v2:generate-insert` (in `server/`). It needs `JWT_SECRET` and `ENCRYPTION_KEY` to match the API, so use the same values you set on Railway. Run the generated SQL through the same `mysql` connection.
+- A fresh database has no users, and self-registration only creates customers. Create the first admin with `npm run user:generate-insert` (in `server/`). Run the generated SQL through the same `mysql` connection.
 - Optional: `npm run seed:products:v2` loads sample products and categories. It reads the `DB_*` variables, so point them at the proxy for the run:
   `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run seed:products:v2`
 
@@ -59,16 +71,9 @@ Settings to set on the Railway service:
 |----------|-------|
 | `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE` | Use Railway reference variables, e.g. `${{MySQL.MYSQLHOST}}`, `${{MySQL.MYSQLPORT}}`, `${{MySQL.MYSQLUSER}}`, `${{MySQL.MYSQLPASSWORD}}`, `${{MySQL.MYSQLDATABASE}}`. This uses the private address, not the proxy |
 | `JWT_SECRET` | Required. Reuse the current value to keep existing sessions valid |
-| `ENCRYPTION_KEY` | Reuse the current value. Also set `ENCRYPTION_KEY_PREVIOUS` if encrypted data exists |
-| `AUTH_SOURCE` | Set to `v2` (see below) |
 | `CORS_ORIGIN` | The public URL of the site |
 | `NODE_ENV` | `production` |
 | `PORT` | Railway normally provides this |
-
-### Login fallback to the legacy `users` table
-`server/src/routes/v2/auth.ts` defaults `AUTH_SOURCE` to `dual`. It looks in `users_v2` and then falls back to the old `users` table. That table does not exist on Railway, so logging in with an unknown email returns a 500 instead of 401. Setting `AUTH_SOURCE=v2` avoids it.
-
-The `AUTH_API_SOURCE`, `PRODUCTS_API_SOURCE`, `USERS_API_SOURCE`, `AUDIT_API_SOURCE` and `BASKET_API_SOURCE` variables in `docker-compose.nas.yml` are not read by the current server code and can be left out.
 
 ### Database connection
 `server/src/ts-common/database.ts` creates the pool from the `DB_*` variables only. If Railway's MySQL requires TLS or a connection limit, that needs adding there.
@@ -104,7 +109,7 @@ Export from the NAS database and import into Railway after the schema is created
 - [ ] Schema script applied, 21 `_v2` tables present
 - [ ] `roles_v2` has `admin` and `customer`
 - [ ] First admin user created
-- [ ] API variables set, including `AUTH_SOURCE=v2`
+- [ ] API variables set
 - [ ] Image volume attached and files copied
 - [ ] Client points at the new API and CORS matches
 - [ ] Login, registration, shop, basket, checkout and blog checked on the new environment
