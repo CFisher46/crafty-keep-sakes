@@ -1,9 +1,9 @@
-import { Box, Text, TextInput, Card, Grid, Button } from 'grommet';
+import { Box, Text, TextInput, Card, Grid } from 'grommet';
+import ActionButton from '../../landingPage/components/ActionButton';
 import { useState } from 'react';
 import { User } from '../../../types';
 import { updateUser } from '../../../store/users/usersThunks';
 import { useAppDispatch } from '../../../store/hooks';
-import { buttonStyles } from '../../../helpers/formatting';
 
 const UpdateUser = (updateUserData: Partial<User>) => {
   const [changedFields, setChangedFields] = useState<Partial<User>>({});
@@ -55,7 +55,7 @@ const UpdateUser = (updateUserData: Partial<User>) => {
   };
 
   return (
-    <Card pad="small" background="light-2" elevation="small" overflow="auto">
+    <Card pad="small" background="white" elevation="none" round="none" overflow="auto">
       <Grid
         columns={['1/2', '1/2']}
         gap="small"
@@ -102,11 +102,7 @@ const UpdateUser = (updateUserData: Partial<User>) => {
               handlePasswordReset(event.target.value);
             }}
           />
-          <Button
-            label="Update User"
-            onClick={handleUserUpdate}
-            style={buttonStyles.default}
-          />
+          <ActionButton label="Update User" onClick={handleUserUpdate} fixed />
         </Box>
       </Grid>
     </Card>

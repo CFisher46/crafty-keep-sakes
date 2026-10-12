@@ -98,11 +98,18 @@ export function GetAllProductsQuery(
             p.on_sale,
             p.product_name,
             p.is_live,
-            p.sale_percent
+            p.sale_percent,
+            p.created_at,
+            (
+              SELECT COALESCE(SUM(oi.quantity), 0)
+              FROM order_items_v2 oi
+              JOIN orders_v2 o ON o.id = oi.order_id AND o.order_status <> 'cancelled'
+              WHERE oi.product_id = p.id
+            ) AS units_sold
         FROM ${productsTable} p
         LEFT JOIN product_categories_v2 pc ON pc.product_id = p.id
         LEFT JOIN categories_v2 c ON c.id = pc.category_id
-        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent
+        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.created_at
       `
       : `
         SELECT
@@ -114,7 +121,9 @@ export function GetAllProductsQuery(
             p.on_sale,
             p.product_name,
             p.is_live,
-            p.sale_percent
+            p.sale_percent,
+            NULL AS created_at,
+            0 AS units_sold
         FROM ${productsTable} p
       `;
 
@@ -176,7 +185,9 @@ export function GetAllProductsQuery(
             fp.on_sale,
             fp.product_name,
             fp.is_live,
-            fp.sale_percent
+            fp.sale_percent,
+            fp.created_at,
+            fp.units_sold
         FROM BaseProducts fp
         ${whereSql}
     ),
@@ -215,6 +226,8 @@ export function GetAllProductsQuery(
                   'product_name', pwi.product_name,
                   'is_live', pwi.is_live,
                   'sale_percent', pwi.sale_percent,
+                  'created_at', pwi.created_at,
+                  'units_sold', pwi.units_sold,
                   'images', CAST(COALESCE(pwi.images, JSON_ARRAY()) AS CHAR)
                 )
               ) AS CHAR

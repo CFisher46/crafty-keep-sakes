@@ -1,4 +1,4 @@
-import { Text, Form, Box, TextInput, Grid, Button } from 'grommet';
+import { Text, Form, Box, TextInput, Button } from 'grommet';
 import { View, Hide } from 'grommet-icons';
 import { useEffect, useState } from 'react';
 import {
@@ -10,7 +10,8 @@ import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { useAppDispatch } from '../../store/hooks';
 import { useParams } from 'react-router-dom';
-import { buttonStyles } from '../../helpers/formatting';
+import { ui } from '../../helpers/theme';
+import { ActionButton } from '../landingPage/components/ActionButton';
 import Invoices from './invoices';
 
 interface InputFieldProps {
@@ -40,24 +41,45 @@ const InputField = ({
   isVisible = false,
   disabled,
 }: InputFieldProps) => (
-  <Box direction="row" gap="small" align="center">
+  <Box gap="xxsmall">
     <Text style={labelStyle}>{label}</Text>
-    <TextInput
-      style={inputStyle}
-      value={value}
-      placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
-      type={type}
-      disabled={disabled}
-    />
-    {isPassword && toggleVisibility && (
-      <Button
-        icon={isVisible ? <Hide /> : <View />}
-        onClick={toggleVisibility}
-        style={buttonStyles.default}
+    <Box direction="row" gap="xsmall" align="center">
+      <TextInput
+        style={inputStyle}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        type={type}
+        disabled={disabled}
       />
-    )}
+      {isPassword && toggleVisibility && (
+        <Button
+          a11yTitle={isVisible ? 'Hide password' : 'Show password'}
+          icon={isVisible ? <Hide /> : <View />}
+          onClick={toggleVisibility}
+          plain
+          style={{ padding: 10, border: `1px solid ${ui.line}`, background: ui.page }}
+        />
+      )}
+    </Box>
   </Box>
+);
+
+const panelProps = {
+  background: 'white',
+  pad: 'medium',
+  gap: 'small',
+  border: { color: ui.line },
+} as const;
+
+const PanelTitle = ({ children }: { children: string }) => (
+  <Text
+    as="h2"
+    margin="none"
+    style={{ fontFamily: ui.serif, fontSize: '22px', fontWeight: 400, color: ui.ink }}
+  >
+    {children}
+  </Text>
 );
 
 function UsersProfile() {
@@ -93,8 +115,13 @@ function UsersProfile() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const inputStyle = { width: '100%' };
-  const labelStyle = { width: '100%', textAlign: 'left' as 'left' };
+  const inputStyle = { width: '100%', borderRadius: 0, fontWeight: 400 };
+  const labelStyle = {
+    fontSize: '12px',
+    letterSpacing: '0.08em',
+    textTransform: 'uppercase' as const,
+    color: ui.muted,
+  };
 
   useEffect(() => {
     if (userId) {
@@ -215,37 +242,51 @@ function UsersProfile() {
     }
   };
 
+  const detailFields = [
+    { label: 'UserName', field: 'email_address', wide: true },
+    { label: 'FirstName', field: 'first_name' },
+    { label: 'LastName', field: 'last_name' },
+    { label: 'Address Line1', field: 'address_line1', wide: true },
+    { label: 'Address Line2', field: 'address_line2', wide: true },
+    { label: 'Address Line3', field: 'address_line3', wide: true },
+    { label: 'Town', field: 'town' },
+    { label: 'County', field: 'county' },
+    { label: 'PostCode', field: 'postcode' },
+  ];
+
   return (
     <Form>
-      <Box gap="small">
-        <Grid columns={['450px', '400px', '420px']} gap="small">
-          <Box border round="small" pad="medium" gap="small" background="white">
-            {[
-              { label: 'UserName', field: 'email_address' },
-              { label: 'FirstName', field: 'first_name' },
-              { label: 'LastName', field: 'last_name' },
-              { label: 'Address Line1', field: 'address_line1' },
-              { label: 'Address Line2', field: 'address_line2' },
-              { label: 'Address Line3', field: 'address_line3' },
-              { label: 'Town', field: 'town' },
-              { label: 'County', field: 'county' },
-              { label: 'PostCode', field: 'postcode' },
-            ].map(({ label, field }) => (
-              <InputField
-                key={label}
-                label={label}
-                placeholder={userData[field as keyof typeof userData] || ''}
-                inputStyle={inputStyle}
-                labelStyle={labelStyle}
-                onChange={(value) => handleFieldChange(field, value)}
-                value={userData[field as keyof typeof userData] || ''}
-              />
-            ))}
+      <Box gap="medium" pad={{ vertical: 'medium' }} width={{ width: '100%', max: '1100px' }} margin="0 auto">
+        <Box gap="xxsmall">
+          <Text size="small" style={{ letterSpacing: '0.18em', textTransform: 'uppercase', color: ui.muted }}>
+            Your account
+          </Text>
+          <Text as="h1" margin="none" style={{ fontFamily: ui.serif, fontSize: '36px', fontWeight: 400, color: ui.ink }}>
+            Profile
+          </Text>
+        </Box>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 24, alignItems: 'start' }}>
+          <Box {...panelProps}>
+            <PanelTitle>Your details</PanelTitle>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {detailFields.map(({ label, field, wide }) => (
+                <div key={label} style={{ gridColumn: wide ? '1 / -1' : undefined }}>
+                  <InputField
+                    label={label}
+                    placeholder={userData[field as keyof typeof userData] || ''}
+                    inputStyle={inputStyle}
+                    labelStyle={labelStyle}
+                    onChange={(value) => handleFieldChange(field, value)}
+                    value={userData[field as keyof typeof userData] || ''}
+                  />
+                </div>
+              ))}
+            </div>
           </Box>
 
-          <Box direction="column" gap="small">
-            <Box border round="small" pad="medium" gap="small" background="white">
-              <Text style={labelStyle}>Reset Password</Text>
+          <Box gap="medium">
+            <Box {...panelProps}>
+              <PanelTitle>Reset Password</PanelTitle>
               <InputField
                 label="Current Password"
                 value={currentPassword}
@@ -260,12 +301,15 @@ function UsersProfile() {
                 }}
                 type="password"
               />
-              <Button
-                label="Verify Password"
-                onClick={handleVerifyCurrentPassword}
-                disabled={!currentPassword.trim()}
-                style={buttonStyles.default}
-              />
+              <Box alignSelf="start">
+                <ActionButton
+                  label="Verify Password"
+                  secondary
+                  onClick={handleVerifyCurrentPassword}
+                  disabled={!currentPassword.trim()}
+                  fixed
+                />
+              </Box>
               {passwordVerifiedMessage && (
                 <Text color="status-ok">{passwordVerifiedMessage}</Text>
               )}
@@ -306,12 +350,12 @@ function UsersProfile() {
                 disabled={!passwordVerified}
               />
             </Box>
-            <Box border round="small" pad="medium" gap="small" background="white">
-              <Button label="Save Changes" onClick={handleSaveProfile} style={buttonStyles.default} />
+            <Box {...panelProps}>
+              <ActionButton label="Save Changes" onClick={handleSaveProfile} />
               {saveMessage && <Text>{saveMessage}</Text>}
             </Box>
           </Box>
-        </Grid>
+        </div>
         <Invoices
           userId={userId}
           userType={selectedUser?.type}

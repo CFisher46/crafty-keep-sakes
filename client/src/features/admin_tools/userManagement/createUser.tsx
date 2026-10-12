@@ -5,12 +5,11 @@ import {
   TextInput,
   Select,
   Box,
-  Button,
   Text,
   Layer,
 } from 'grommet';
+import ActionButton from '../../landingPage/components/ActionButton';
 import { User } from '../../../types';
-import { buttonStyles } from '../../../helpers/formatting';
 import { createUser } from '../../../store/users/usersThunks';
 import { useAppDispatch } from '../../../store/hooks';
 import { useState } from 'react';
@@ -127,8 +126,8 @@ function CreateNewUser() {
     <>
       <Card
         pad="small"
-        background="light-2"
-        elevation="small"
+        background="white"
+        elevation="none" round="none"
         overflow="auto"
       >
         <Grid
@@ -312,24 +311,15 @@ function CreateNewUser() {
             </Text>
           )}
 
-          <Button
-            label="Create User"
-            style={buttonStyles.default}
-            onClick={handleCreateUserClick}
-            disabled={!passwordMatch}
-          />
+          <ActionButton label="Create User" onClick={handleCreateUserClick} disabled={!passwordMatch} fixed />
 
-          <Button
-            label="Reset"
-            style={buttonStyles.default}
-            onClick={() => {
+          <ActionButton secondary label="Reset" onClick={() => {
               setNewUser(requiredDetails);
               setPassword('');
               setPasswordMatch(false);
               setStatusMessage(null);
               setShowValidationWarning(false);
-            }}
-          />
+            }} fixed />
         </Grid>
       </Card>
 
@@ -363,11 +353,7 @@ function CreateNewUser() {
               </Text>
             )}
 
-            <Button
-              label="OK"
-              onClick={() => setShowValidationWarning(false)}
-              style={buttonStyles.default}
-            />
+            <ActionButton label="OK" onClick={() => setShowValidationWarning(false)} fixed />
           </Box>
         </Layer>
       )}

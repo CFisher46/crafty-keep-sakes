@@ -1,13 +1,25 @@
 import { FacebookOption, Instagram, Twitter } from "grommet-icons";
-import { Anchor, Box, Footer } from "grommet";
+import { Anchor, Box, Footer, Text } from "grommet";
+import { ui } from "../../helpers/theme";
 
 function PageFooter() {
   return (
-    <Box pad="xsmall" align="center">
-      <Footer pad="small">
-        <Box align="center" direction="row">
-          <Media />
-        </Box>
+    <Box
+      margin={{ top: "medium" }}
+      background="white"
+      border={{ color: ui.line, side: "top" }}
+      pad={{ horizontal: "medium", vertical: "small" }}
+    >
+      <Footer
+        pad="small"
+        direction="row-responsive"
+        justify="between"
+        align="center"
+      >
+        <Text size="xsmall" style={{ color: ui.muted, letterSpacing: "0.08em" }}>
+          © {new Date().getFullYear()} Crafty Keep-Sakes. Handmade with love.
+        </Text>
+        <Media />
       </Footer>
     </Box>
   );
@@ -16,21 +28,21 @@ function PageFooter() {
 export default PageFooter;
 
 const Media = () => (
-  <Box direction="row" gap="xxsmall" justify="center">
+  <Box direction="row" gap="small" justify="center">
     <Anchor
-      a11yTitle="Share feedback on Github"
+      a11yTitle="Follow us on Instagram"
       href="https://www.instagram.com/"
-      icon={<Instagram color="brand" />}
+      icon={<Instagram color={ui.ink} size="18px" />}
     />
     <Anchor
-      a11yTitle="Chat with us on Slack"
+      a11yTitle="Find us on Facebook"
       href="https://www.facebook.com/"
-      icon={<FacebookOption color="brand" />}
+      icon={<FacebookOption color={ui.ink} size="18px" />}
     />
     <Anchor
       a11yTitle="Follow us on Twitter"
       href="https://twitter.com/"
-      icon={<Twitter color="brand" />}
+      icon={<Twitter color={ui.ink} size="18px" />}
     />
   </Box>
 );

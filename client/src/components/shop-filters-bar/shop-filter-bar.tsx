@@ -1,5 +1,6 @@
-import { Box, Button, RangeInput, Select, SelectMultiple, Text, TextInput } from "grommet";
-import { buttonStyles } from "../../helpers/formatting";
+import { Box, RangeInput, Select, SelectMultiple, Text, TextInput } from "grommet";
+import { ui } from "../../helpers/theme";
+import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useEffect, useMemo, useState } from "react";
 import {
     fetchAllProducts,
@@ -106,11 +107,11 @@ function ShopFilterBar() {
         <Box
             pad="medium"
             background="white"
-            round="small"
-            elevation="small"
+            round="xsmall"
+            border={{ color: ui.line, size: "xsmall" }}
             gap="small"
         >
-            <Box direction="row" gap="small" wrap>
+            <Box direction="row" gap="small" wrap align="center">
                 <Box flex>
                     <TextInput
                         placeholder="Search for a product"
@@ -123,36 +124,17 @@ function ShopFilterBar() {
                         }}
                     />
                 </Box>
-                <Button
-                    label="Search"
-                    style={buttonStyles.default}
-                    onClick={() => handleApplyFilters()}
-                    disabled={loading}
-                />
-                <Button
-                    label={showFilters ? "Hide Filters" : "Show Filters"}
-                    style={buttonStyles.default}
-                    onClick={() => setShowFilters((prev) => !prev)}
-                />
-                <Button
-                    label="Apply Filters"
-                    style={buttonStyles.default}
-                    onClick={() => handleApplyFilters()}
-                    disabled={loading}
-                />
-                <Button
-                    label="Reset"
-                    style={buttonStyles.default}
-                    onClick={handleResetFilters}
-                    disabled={loading}
-                />
+                <ActionButton fixed label="Search" onClick={() => handleApplyFilters()} disabled={loading} />
+                <ActionButton fixed label={showFilters ? "Hide Filters" : "Show Filters"} secondary onClick={() => setShowFilters((prev) => !prev)} />
+                <ActionButton fixed label="Apply Filters" onClick={() => handleApplyFilters()} disabled={loading} />
+                <ActionButton fixed label="Reset" secondary onClick={handleResetFilters} disabled={loading} />
             </Box>
 
             {showFilters && (
                 <Box
                     pad="small"
-                    round="small"
-                    background="light-1"
+                    round="xsmall"
+                    background={ui.sand}
                     direction="row"
                     gap="small"
                     wrap

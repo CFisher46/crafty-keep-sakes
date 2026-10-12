@@ -1,20 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
-  Button,
   FormField,
   Text,
   TextArea,
   TextInput,
   Image,
-  Card,
   Layer,
 } from 'grommet';
 import { useSelector } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { RootState } from '../../store';
 import { buildApiUrl } from '../../api/apiPath';
-import { buttonStyles } from '../../helpers/formatting';
+import { ui } from '../../helpers/theme';
+import ActionButton from '../landingPage/components/ActionButton';
 import { BLOG_VIEWED_EVENT } from './events';
 
 type BlogImage = {
@@ -46,27 +45,26 @@ type BlogPost = {
   };
 };
 
-const getTileSize = (post: BlogPost) => {
-  const hasImage = Boolean(post.images?.[0]?.image_url);
-  const textLength = post.title.length + (post.summary?.length ?? 0);
+const formatDate = (value?: string) =>
+  value ? new Date(value).toLocaleDateString() : 'Recently';
 
-  // Longer content gets a wider tile; images add height. Never smaller than 1x2.
-  const columns = textLength > 120 ? 2 : 1;
-  const rows = hasImage ? (textLength > 60 ? 3 : 2) : 2;
-
-  return { columns, rows };
+const metaStyle = {
+  fontSize: '11px',
+  letterSpacing: '0.14em',
+  textTransform: 'uppercase' as const,
+  color: ui.muted,
 };
 
 function NewBadge() {
   return (
     <Box
       pad={{ horizontal: 'xsmall', vertical: '2px' }}
-      round="xsmall"
-      background="status-critical"
+      background={ui.ink}
       align="center"
       justify="center"
+      style={{ borderRadius: '2px' }}
     >
-      <Text size="xsmall" weight="bold" color="white">NEW</Text>
+      <Text size="xsmall" weight="bold" color="white" style={{ letterSpacing: '0.12em' }}>NEW</Text>
     </Box>
   );
 }
@@ -74,62 +72,116 @@ function NewBadge() {
 function BlogTile({
   post,
   isNew,
+  featured,
   onOpen,
 }: {
   post: BlogPost;
   isNew: boolean;
+  featured?: boolean;
   onOpen: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
-  const size = getTileSize(post);
   const image = post.images?.[0]?.image_url;
-  const isLarge = size.columns > 1 || size.rows > 2;
 
   return (
-    <Card
-      background="white"
-      pad="small"
-      gap="small"
-      border={{ color: 'light-4', size: 'xsmall' }}
-      overflow="hidden"
+    <div
+      role="link"
+      tabIndex={0}
       onClick={onOpen}
-      style={{
-        gridColumn: `span ${size.columns}`,
-        gridRow: `span ${size.rows}`,
-        cursor: 'pointer',
-        boxShadow: hovered ? '0px 0px 20px rgb(45, 44, 45)' : 'none',
-        transform: hovered ? 'translateY(-4px)' : 'none',
-        transition: 'box-shadow 0.3s ease, transform 0.3s ease',
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') onOpen();
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      style={{
+        gridColumn: featured ? '1 / -1' : undefined,
+        display: 'flex',
+        flexDirection: featured ? 'row' : 'column',
+        flexWrap: featured ? 'wrap' : 'nowrap',
+        background: '#fff',
+        border: `1px solid ${hovered ? ui.ink : ui.line}`,
+        borderRadius: '2px',
+        overflow: 'hidden',
+        cursor: 'pointer',
+        transition: 'border-color 0.2s ease',
+      }}
     >
-      {image && (
-        <Box flex overflow="hidden" round="xsmall" style={{ minHeight: '60px' }}>
+      <div
+        style={{
+          flex: featured ? '1 1 320px' : '0 0 auto',
+          width: featured ? undefined : '100%',
+          height: featured ? undefined : '200px',
+          flexShrink: 0,
+          minHeight: featured ? '280px' : undefined,
+          background: ui.sand,
+          overflow: 'hidden',
+        }}
+      >
+        {image ? (
           <img
             src={image}
             alt={post.title}
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              transform: hovered ? 'scale(1.04)' : 'none',
+              transition: 'transform 0.5s ease',
+            }}
           />
-        </Box>
-      )}
-      <Box flex={false} gap="xsmall">
+        ) : (
+          <Box fill align="center" justify="center">
+            <Text color={ui.muted} size="small">No Image</Text>
+          </Box>
+        )}
+      </div>
+      <Box
+        flex
+        style={{ flex: featured ? '1 1 320px' : '1 1 auto', width: featured ? undefined : '100%' }}
+        pad={featured ? 'large' : 'medium'}
+        gap="small"
+        justify={featured ? 'center' : 'start'}
+      >
         <Box direction="row" align="center" gap="xsmall" wrap>
-          <Text weight="bold" size={isLarge ? 'xlarge' : 'large'}>{post.title}</Text>
+          <Text style={metaStyle}>
+            {featured ? 'Latest · ' : ''}{formatDate(post.created_at)}
+          </Text>
           {isNew && <NewBadge />}
         </Box>
-        <Text size="small" color="dark-3">
-          By {post.author_name || 'Unknown author'} ·{' '}
-          {post.created_at ? new Date(post.created_at).toLocaleDateString() : 'Recently'}
+        <Text
+          as="div"
+          style={{
+            fontFamily: ui.serif,
+            fontSize: featured ? '32px' : '22px',
+            lineHeight: 1.25,
+            color: ui.ink,
+          }}
+        >
+          {post.title}
         </Text>
-        {(isLarge || !image) && post.summary && (
-          <Text size="medium" color="dark-4" truncate={!isLarge}>{post.summary}</Text>
+        {post.summary && (
+          <Text
+            color={ui.muted}
+            style={{
+              lineHeight: 1.6,
+              display: '-webkit-box',
+              WebkitLineClamp: featured ? 4 : 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
+          >
+            {post.summary}
+          </Text>
         )}
-        <Text size="small" color="dark-3">
+        <Text size="small" color={ui.muted}>
+          By {post.author_name || 'Unknown author'}
+        </Text>
+        <Text size="small" color={ui.muted}>
           👍 {post.reaction_counts?.likes || 0} · 👎 {post.reaction_counts?.dislikes || 0} · 💬 {post.comments?.length || 0}
         </Text>
       </Box>
-    </Card>
+    </div>
   );
 }
 
@@ -337,7 +389,7 @@ function BlogPage() {
   const openImageModal = (imageUrl: string) => setEnlargedImage(imageUrl);
 
   return (
-    <Box pad="medium" gap="medium">
+    <Box pad="xsmall" gap="medium">
       {enlargedImage && (
         <Layer
           onEsc={() => setEnlargedImage(null)}
@@ -358,7 +410,7 @@ function BlogPage() {
             }}
           >
             <Box alignSelf="end">
-              <Button label="Close" onClick={() => setEnlargedImage(null)} style={buttonStyles.default} />
+              <ActionButton label="Close" secondary fixed onClick={() => setEnlargedImage(null)} />
             </Box>
             <Image
               src={enlargedImage}
@@ -378,133 +430,145 @@ function BlogPage() {
       )}
 
       {selectedPostId && selectedPost ? (
-        <Box pad="medium" gap="medium">
-          <Button label="Back to all blogs" onClick={() => navigate('/Blog')} alignSelf="start" style={buttonStyles.default} />
+        <Box gap="medium" width={{ max: '820px' }} alignSelf="center" fill="horizontal">
+          <Box alignSelf="start">
+            <ActionButton label="Back to all blogs" secondary fixed onClick={() => navigate('/Blog')} />
+          </Box>
 
-          <Card pad="medium" background="white" round="small" elevation="small">
+          <Box background="white" pad={{ vertical: 'large', horizontal: 'large' }} gap="medium" style={{ border: `1px solid ${ui.line}`, borderRadius: '2px' }}>
             <Box gap="small">
-              <Box direction="row" align="center" gap="xsmall">
-                <Text size="xlarge" weight="bold">{selectedPost.title}</Text>
+              <Box direction="row" align="center" gap="xsmall" wrap>
+                <Text style={metaStyle}>
+                  By {selectedPost.author_name || 'Unknown author'} · {formatDate(selectedPost.created_at)}
+                </Text>
                 {isLoggedIn && selectedPost.is_new && <NewBadge />}
               </Box>
-              <Text size="small" color="dark-3">
-                By {selectedPost.author_name || 'Unknown author'} ·{' '}
-                {selectedPost.created_at ? new Date(selectedPost.created_at).toLocaleDateString() : 'Recently'}
+              <Text as="div" style={{ fontFamily: ui.serif, fontSize: '38px', lineHeight: 1.2, color: ui.ink }}>
+                {selectedPost.title}
               </Text>
-
-              {selectedPost.summary && <Text>{selectedPost.summary}</Text>}
-              <Text>{selectedPost.content}</Text>
-
-              {selectedPost.images?.length > 0 && (
-                <Box direction="row" wrap gap="4px" align="center">
-                  {selectedPost.images.map((image, index) => (
-                    <Box
-                      key={`${image.image_url}-${index}`}
-                      width="48px"
-                      height="48px"
-                      overflow="hidden"
-                      round="xsmall"
-                      onClick={() => openImageModal(image.image_url)}
-                      style={{
-                        cursor: 'pointer',
-                        position: 'relative',
-                        transition: 'transform 0.2s ease-in-out',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
-                        pointerEvents: 'auto',
-                        margin: 0,
-                        flex: '0 0 auto',
-                        display: 'inline-block',
-                      }}
-                    >
-                      <Image
-                        src={image.image_url}
-                        alt={`${selectedPost.title} image ${index + 1}`}
-                        fit="cover"
-                        onClick={() => openImageModal(image.image_url)}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          cursor: 'pointer',
-                          display: 'block',
-                        }}
-                      />
-                    </Box>
-                  ))}
-                </Box>
-              )}
-
-              <Box direction="row" gap="small" align="center">
-                <Button
-                  label={`Like (${selectedPost.reaction_counts?.likes || 0})`}
-                  onClick={() => handleReaction(selectedPost.id, 'like')}
-                  disabled={!isLoggedIn || submitting}
-                  style={buttonStyles.default}
-                />
-                <Button
-                  label={`Dislike (${selectedPost.reaction_counts?.dislikes || 0})`}
-                  onClick={() => handleReaction(selectedPost.id, 'dislike')}
-                  disabled={!isLoggedIn || submitting}
-                  style={buttonStyles.default}
-                />
-              </Box>
-
-              <Box gap="small" pad={{ top: 'small' }}>
-                <Text weight="bold">Comments</Text>
-                {selectedPost.comments?.length ? (
-                  selectedPost.comments.map((comment, index) => (
-                    <Box key={`${comment.id ?? index}`} pad="small" background="light-2" round="xsmall" gap="xsmall">
-                      <Box direction="row" justify="between" align="center" gap="small">
-                        <Text size="small" weight="bold">{comment.user_name || 'User'}</Text>
-                        <Text size="xsmall" color="dark-3">
-                          {comment.created_at ? new Date(comment.created_at).toLocaleString() : 'Just now'}
-                        </Text>
-                      </Box>
-                      <Text size="small">{comment.comment}</Text>
-                    </Box>
-                  ))
-                ) : (
-                  <Text size="small" color="dark-3">No comments yet.</Text>
-                )}
-              </Box>
-
-              {isLoggedIn ? (
-                <Box direction="row" gap="small" align="center" margin={{ top: 'small' }}>
-                  <TextInput
-                    placeholder="Add a comment"
-                    value={commentDrafts[selectedPost.id] || ''}
-                    onChange={(event) =>
-                      setCommentDrafts((current) => ({
-                        ...current,
-                        [selectedPost.id]: event.target.value,
-                      }))
-                    }
-                  />
-                  <Button
-                    label="Post comment"
-                    onClick={() => handleCommentSubmit(selectedPost.id)}
-                    disabled={submitting}
-                    style={buttonStyles.default}
-                  />
-                </Box>
-              ) : (
-                <Text size="small" color="dark-3">Sign in to comment and react on this post.</Text>
+              {selectedPost.summary && (
+                <Text size="large" color={ui.muted} style={{ lineHeight: 1.5 }}>{selectedPost.summary}</Text>
               )}
             </Box>
-          </Card>
+
+            {selectedPost.images?.length > 0 && (
+              <Box
+                height="medium"
+                overflow="hidden"
+                background={ui.sand}
+                onClick={() => openImageModal(selectedPost.images[0].image_url)}
+                style={{ cursor: 'pointer', borderRadius: '2px' }}
+              >
+                <Image
+                  src={selectedPost.images[0].image_url}
+                  alt={`${selectedPost.title} image 1`}
+                  fit="cover"
+                />
+              </Box>
+            )}
+
+            <Text style={{ lineHeight: 1.8, whiteSpace: 'pre-wrap', color: ui.ink }}>{selectedPost.content}</Text>
+
+            {selectedPost.images?.length > 1 && (
+              <Box direction="row" wrap gap="xsmall" align="center">
+                {selectedPost.images.slice(1).map((image, index) => (
+                  <Box
+                    key={`${image.image_url}-${index}`}
+                    width="96px"
+                    height="96px"
+                    overflow="hidden"
+                    onClick={() => openImageModal(image.image_url)}
+                    style={{ cursor: 'pointer', border: `1px solid ${ui.line}`, borderRadius: '2px', flex: '0 0 auto' }}
+                  >
+                    <Image
+                      src={image.image_url}
+                      alt={`${selectedPost.title} image ${index + 2}`}
+                      fit="cover"
+                      style={{ width: '100%', height: '100%', display: 'block' }}
+                    />
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            <Box direction="row" gap="small" align="center" style={{ borderTop: `1px solid ${ui.line}` }} pad={{ top: 'medium' }}>
+              <ActionButton
+                label={`Like (${selectedPost.reaction_counts?.likes || 0})`}
+                secondary
+                fixed
+                onClick={() => handleReaction(selectedPost.id, 'like')}
+                disabled={!isLoggedIn || submitting}
+              />
+              <ActionButton
+                label={`Dislike (${selectedPost.reaction_counts?.dislikes || 0})`}
+                secondary
+                fixed
+                onClick={() => handleReaction(selectedPost.id, 'dislike')}
+                disabled={!isLoggedIn || submitting}
+              />
+            </Box>
+
+            <Box gap="small">
+              <Text as="div" style={{ fontFamily: ui.serif, fontSize: '22px', color: ui.ink }}>Comments</Text>
+              {selectedPost.comments?.length ? (
+                selectedPost.comments.map((comment, index) => (
+                  <Box key={`${comment.id ?? index}`} pad="small" background={ui.page} gap="xsmall" style={{ border: `1px solid ${ui.line}`, borderRadius: '2px' }}>
+                    <Box direction="row" justify="between" align="center" gap="small">
+                      <Text size="small" weight="bold">{comment.user_name || 'User'}</Text>
+                      <Text size="xsmall" color={ui.muted}>
+                        {comment.created_at ? new Date(comment.created_at).toLocaleString() : 'Just now'}
+                      </Text>
+                    </Box>
+                    <Text size="small">{comment.comment}</Text>
+                  </Box>
+                ))
+              ) : (
+                <Text size="small" color={ui.muted}>No comments yet.</Text>
+              )}
+            </Box>
+
+            {isLoggedIn ? (
+              <Box direction="row" gap="small" align="center">
+                <TextInput
+                  placeholder="Add a comment"
+                  value={commentDrafts[selectedPost.id] || ''}
+                  onChange={(event) =>
+                    setCommentDrafts((current) => ({
+                      ...current,
+                      [selectedPost.id]: event.target.value,
+                    }))
+                  }
+                />
+                <ActionButton
+                  label="Post comment"
+                  fixed
+                  onClick={() => handleCommentSubmit(selectedPost.id)}
+                  disabled={submitting}
+                />
+              </Box>
+            ) : (
+              <Text size="small" color={ui.muted}>Sign in to comment and react on this post.</Text>
+            )}
+          </Box>
         </Box>
       ) : (
-        <Box pad="medium" gap="medium">
-          <Text size="xlarge" weight="bold">{pageTitle}</Text>
+        <Box gap="medium">
+          <Box gap="xxsmall">
+            <Text style={metaStyle}>The journal</Text>
+            <Text as="h1" margin="none" style={{ fontFamily: ui.serif, fontSize: '36px', fontWeight: 400, color: ui.ink }}>
+              {pageTitle}
+            </Text>
+          </Box>
 
           {error && (
-            <Box pad="small" background="status-error" round="xsmall">
+            <Box pad="small" background="status-error" style={{ borderRadius: '2px' }}>
               <Text color="white">{error}</Text>
             </Box>
           )}
 
           {isAdmin && (
             <Box align="start">
-              <Button label="Create blog post" onClick={() => setShowCreateModal(true)} style={buttonStyles.default} />
+              <ActionButton label="Create blog post" fixed onClick={() => setShowCreateModal(true)} />
             </Box>
           )}
 
@@ -563,12 +627,12 @@ function BlogPage() {
                 </FormField>
 
                 <Box direction="row" gap="small" justify="end">
-                  <Button label="Cancel" onClick={() => setShowCreateModal(false)} style={buttonStyles.default} />
-                  <Button
+                  <ActionButton label="Cancel" secondary fixed onClick={() => setShowCreateModal(false)} />
+                  <ActionButton
                     label={submitting ? 'Publishing...' : 'Publish blog post'}
+                    fixed
                     disabled={submitting}
                     onClick={handleCreatePost}
-                    style={buttonStyles.default}
                   />
                 </Box>
               </Box>
@@ -579,21 +643,20 @@ function BlogPage() {
             <Text>Loading blog posts...</Text>
           ) : (
             posts.length === 0 ? (
-              <Text color="dark-3">No blog posts yet.</Text>
+              <Text color={ui.muted}>No blog posts yet.</Text>
             ) : (
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gridAutoRows: '120px',
-                  gridAutoFlow: 'dense',
-                  gap: '12px',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  gap: '24px',
                 }}
               >
-                {posts.map((post) => (
+                {posts.map((post, index) => (
                   <BlogTile
                     key={post.id}
                     post={post}
+                    featured={index === 0}
                     isNew={isLoggedIn && Boolean(post.is_new)}
                     onOpen={() => navigate(`/Blog/${post.id}`)}
                   />

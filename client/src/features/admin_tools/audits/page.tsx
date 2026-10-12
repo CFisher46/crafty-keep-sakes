@@ -13,10 +13,10 @@ import {
   TableRow,
   Box,
   Text,
-  Button,
   SelectMultiple,
 } from 'grommet';
-import { buttonStyles } from '../../../helpers/formatting';
+import { ui } from '../../../helpers/theme';
+import ActionButton from '../../landingPage/components/ActionButton';
 
 const PAGE_SIZE = 5;
 
@@ -109,7 +109,7 @@ const renderJsonCell = (
   }
 };
 
-export const AuditLogs = () => {
+export const AuditLogs = ({ defaultOpen = false }: { defaultOpen?: boolean }) => {
   const dispatch = useAppDispatch();
   const logs = useAppSelector((state) => state.audit.logs);
   const totalCount = useAppSelector((state) => state.audit.totalCount);
@@ -120,7 +120,7 @@ export const AuditLogs = () => {
     Partial<Record<AuditFilterField, string[]>>
   >({});
   const [page, setPage] = useState(1);
-  const [showAuditTable, setShowAuditTable] = useState(false);
+  const [showAuditTable, setShowAuditTable] = useState(defaultOpen);
 
   useEffect(() => {
     dispatch(fetchAuditLogs({ page, pageSize: PAGE_SIZE, filters: selectedFilters }));
@@ -204,13 +204,13 @@ export const AuditLogs = () => {
 
   return (
     <>
-    <Button
-      label={showAuditTable ? "Hide Audit Table" : "Show Audit Table"}
-      onClick={toggleAuditTable}
-      style={buttonStyles.default}
-    />
+    {!defaultOpen && (
+      <Box alignSelf="start" margin={{ bottom: 'small' }}>
+        <ActionButton label={showAuditTable ? "Hide Audit Table" : "Show Audit Table"} onClick={toggleAuditTable} fixed />
+      </Box>
+    )}
     {showAuditTable && (
-    <Box pad="medium" background="light-1" round="small" overflow={{ horizontal: 'auto' }}>
+    <Box pad="medium" background="white" style={{ border: `1px solid ${ui.line}`, borderRadius: '2px' }} overflow={{ horizontal: 'auto' }}>
       <Box direction="row" gap="small" wrap margin={{ bottom: 'medium' }}>
         {auditFilterFields.map((header) => (
           <Box key={header as string} width="medium" gap="xsmall">
@@ -229,12 +229,7 @@ export const AuditLogs = () => {
           <Text color="status-critical">{filterOptionsError}</Text>
         )}
         <Box justify="end">
-          <Button
-            label="Clear Filters"
-            onClick={clearFilters}
-            disabled={!hasActiveFilters}
-            style={buttonStyles.default}
-          />
+          <ActionButton secondary label="Clear Filters" onClick={clearFilters} disabled={!hasActiveFilters} fixed />
         </Box>
       </Box>
 
@@ -313,23 +308,23 @@ export const AuditLogs = () => {
               Page {page} of {totalPages}
             </Text>
             <Box direction="row" gap="small" wrap>
-              <Button label="Previous" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} style={buttonStyles.default} />
+              <ActionButton secondary label="Previous" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page === 1} fixed />
               {pageNumbers.map((pageNumber, index) =>
                 pageNumber === 'ellipsis' ? (
                   <Text key={`ellipsis-${index}`} size="small" color="dark-3">
                     ...
                   </Text>
                 ) : (
-                  <Button
+                  <ActionButton
                     key={pageNumber}
                     label={String(pageNumber)}
                     onClick={() => setPage(pageNumber)}
-                    size="small"
-                    style={buttonStyles.default}
+                    secondary={pageNumber !== page}
+                    fixed
                   />
                 )
               )}
-              <Button label="Next" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} style={buttonStyles.default} />
+              <ActionButton secondary label="Next" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages} fixed />
             </Box>
           </Box>
         </Box>

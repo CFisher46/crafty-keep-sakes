@@ -26,6 +26,8 @@ export type Product = {
   product_name: string;
   is_live: boolean;
   sale_percent: number;
+  created_at?: string | null;
+  units_sold?: number;
   images: string;
 };
 

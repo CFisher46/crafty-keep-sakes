@@ -16,6 +16,13 @@ const rootReducer = combineReducers({
 
 const buildStore = () => configureStore({ reducer: rootReducer });
 
+const renderPage = () =>
+  render(
+    <Provider store={buildStore()}>
+      <AdminTools />
+    </Provider>
+  );
+
 describe('AdminTools page', () => {
   beforeEach(() => {
     global.fetch = jest.fn().mockResolvedValue({
@@ -28,91 +35,56 @@ describe('AdminTools page', () => {
     jest.clearAllMocks();
   });
 
-  it('disables the tool selector until an action is chosen', () => {
-    render(
-      <Provider store={buildStore()}>
-        <AdminTools />
-      </Provider>
-    );
+  it('shows all admin areas as tabs', () => {
+    renderPage();
 
-    expect(screen.getByPlaceholderText('Select a tool')).toBeDisabled();
+    ['Users', 'Products', 'Reports', 'Audit log'].forEach((name) => {
+      expect(screen.getByRole('tab', { name })).toBeInTheDocument();
+    });
+    expect(screen.getByRole('tab', { name: 'Users' })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('disables submit until a valid action/tool combination is chosen', () => {
-    render(
-      <Provider store={buildStore()}>
-        <AdminTools />
-      </Provider>
-    );
+  it('asks for a user when Update is selected on the Users tab', () => {
+    renderPage();
 
-    expect(screen.getByText('Submit')).toBeDisabled();
+    expect(screen.getByText('Select a user to update')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Select a User')).toBeInTheDocument();
   });
 
-  it('renders the CreateNewUser form when Add + User is selected', async () => {
-    render(
-      <Provider store={buildStore()}>
-        <AdminTools />
-      </Provider>
-    );
+  it('renders the CreateNewUser form when Add is chosen on Users', async () => {
+    renderPage();
 
-    fireEvent.click(screen.getByPlaceholderText('Select an action'));
-    fireEvent.click(screen.getByText('Add'));
-
-    fireEvent.click(screen.getByPlaceholderText('Select a tool'));
-    fireEvent.click(screen.getByText('User'));
-
-    fireEvent.click(screen.getByText('Submit'));
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText('First Name')).toBeInTheDocument();
     });
   });
 
-  it('resets all selections when Reset is clicked', () => {
-    render(
-      <Provider store={buildStore()}>
-        <AdminTools />
-      </Provider>
-    );
+  it('offers only Add and Update for Products', () => {
+    renderPage();
 
-    fireEvent.click(screen.getByPlaceholderText('Select an action'));
-    fireEvent.click(screen.getByText('Add'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Products' }));
 
-    fireEvent.click(screen.getByText('Reset'));
-
-    expect(screen.getByPlaceholderText('Select a tool')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
   });
 
-  it('shows the user selector when Update + User is chosen', () => {
-    render(
-      <Provider store={buildStore()}>
-        <AdminTools />
-      </Provider>
-    );
+  it('offers the user selector for Delete on Users', () => {
+    renderPage();
 
-    fireEvent.click(screen.getByPlaceholderText('Select an action'));
-    fireEvent.click(screen.getByText('Update'));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
 
-    fireEvent.click(screen.getByPlaceholderText('Select a tool'));
-    fireEvent.click(screen.getByText('User'));
-
-    expect(screen.getByText('Select a User to Update:')).toBeInTheDocument();
+    expect(screen.getByText('Select a user to delete')).toBeInTheDocument();
   });
 
-  it('limits tool options to User and Report for the Delete action', () => {
-    render(
-      <Provider store={buildStore()}>
-        <AdminTools />
-      </Provider>
-    );
+  it('shows the audit log directly on the Audit log tab', () => {
+    renderPage();
 
-    fireEvent.click(screen.getByPlaceholderText('Select an action'));
-    fireEvent.click(screen.getByText('Delete'));
+    fireEvent.click(screen.getByRole('tab', { name: 'Audit log' }));
 
-    fireEvent.click(screen.getByPlaceholderText('Select a tool'));
-
-    expect(screen.getByText('User')).toBeInTheDocument();
-    expect(screen.getByText('Report')).toBeInTheDocument();
-    expect(screen.queryByText('Product')).not.toBeInTheDocument();
+    expect(screen.queryByText('Show Audit Table')).not.toBeInTheDocument();
+    expect(screen.queryByText('Select a user to update')).not.toBeInTheDocument();
   });
 });

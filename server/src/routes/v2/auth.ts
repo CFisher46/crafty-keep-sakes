@@ -1,7 +1,7 @@
 import express, { RequestHandler } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { RowDataPacket } from 'mysql2';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { decrypt } from '../../ts-common/helpers';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
@@ -373,7 +373,88 @@ const logoutHandler: RequestHandler = (_req, res): void => {
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
+const registerHandler: RequestHandler = async (req, res): Promise<void> => {
+  const { email, password, first_name, last_name, website, started_at } = req.body as {
+    website?: string;
+    started_at?: number;
+    email?: string;
+    password?: string;
+    first_name?: string;
+    last_name?: string;
+  };
+
+  // Bot traps: hidden field filled in, or form submitted implausibly fast.
+  // Respond as if it worked so bots get no signal.
+  const elapsed = Date.now() - Number(started_at);
+  if (website || !Number.isFinite(elapsed) || elapsed < 2000) {
+    res.status(201).json({ message: 'Account created' });
+    return;
+  }
+
+  if (!email || !password || !first_name || !last_name) {
+    res.status(400).json({ error: 'Missing required fields' });
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+    res.status(400).json({ error: 'Please enter a valid email address' });
+    return;
+  }
+
+  if (String(password).length < 8) {
+    res.status(400).json({ error: 'Password must be at least 8 characters' });
+    return;
+  }
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+    const [accountResult] = await connection.query<ResultSetHeader>(
+      'INSERT INTO users_v2 (email, password_hash, status) VALUES (?, ?, ?)',
+      [String(email).trim(), hashedPassword, 'active']
+    );
+    const userId = accountResult.insertId;
+
+    await connection.query(
+      'INSERT INTO customer_profiles_v2 (user_id, first_name, last_name) VALUES (?, ?, ?)',
+      [userId, String(first_name).trim(), String(last_name).trim()]
+    );
+
+    const [roleRows] = await connection.query<RowDataPacket[]>(
+      "SELECT id FROM roles_v2 WHERE code = 'customer' LIMIT 1"
+    );
+    const roleId = roleRows[0]?.id;
+    if (!roleId) {
+      throw new Error('Customer role not found');
+    }
+
+    await connection.query(
+      'INSERT INTO user_roles_v2 (user_id, role_id) VALUES (?, ?)',
+      [userId, roleId]
+    );
+
+    await connection.commit();
+    res.status(201).json({ message: 'Account created' });
+  } catch (err) {
+    await connection.rollback();
+
+    if ((err as { code?: string }).code === 'ER_DUP_ENTRY') {
+      res.status(409).json({ error: 'An account with that email already exists' });
+      return;
+    }
+
+    console.error('Register error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    connection.release();
+  }
+};
+
 router.post('/login', loginHandler);
+router.post('/register', registerHandler);
 router.get('/me', meHandler);
 router.post('/verify-password', verifyAuthToken, verifyPasswordHandler);
 router.post('/logout', logoutHandler);
