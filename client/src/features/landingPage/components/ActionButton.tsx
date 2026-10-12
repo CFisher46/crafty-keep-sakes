@@ -6,9 +6,11 @@ interface ActionButtonProps {
   label: string;
   onClick: () => void;
   secondary?: boolean;
+  disabled?: boolean;
+  fixed?: boolean;
 }
 
-export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary }) => {
+export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, secondary, disabled, fixed }) => {
   const [hovered, setHovered] = useState(false);
 
   const primary = {
@@ -27,11 +29,13 @@ export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, seco
       plain
       label={label}
       onClick={onClick}
+      disabled={disabled}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        flex: '1 1 0',
-        minWidth: '120px',
+        flex: fixed ? '0 0 auto' : '1 1 0',
+        minWidth: fixed ? '130px' : '120px',
+        whiteSpace: 'nowrap',
         height: '44px',
         padding: '0 20px',
         borderRadius: '2px',
@@ -41,6 +45,7 @@ export const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, seco
         textTransform: 'uppercase',
         textAlign: 'center',
         transition: 'all 0.2s ease',
+        opacity: disabled ? 0.5 : 1,
         ...(secondary ? outline : primary),
       }}
     />

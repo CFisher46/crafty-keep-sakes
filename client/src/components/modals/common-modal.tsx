@@ -15,24 +15,16 @@ function CommonModal({
   onAddToBasket?: (product: any) => void;
 }) {
   return (
-    <Layer onEsc={onClose} onClickOutside={onClose}>
-      <Box
-        pad="medium"
-        gap="medium"
-        width="large"
-        height={{ min: 'medium', max: 'large' }}
-        overflow="auto"
-      >
-        <Box>
-          {type === 'viewProducts' && (
-            <ProductModal
-              title={title}
-              values={values}
-              onClose={onClose}
-              onAddToBasket={onAddToBasket}
-            />
-          )}
-        </Box>
+    <Layer modal responsive={false} style={{ borderRadius: '2px' }} onEsc={onClose} onClickOutside={onClose}>
+      <Box width={{ max: '960px', width: '90vw' }} height={{ max: '90vh' }} overflow="auto">
+        {type === 'viewProducts' && (
+          <ProductModal
+            title={title}
+            values={values}
+            onClose={onClose}
+            onAddToBasket={onAddToBasket}
+          />
+        )}
       </Box>
     </Layer>
   );
