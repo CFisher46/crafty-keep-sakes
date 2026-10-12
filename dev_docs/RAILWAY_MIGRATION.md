@@ -32,7 +32,7 @@ The live database also contains tables the server no longer uses. Leave these ou
 - `server/scripts/archive-legacy-tables.sql` is only for the old database and is not needed
 - No server code reads these tables any more (see Priority 1)
 
-### Connect to the Railway MySQL from your laptop
+### Optional: connect to the Railway MySQL from your laptop
 Railway's MySQL is only reachable on the private network (`mysql.railway.internal`) by default. To run scripts from your laptop, use the public TCP proxy:
 
 1. In Railway, open the MySQL service and go to **Settings > Networking > TCP Proxy**. Enable it for port `3306`. Railway gives you a public host and port, for example `<name>.proxy.rlwy.net:12345`.
@@ -50,16 +50,22 @@ Notes:
 - The proxy counts as egress traffic on Railway, so avoid leaving large imports running repeatedly.
 
 ### Create the schema
-Run these from the repository root with the proxy connection above.
+The schema script is many statements, and Railway's web query editor only runs one statement at a time (pasting the file fails with a syntax error at the second `CREATE TABLE`). Use one of these instead.
 
-1. Apply the schema from `server/` with the Node runner. It reads the `DB_*` variables, so point them at the Railway proxy for this one command (or use a temporary `.env`):
-   `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run db:apply-schema`
-   It prints the table count and the roles it found.
-   Alternatively use the `mysql` client: `mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
-   **Do not paste the script into Railway's web query box.** It sends the text as one statement, which fails with "You have an error in your SQL syntax ... near 'CREATE TABLE IF NOT EXISTS roles_v2'". Use the runner or the `mysql` client, which both handle multiple statements.
-2. Check the tables: `SHOW TABLES;` should list 21 `_v2` tables and nothing else on a fresh database.
-3. Check the roles: `SELECT code FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
-4. Every `CREATE TABLE` uses `IF NOT EXISTS`, so the script can be re-run safely after a partial failure.
+**Option A (recommended, no egress): run it inside Railway.** The API image includes the runner (`server/scripts/apply-schema.js`) and the schema. On the API service, open **Settings > Deploy > Pre-deploy Command** and set:
+`node scripts/apply-schema.js`
+Every deploy then applies the schema over Railway's private network using the service's `DB_*` variables. It is safe to repeat because every statement is `IF NOT EXISTS` or an upsert. The deploy fails if the schema fails. Check the deploy logs for `Applied phase1_schema_v2.sql: 21 tables` and `Roles: admin, customer`.
+
+**Option B: from your laptop through the TCP proxy.** The schema setup sends a few KB out of Railway, so the egress cost is negligible. Egress only matters for large exports or leaving the proxy open. From `server/`:
+`DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run db:apply-schema`
+or with the `mysql` client:
+`mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
+
+**Option C: the web editor.** Paste and run each `CREATE TABLE` block and the final role insert one at a time, in file order (21 tables, then the roles). Slow and easy to get wrong.
+
+After applying it:
+1. `SHOW TABLES;` should list 21 `_v2` tables on a fresh database.
+2. `SELECT code FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
 
 ### First admin and sample data
 - A fresh database has no users, and self-registration only creates customers. Create the first admin with `npm run user:generate-insert` (in `server/`). Run the generated SQL through the same `mysql` connection.
@@ -107,8 +113,7 @@ Export from the NAS database and import into Railway after the schema is created
 6. `audit_events_v2`
 
 ## 6. Checklist
-- [ ] Railway MySQL created and TCP proxy enabled
-- [ ] Connected from the laptop with `mysql` and `SELECT 1` works
+- [ ] Railway MySQL created
 - [ ] Schema script applied, 21 `_v2` tables present
 - [ ] `roles_v2` has `admin` and `customer`
 - [ ] First admin user created
@@ -116,5 +121,5 @@ Export from the NAS database and import into Railway after the schema is created
 - [ ] Image volume attached and files copied
 - [ ] Client points at the new API and CORS matches
 - [ ] Login, registration, shop, basket, checkout and blog checked on the new environment
-- [ ] TCP proxy disabled once setup and data import are done
+- [ ] TCP proxy (if enabled) disabled once setup and data import are done
 - [ ] NAS left running until Railway is verified
