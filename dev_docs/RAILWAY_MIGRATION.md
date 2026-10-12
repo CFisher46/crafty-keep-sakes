@@ -57,8 +57,8 @@ Run these from the repository root with the proxy connection above.
    It prints the table count and the roles it found.
    Alternatively use the `mysql` client: `mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
    **Do not paste the script into Railway's web query box.** It sends the text as one statement, which fails with "You have an error in your SQL syntax ... near 'CREATE TABLE IF NOT EXISTS roles_v2'". Use the runner or the `mysql` client, which both handle multiple statements.
-2. Check the tables: should list 21 `_v2` tables and nothing else on a fresh database.
-3. Check the roles: `SELECT name FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
+2. Check the tables: `SHOW TABLES;` should list 21 `_v2` tables and nothing else on a fresh database.
+3. Check the roles: `SELECT code FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
 4. Every `CREATE TABLE` uses `IF NOT EXISTS`, so the script can be re-run safely after a partial failure.
 
 ### First admin and sample data
