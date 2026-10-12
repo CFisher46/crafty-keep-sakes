@@ -235,7 +235,7 @@ Utility scripts for key management and data maintenance. Run with `npm run <scri
 
 | Script | Description |
 |--------|-------------|
-| `generate-user-insert.js` | Prints a ready-to-run SQL transaction that creates a user in `users_v2`, `user_roles_v2` and `customer_profiles_v2` (bcrypt-hashed password). |
+| `generate-user-insert.js` | Prints three ready-to-run, order-dependent SQL statements that create a user in `users_v2`, `user_roles_v2` and `customer_profiles_v2` (bcrypt-hashed password). |
 
 ---
 

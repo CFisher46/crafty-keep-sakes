@@ -58,7 +58,16 @@ function buildV2Sql(args, passwordHash) {
 
   const details = getSharedFields(args);
 
-  return `START TRANSACTION;\n\nINSERT INTO users_v2 (email, password_hash, status)\nVALUES ('${sqlEscape(args.email)}', '${sqlEscape(passwordHash)}', '${sqlEscape(status)}');\n\nSET @new_user_id = LAST_INSERT_ID();\n\nINSERT INTO user_roles_v2 (user_id, role_id)\nSELECT @new_user_id, id FROM roles_v2 WHERE code = '${sqlEscape(role)}';\n\nINSERT INTO customer_profiles_v2 (user_id, first_name, last_name, telephone, address_line1, address_line2, address_line3, town, county, postcode)\nVALUES (@new_user_id, '${sqlEscape(details.firstName)}', '${sqlEscape(details.lastName)}', '${sqlEscape(details.telephone)}', '${sqlEscape(details.address1)}', '${sqlEscape(details.address2)}', '${sqlEscape(details.address3)}', '${sqlEscape(details.town)}', '${sqlEscape(details.county)}', '${sqlEscape(details.postcode)}');\n\nCOMMIT;`;
+  const email = sqlEscape(args.email);
+  const q = (value) => `'${sqlEscape(value)}'`;
+
+  // Three independent statements with no session variables, so they also
+  // work in editors that run one statement at a time. Run them in order.
+  return [
+    `INSERT INTO users_v2 (email, password_hash, status)\nVALUES ('${email}', ${q(passwordHash)}, ${q(status)});`,
+    `INSERT INTO user_roles_v2 (user_id, role_id)\nSELECT u.id, r.id FROM users_v2 u JOIN roles_v2 r ON r.code = ${q(role)}\nWHERE u.email = '${email}';`,
+    `INSERT INTO customer_profiles_v2 (user_id, first_name, last_name, telephone, address_line1, address_line2, address_line3, town, county, postcode)\nSELECT id, ${q(details.firstName)}, ${q(details.lastName)}, ${q(details.telephone)}, ${q(details.address1)}, ${q(details.address2)}, ${q(details.address3)}, ${q(details.town)}, ${q(details.county)}, ${q(details.postcode)}\nFROM users_v2 WHERE email = '${email}';`,
+  ].join('\n\n-- next statement\n\n');
 }
 
 async function main() {

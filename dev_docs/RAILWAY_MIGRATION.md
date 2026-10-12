@@ -119,7 +119,13 @@ After applying it:
 2. `SELECT code FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
 
 ### First admin and sample data
-- A fresh database has no users, and self-registration only creates customers. Create the first admin with `npm run user:generate-insert` (in `server/`). Run the generated SQL through the same `mysql` connection.
+- A fresh database has no users, and self-registration only creates customers, so the first admin is created by hand.
+- On your laptop, in `server/`, generate the SQL. It needs no database connection:
+  `npm run user:generate-insert -- --email you@example.com --password '<strong password>' --firstName Chris --lastName Fisher --role admin`
+- The output is three independent statements, separated by `-- next statement`, with no session variables. Paste and run them **one at a time, in order**, in Railway's MySQL **Data / Query** tab (or all at once with the `mysql` client or the schema runner's connection).
+- Check it: `SELECT u.email, r.code FROM users_v2 u JOIN user_roles_v2 ur ON ur.user_id = u.id JOIN roles_v2 r ON r.id = ur.role_id;` should show your email with `admin`.
+- Then log in on the site. Change the password after first login if you used a temporary one.
+- If a statement fails part way, running the first one again fails with a duplicate email. Run `DELETE FROM users_v2 WHERE email = '<email>';` (this also removes dependent rows) and start again.
 - Optional: `npm run seed:products:v2` loads sample products and categories. It reads the `DB_*` variables, so point them at the proxy for the run:
   `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run seed:products:v2`
 

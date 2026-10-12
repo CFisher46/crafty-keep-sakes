@@ -46,7 +46,7 @@ From `server`, generate a ready-to-paste SQL script for the v2 tables:
 
 - `npm run user:generate-insert -- --email admin@example.com --password ChangeMe123! --firstName Admin --lastName User --role admin`
 
-The command prints one SQL transaction (`users_v2`, `user_roles_v2`, `customer_profiles_v2`). Copy it and run it in MySQL.
+The command prints three SQL statements (`users_v2`, `user_roles_v2`, `customer_profiles_v2`) with no session variables. Run them in order in MySQL.
 
 Notes:
 
