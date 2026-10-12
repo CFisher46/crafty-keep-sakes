@@ -1,27 +1,27 @@
 import { Box, Nav, Button, Text } from 'grommet';
-import { Book, Shop, Inbox, ShieldSecurity, Edit } from 'grommet-icons';
-import { useState, useRef, JSX, type ReactNode, useEffect } from 'react';
+import { useState, type ReactNode, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { buildApiUrl } from '../../api/apiPath';
 import { BLOG_VIEWED_EVENT } from '../../features/blog/events';
 import { RootState } from '../../store';
+import { themeColors } from '../../helpers/theme';
 
 type NavItem = {
   label: ReactNode;
   route: string;
-  icon: JSX.Element;
 };
 
 function NavigationBar({
   onNavigate,
   resetActive,
+  vertical = false,
 }: {
   onNavigate: (route: string) => void;
   resetActive: () => void;
+  vertical?: boolean;
 }) {
   const [hovered, setHovered] = useState<string | undefined>();
-  const menuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -77,113 +77,75 @@ function NavigationBar({
     };
   }, [isLoggedIn, userId]);
 
-  const SidebarButton = ({
-    label,
-    route,
-    icon,
-    ...rest
-  }: {
-    label: ReactNode;
-    route: string;
-    icon: JSX.Element;
-    [key: string]: any;
-  }) => (
-    <Button
-      {...rest}
-      label={label}
-      icon={icon}
-      size="small"
-      plain
-      style={{
-        padding: '8px 15px',
-        textAlign: 'center',
-        backgroundColor:
-          route === activeRoute
-            ? '#fce5f5'
-            : hovered === route
-              ? '#a5effeff'
-              : '',
-        borderRadius: '4px',
-        transition: 'background-color 0.3s ease',
-      }}
-      onClick={() => {
-        onNavigate(route);
-        navigate(route);
-        resetActive?.();
-      }}
-      onMouseEnter={() => setHovered(route)}
-      onMouseLeave={() => setHovered(undefined)}
-    />
-  );
+  const items = ([
+    { label: 'Shop', route: '/Shop' },
+    { label: 'About', route: '/About' },
+    {
+      label: (
+        <Box direction="row" align="center" gap="xsmall">
+          <span>Blog</span>
+          {unreadBlogCount > 0 && (
+            <Box
+              background="status-critical"
+              round
+              pad={{ horizontal: 'xsmall' }}
+              align="center"
+              justify="center"
+              style={{ minWidth: '18px', height: '18px' }}
+              aria-label={`${unreadBlogCount} unread blog posts`}
+              title={`${unreadBlogCount} unread blog posts`}
+            >
+              <Text size="xsmall" weight="bold" color="white">
+                {unreadBlogCount > 99 ? '99+' : unreadBlogCount}
+              </Text>
+            </Box>
+          )}
+        </Box>
+      ),
+      route: '/Blog',
+    },
+    { label: 'Contact Us', route: '/Contact' },
+    isLoggedIn && userType === 'admin' && { label: 'Admin Tools', route: '/Admin' },
+  ] as Array<NavItem | false>).filter((item): item is NavItem => Boolean(item));
 
   return (
-    <Box
-      ref={menuRef}
-      width="60%"
-      pad="small"
-      alignSelf="center"
-      margin={{ horizontal: 'auto' }}
+    <Nav
+      direction={vertical ? 'column' : 'row'}
+      gap={vertical ? 'xsmall' : 'medium'}
+      justify="center"
+      align={vertical ? 'stretch' : 'center'}
     >
-      <Nav direction="row" justify="evenly">
-        {([
-          {
-            label: 'Shop',
-            route: '/Shop',
-            icon: <Shop />,
-          },
-          {
-            label: 'About',
-            route: '/About',
-            icon: <Edit />,
-          },
-          {
-            label: (
-              <Box direction="row" align="center" gap="xsmall">
-                <span>Blog</span>
-                {unreadBlogCount > 0 && (
-                  <Box
-                    background="status-critical"
-                    round
-                    pad={{ horizontal: 'xsmall' }}
-                    align="center"
-                    justify="center"
-                    style={{ minWidth: '18px', height: '18px' }}
-                    aria-label={`${unreadBlogCount} unread blog posts`}
-                    title={`${unreadBlogCount} unread blog posts`}
-                  >
-                    <Text size="xsmall" weight="bold" color="white">
-                      {unreadBlogCount > 99 ? '99+' : unreadBlogCount}
-                    </Text>
-                  </Box>
-                )}
-              </Box>
-            ),
-            route: '/Blog',
-            icon: <Book />,
-          },
-          isLoggedIn &&
-            userType === 'admin' && {
-              label: 'Admin Tools',
-              route: '/Admin',
-              icon: <ShieldSecurity />,
-            },
-          {
-            label: 'Contact Us',
-            route: '/Contact',
-            icon: <Inbox />,
-          },
-        ] as Array<NavItem | false>)
-          .filter((item): item is NavItem => Boolean(item))
-          .map((item) => (
-            <SidebarButton
-              key={item.route}
-              label={item.label}
-              route={item.route}
-              icon={item.icon}
-            />
-          ))}
-      </Nav>
-    </Box>
+      {items.map((item) => {
+        const isActive = activeRoute.toLowerCase().startsWith(item.route.toLowerCase());
+        const isHovered = hovered === item.route;
+        return (
+          <Button
+            key={item.route}
+            plain
+            label={item.label}
+            onClick={() => {
+              onNavigate(item.route);
+              navigate(item.route);
+              resetActive?.();
+            }}
+            onMouseEnter={() => setHovered(item.route)}
+            onMouseLeave={() => setHovered(undefined)}
+            style={{
+              padding: vertical ? '12px 16px' : '6px 14px',
+              borderRadius: '999px',
+              fontWeight: isActive ? 700 : 500,
+              color: '#1a1a1a',
+              backgroundColor: isActive
+                ? themeColors.palePink
+                : isHovered
+                  ? themeColors.paleBlueLight
+                  : 'transparent',
+              transition: 'background-color 0.2s ease',
+            }}
+          />
+        );
+      })}
+    </Nav>
   );
 }
 

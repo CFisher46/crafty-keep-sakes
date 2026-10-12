@@ -17,7 +17,7 @@ function MainBody() {
   const location = useLocation();
   return (
     <Box pad="xsmall">
-      <Box pad="small" round="small" fill>
+      <Box pad="xsmall" round="small" fill>
         <Routes key={location.pathname}>
           <Route path="/" element={<Navigate to="/Home" />} />
           <Route path="/Home" element={<LandingPage />} />

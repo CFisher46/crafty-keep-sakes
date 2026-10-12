@@ -149,9 +149,9 @@ function Home() {
   }
 
   return (
-    <Box pad={{ horizontal: 'medium', vertical: 'small' }} gap="large">
+    <Box pad={{ horizontal: 'medium', vertical: 'xsmall' }} gap="small">
       {/* Hero & Account / Profile row */}
-      <Box direction="row-responsive" gap="medium" align="stretch">
+      <Box direction="row-responsive" gap="small" align="stretch">
         {/* Hero banner */}
         <Box
           flex={{ grow: 2, shrink: 1 }}
@@ -259,7 +259,7 @@ function Home() {
       </Box>
 
       {/* Popular gallery + Journal side by side */}
-      <Box direction="row-responsive" gap="medium" align="stretch">
+      <Box direction="row-responsive" gap="small" align="stretch">
         <Card
           flex={{ grow: 1, shrink: 1 }}
           basis="1/2"
