@@ -23,18 +23,18 @@ Do this first. The most common failure is setting the service's **Root Directory
 2. Add the database: **New > Database > MySQL** in the same project. This is the `MySQL` service the variable references below point to.
 3. Open the API service (the one created from the repo) and set:
    - **Settings > Source > Root Directory:** leave empty (the repo root).
-   - **Settings > Build:** Builder `Dockerfile`, with the Dockerfile path `server/Dockerfile`. The same thing can be set with the service variable `RAILWAY_DOCKERFILE_PATH=server/Dockerfile`. Without it Railway looks for a root `Dockerfile` and falls back to Nixpacks, which also fails because the root `package.json` is not the server.
+   - **Builder and Dockerfile path:** set by [`railway.json`](../railway.json) in the repo root (`builder: DOCKERFILE`, `dockerfilePath: server/Dockerfile`), so nothing needs setting in the dashboard. Railway only auto-detects a Dockerfile at the root. Without this file it uses Railpack on the repo root, which fails with `No start command detected`. If the build log still starts with `Railpack`, the file was not picked up: check it is on the branch Railway deploys, or set `RAILWAY_DOCKERFILE_PATH=server/Dockerfile` as a service variable, or choose Dockerfile under **Settings > Build**.
    - **Settings > Networking > Generate Domain** to get the public URL. Railway injects `PORT`, and the server reads it, so no port needs setting.
-   - **Settings > Deploy > Pre-deploy Command:** `node scripts/apply-schema.js` (see Create the schema below). Add this once the variables in section 2 are set, otherwise the deploy fails on the missing database settings.
+   - **Pre-deploy command:** `node scripts/apply-schema.js` is also set in `railway.json` (see Create the schema below). It needs the `DB_*` variables from section 2, so set them before the first deploy or the deploy fails on the missing database settings.
    - **Variables:** everything in section 2.
-4. Optional: under **Settings > Source > Watch Paths** use `/server/**` and `/client/public/images/**` so docs-only commits do not trigger a deploy.
+4. Watch paths (`/server/**` and `/client/public/images/**`) are also in `railway.json`, so docs-only commits do not trigger a deploy.
 5. Deploy and read the **Build Logs** and **Deploy Logs**.
 
 ### If it still fails
 | Symptom in the log | Cause |
 |--------------------|-------|
 | `COPY server/package*.json: not found` or `client/public/images: not found` | Root Directory is set. Clear it |
-| `Nixpacks was unable to generate a build plan` | No Dockerfile path set. Set `RAILWAY_DOCKERFILE_PATH=server/Dockerfile` |
+| `Railpack ... No start command detected` (or `Nixpacks was unable to generate a build plan`) | The Dockerfile is not being used. Make sure `railway.json` is on the deployed branch, or set `RAILWAY_DOCKERFILE_PATH=server/Dockerfile` |
 | Build passes but the deploy is "crashed" with `ECONNREFUSED` or `ENOTFOUND` | `DB_*` variables missing or wrong. Use the reference variables in section 2 |
 | `JWT_SECRET` or other missing-variable errors at start | Add the variable in section 2 |
 | Healthy deploy but the site shows 502 | The domain was generated for the wrong port. Remove it and generate again, or check that the app logs `Server running on port <n>` |
@@ -78,9 +78,7 @@ Notes:
 ### Create the schema
 The schema script is many statements, and Railway's web query editor only runs one statement at a time (pasting the file fails with a syntax error at the second `CREATE TABLE`). Use one of these instead.
 
-**Option A (recommended, no egress): run it inside Railway.** The API image includes the runner (`server/scripts/apply-schema.js`) and the schema. On the API service, open **Settings > Deploy > Pre-deploy Command** and set:
-`node scripts/apply-schema.js`
-Every deploy then applies the schema over Railway's private network using the service's `DB_*` variables. It is safe to repeat because every statement is `IF NOT EXISTS` or an upsert. The deploy fails if the schema fails. Check the deploy logs for `Applied phase1_schema_v2.sql: 21 tables` and `Roles: admin, customer`.
+**Option A (recommended, no egress): run it inside Railway.** The API image includes the runner (`server/scripts/apply-schema.js`) and the schema. `railway.json` sets the API service's pre-deploy command to `node scripts/apply-schema.js` (it can also be set under **Settings > Deploy > Pre-deploy Command**). Every deploy then applies the schema over Railway's private network using the service's `DB_*` variables. It is safe to repeat because every statement is `IF NOT EXISTS` or an upsert. The deploy fails if the schema fails. Check the deploy logs for `Applied phase1_schema_v2.sql: 21 tables` and `Roles: admin, customer`.
 
 **Option B: from your laptop through the TCP proxy.** The schema setup sends a few KB out of Railway, so the egress cost is negligible. Egress only matters for large exports or leaving the proxy open. From `server/`:
 `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run db:apply-schema`
