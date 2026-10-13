@@ -1,0 +1,13 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "server/Dockerfile",
+    "watchPatterns": ["/server/**", "/client/public/images/**"]
+  },
+  "deploy": {
+    "preDeployCommand": ["node scripts/apply-schema.js"],
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5
+  }
+}

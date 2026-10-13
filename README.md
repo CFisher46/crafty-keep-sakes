@@ -15,8 +15,6 @@ Copy the example env files:
 
 Set values in `server/.env` for your local database and secrets.
 
-If you have existing encrypted user records from an older key, set `ENCRYPTION_KEY_PREVIOUS` in `server/.env` so the backend can still decrypt legacy rows while using the new `ENCRYPTION_KEY` for future writes.
-
 ### 2) Install dependencies
 
 - `cd client && npm install`
@@ -42,55 +40,15 @@ Reset or restore the v2 schema by running the bootstrap script from the project 
 
 This bootstrap includes the standard v2 tables and the blog post tracking table used for NEW badges (`blog_post_views_v2`).
 
-## Encrypted user data recovery
+## Create an admin user (manual DB insert)
 
-If old encrypted user fields can no longer be decrypted (lost historical key), run the server repair script.
+From `server`, generate a ready-to-paste SQL script for the v2 tables:
 
-From the `server` directory:
+- `npm run user:generate-insert -- --email admin@example.com --password ChangeMe123! --firstName Admin --lastName User --role admin`
 
-- `npm run repair:encrypted-users` (dry run)
-- `npm run repair:encrypted-users:apply` (persists changes)
-
-The script only clears undecryptable encrypted fields (`first_name`, `last_name`, address lines, telephone). Users can then re-enter those values and they will be encrypted with the current key.
-
-## Create encrypted admin user (manual DB insert)
-
-From `server`, generate a ready-to-paste SQL `INSERT` using the current `ENCRYPTION_KEY`:
-
-- `npm run user:generate-insert -- --email admin@example.com --password ChangeMe123! --firstName Admin --lastName User --address1 "HQ" --town "London" --county "Greater London" --postcode "SW1A 1AA" --telephone "07123456789" --type admin --status active`
-
-The command prints one SQL statement. Copy that statement and run it in MySQL.
-
-If you want defaults for most fields, only email and password are required:
-
-- `npm run user:generate-insert -- --email admin@example.com --password ChangeMe123!`
+The command prints three SQL statements (`users_v2`, `user_roles_v2`, `customer_profiles_v2`) with no session variables. Run them in order in MySQL.
 
 Notes:
 
-- The generated `password` is bcrypt-hashed.
-- `first_name`, `last_name`, address lines, and `telephone_number` are encrypted with your current key.
+- The password is bcrypt-hashed.
 - Change the password immediately after first login if you use a temporary value.
-
-## Encryption key runbook
-
-### Generate a new key
-
-From `server`:
-
-- `npm run key:generate`
-
-Copy the emitted key into `ENCRYPTION_KEY` in `server/.env`.
-
-### Rotation process
-
-1. Put the current key in `ENCRYPTION_KEY_PREVIOUS`.
-2. Put the new key in `ENCRYPTION_KEY`.
-3. Restart backend.
-4. As users update records, new writes use the new key while old values still decrypt through `ENCRYPTION_KEY_PREVIOUS`.
-5. After all old data is re-written, remove `ENCRYPTION_KEY_PREVIOUS`.
-
-### Backup policy
-
-- Store `ENCRYPTION_KEY` and `ENCRYPTION_KEY_PREVIOUS` in a password manager or secret manager (not only local `.env`).
-- Keep at least two backups in separate secure locations.
-- Record fingerprints with `npm run key:fingerprints` and store them with release notes to verify the intended keys are loaded.

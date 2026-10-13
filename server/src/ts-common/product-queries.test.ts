@@ -1,15 +1,15 @@
 import { GetAllProductsQuery } from './product-queries';
 
 describe('GetAllProductsQuery', () => {
-  it('builds a default query with no filters (legacy source)', () => {
+  it('builds a default query with no filters ', () => {
     const sql = GetAllProductsQuery();
 
-    expect(sql).toContain('FROM products p');
+    expect(sql).toContain('FROM products_v2 p');
     expect(sql).toContain("WHERE fp.id IS NOT NULL");
   });
 
-  it('builds a query for v2 source using products_v2 table', () => {
-    const sql = GetAllProductsQuery(undefined, 'v2');
+  it('uses the products_v2 table', () => {
+    const sql = GetAllProductsQuery();
 
     expect(sql).toContain('FROM products_v2 p');
     expect(sql).toContain('LEFT JOIN product_categories_v2 pc');
@@ -46,14 +46,8 @@ describe('GetAllProductsQuery', () => {
     expect(sql).not.toContain("LIKE '%O'Brien%'");
   });
 
-  it('filters by category for legacy source using IN clause', () => {
-    const sql = GetAllProductsQuery({ category: 'Mugs,Plates' }, 'legacy');
-
-    expect(sql).toContain("fp.category IN ('Mugs', 'Plates')");
-  });
-
   it('filters by category for v2 source using EXISTS subquery', () => {
-    const sql = GetAllProductsQuery({ category: 'Mugs' }, 'v2');
+    const sql = GetAllProductsQuery({ category: 'Mugs' });
 
     expect(sql).toContain('EXISTS (');
     expect(sql).toContain('product_categories_v2 pcf');

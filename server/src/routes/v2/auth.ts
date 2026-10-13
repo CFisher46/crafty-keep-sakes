@@ -3,30 +3,11 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
-import { decrypt } from '../../ts-common/helpers';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
 
 const router = express.Router();
 
-
-type AuthSource = 'legacy' | 'dual' | 'v2';
-
-interface LegacyUserPayload extends RowDataPacket {
-  id: number | string;
-  email_address: string;
-  password: string;
-  first_name: string;
-  last_name: string;
-  type: string;
-  address_line1?: string;
-  address_line2?: string;
-  address_line3?: string;
-  town?: string;
-  county?: string;
-  postcode?: string;
-  telephone_number?: string;
-}
 
 interface V2UserPayload extends RowDataPacket {
   id: number | string;
@@ -44,18 +25,6 @@ interface V2UserPayload extends RowDataPacket {
   postcode?: string;
   telephone_number?: string;
 }
-
-type AuthLookupResult =
-  | { source: 'legacy'; user: LegacyUserPayload }
-  | { source: 'v2'; user: V2UserPayload }
-  | null;
-
-const LEGACY_USER_BY_EMAIL_SQL = `
-  SELECT id, email_address, password, first_name, last_name, type
-  FROM users
-  WHERE email_address = ?
-  LIMIT 1
-`;
 
 const V2_USER_BY_EMAIL_SQL = `
   SELECT
@@ -81,36 +50,10 @@ const V2_USER_BY_EMAIL_SQL = `
   LIMIT 1
 `;
 
-function resolveAuthSource(rawValue = process.env.AUTH_SOURCE): AuthSource {
-  const normalized = String(rawValue || '').trim().toLowerCase();
-
-  if (!normalized) {
-    return 'dual';
-  }
-
-  if (normalized === 'legacy' || normalized === 'dual' || normalized === 'v2') {
-    return normalized;
-  }
-
-  return 'dual';
-}
-
-async function queryLegacyUserByEmail(email: string): Promise<LegacyUserPayload | null> {
-  const [rows] = await db.query<LegacyUserPayload[]>(LEGACY_USER_BY_EMAIL_SQL, [email]);
-  return rows[0] ?? null;
-}
-
 async function queryV2UserByEmail(email: string): Promise<V2UserPayload | null> {
   const [rows] = await db.query<V2UserPayload[]>(V2_USER_BY_EMAIL_SQL, [email]);
   return rows[0] ?? null;
 }
-
-const LEGACY_USER_BY_ID_SQL = `
-  SELECT id, email_address, password, first_name, last_name, type
-  FROM users
-  WHERE id = ?
-  LIMIT 1
-`;
 
 const V2_USER_BY_ID_SQL = `
   SELECT
@@ -136,75 +79,13 @@ const V2_USER_BY_ID_SQL = `
   LIMIT 1
 `;
 
-async function queryLegacyUserById(id: string | number): Promise<LegacyUserPayload | null> {
-  const [rows] = await db.query<LegacyUserPayload[]>(LEGACY_USER_BY_ID_SQL, [id]);
-  return rows[0] ?? null;
-}
-
 async function queryV2UserById(id: string | number): Promise<V2UserPayload | null> {
   const [rows] = await db.query<V2UserPayload[]>(V2_USER_BY_ID_SQL, [id]);
   return rows[0] ?? null;
 }
 
-function getSourceOrder(source: AuthSource): Array<'legacy' | 'v2'> {
-  if (source === 'legacy') {
-    return ['legacy'];
-  }
-
-  if (source === 'v2') {
-    return ['v2'];
-  }
-
-  return ['v2', 'legacy'];
-}
-
-async function findAuthUserByEmail(
-  email: string,
-  source = resolveAuthSource()
-): Promise<AuthLookupResult> {
-  const sourceOrder = getSourceOrder(source);
-
-  for (const currentSource of sourceOrder) {
-    if (currentSource === 'v2') {
-      const v2User = await queryV2UserByEmail(email);
-      if (v2User) {
-        return { source: 'v2', user: v2User };
-      }
-      continue;
-    }
-
-    const legacyUser = await queryLegacyUserByEmail(email);
-    if (legacyUser) {
-      return { source: 'legacy', user: legacyUser };
-    }
-  }
-
-  return null;
-}
-
-async function findAuthUserById(
-  id: string | number,
-  source = resolveAuthSource()
-): Promise<AuthLookupResult> {
-  const sourceOrder = getSourceOrder(source);
-
-  for (const currentSource of sourceOrder) {
-    if (currentSource === 'v2') {
-      const v2User = await queryV2UserById(id);
-      if (v2User) {
-        return { source: 'v2', user: v2User };
-      }
-      continue;
-    }
-
-    const legacyUser = await queryLegacyUserById(id);
-    if (legacyUser) {
-      return { source: 'legacy', user: legacyUser };
-    }
-  }
-
-  return null;
-}
+const findAuthUserByEmail = queryV2UserByEmail;
+const findAuthUserById = queryV2UserById;
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('not-a-real-password', 10);
 
@@ -232,44 +113,27 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
       return;
     }
 
-    const user = authUser.user as LegacyUserPayload | V2UserPayload;
-    const hashToCompare =
-      authUser.source === 'v2'
-        ? (user as V2UserPayload).password_hash
-        : (user as LegacyUserPayload).password;
+    const user = authUser;
 
-    const passwordMatch = await bcrypt.compare(password, hashToCompare);
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
 
-    if (authUser.source === 'v2' && (user as V2UserPayload).status !== 'active') {
+    if (user.status !== 'active') {
       res.status(403).json({ error: 'Account inactive' });
       return;
     }
 
-    const decryptedFirstName =
-      authUser.source === 'legacy' ? decrypt(user.first_name) : user.first_name;
-    const decryptedLastName =
-      authUser.source === 'legacy' ? decrypt(user.last_name) : user.last_name;
-
-    const emailAddress =
-      authUser.source === 'v2'
-        ? (user as V2UserPayload).email
-        : (user as LegacyUserPayload).email_address;
-
-    const roleType =
-      authUser.source === 'v2'
-        ? (user as V2UserPayload).role_code || 'customer'
-        : (user as LegacyUserPayload).type;
+    const roleType = user.role_code || 'customer';
 
     const payload = {
       id: user.id,
-      first_name: decryptedFirstName,
-      email_address: emailAddress,
+      first_name: user.first_name,
+      email_address: user.email,
       type: roleType,
-      last_name: decryptedLastName,
+      last_name: user.last_name,
       address_line1: user.address_line1 || '',
       address_line2: user.address_line2 || '',
       address_line3: user.address_line3 || '',
@@ -280,7 +144,6 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
     };
 
     console.info('Auth login success', {
-      source: authUser.source,
       user_id: user.id,
       type: roleType,
     });
@@ -347,13 +210,7 @@ const verifyPasswordHandler: RequestHandler = async (req, res): Promise<void> =>
       return;
     }
 
-    const user = authUser.user as LegacyUserPayload | V2UserPayload;
-    const hashToCompare =
-      authUser.source === 'v2'
-        ? (user as V2UserPayload).password_hash
-        : (user as LegacyUserPayload).password;
-
-    const valid = await bcrypt.compare(String(currentPassword), hashToCompare);
+    const valid = await bcrypt.compare(String(currentPassword), authUser.password_hash);
     res.json({ valid });
     return;
   } catch (err) {

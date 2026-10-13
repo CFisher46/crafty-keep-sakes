@@ -13,12 +13,7 @@ Express + TypeScript REST API for the Crafty Keepsakes e-commerce platform. Conn
 | `npm start` | Runs the compiled production build from `dist/index.js`. |
 | `npm run lint` | Lints all TypeScript source files under `src/` using ESLint. |
 | `npm test` | Runs the Jest test suite (passes with no tests found). |
-| `npm run key:generate` | Generates a new 64-character hex AES-256-CBC encryption key and prints it to stdout. |
-| `npm run key:fingerprints` | Prints fingerprints of the current and previous encryption keys for verification. |
-| `npm run user:generate-insert` | Generates a ready-to-run SQL INSERT statement for a new user in `users_v2` + `user_roles_v2` + `customer_profiles_v2` (default target). |
-| `npm run user:generate-insert:legacy` | Generates a ready-to-run SQL INSERT statement for the legacy `users` table with encrypted PII fields. |
-| `npm run repair:encrypted-users` | Dry-run: reports which user records have PII that cannot be decrypted with the current key. |
-| `npm run repair:encrypted-users:apply` | Live run: re-encrypts all user PII using the current key (used after a key rotation). |
+| `npm run user:generate-insert` | Generates a ready-to-run SQL INSERT statement for a new user in `users_v2` + `user_roles_v2` + `customer_profiles_v2`. |
 
 ---
 
@@ -30,7 +25,6 @@ src/
 ├── index.ts
 ├── ts-common/
 │   ├── database.ts
-│   ├── helpers.ts
 │   ├── middleware.ts
 │   ├── sql-utils.ts
 │   └── types.ts
@@ -81,7 +75,6 @@ Shared infrastructure modules used across all route handlers.
 | File | Description |
 |------|-------------|
 | `database.ts` | MySQL connection pool. Creates and exports a `mysql2/promise` connection pool using environment variables (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_DATABASE`). |
-| `helpers.ts` | Encryption utilities. Implements AES-256-CBC `encrypt` and `decrypt` functions using `ENCRYPTION_KEY` (and optional `ENCRYPTION_KEY_PREVIOUS` for key rotation). Used to protect user PII fields at rest. |
 | `middleware.ts` | Auth middleware. Exports `verifyAuthToken` — reads the `auth_token` cookie, verifies it with `jsonwebtoken`, and attaches the decoded user to `req.user`. Returns 401/403 on failure. |
 | `sql-utils.ts` | SQL query builder utilities. Provides `conditionIn` (builds `IN (?, ?, ?)` clauses), `generateSortSql`, and `generateFilterSql` helpers for constructing parameterised dynamic queries safely. |
 | `types.ts` | Shared TypeScript types. Defines `Primative`, `SortParams`, `SortOpts<T>`, `FilterOpts<T>`, `PageSizePrams`, `SearchParams`, and `DefaultQueryParams` used by query builder utilities and route handlers. |
@@ -242,10 +235,7 @@ Utility scripts for key management and data maintenance. Run with `npm run <scri
 
 | Script | Description |
 |--------|-------------|
-| `generate-encryption-key.js` | Generates a cryptographically secure 64-character hex encryption key for use in `.env`. |
-| `print-key-fingerprints.js` | Prints SHA-256 fingerprints of `ENCRYPTION_KEY` and `ENCRYPTION_KEY_PREVIOUS` to verify which keys are loaded. |
-| `generate-user-insert.js` | Interactive script that prompts for user details and outputs a ready-to-run SQL INSERT with encrypted PII. |
-| `repair-encrypted-users.js` | Scans all users and attempts decryption; use `--apply` flag to re-encrypt records using the current key (supports key rotation). |
+| `generate-user-insert.js` | Prints three ready-to-run, order-dependent SQL statements that create a user in `users_v2`, `user_roles_v2` and `customer_profiles_v2` (bcrypt-hashed password). |
 
 ---
 
