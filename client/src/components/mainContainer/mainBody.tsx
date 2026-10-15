@@ -9,6 +9,7 @@ import Profile from "../../features/profile/page";
 import Admin from "../../features/admin_tools/page";
 import Login from "../../components/login/login";
 import Register from "../../components/login/register";
+import NotificationsPage from "../../features/notifications/page";
 import ProtectedRoute from "../../helpers/protectedRoutes";
 // import ContactUs from '../../pages/contactUs/contactUs';
 import { Box } from "grommet";
@@ -27,6 +28,15 @@ function MainBody() {
           <Route path="/Blog/:id" element={<Blog />} />
           <Route path="/Shop" element={<Shop />} />
           <Route path="/Basket" element={<ShoppingBasket />} />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute
+                element={<NotificationsPage />}
+                requiredTypes={["customer", "admin", "Customer", "Admin"]}
+              />
+            }
+          />
           <Route
             path="/profile/:id"
             element={
