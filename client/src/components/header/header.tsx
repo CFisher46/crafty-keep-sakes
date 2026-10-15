@@ -7,6 +7,8 @@ import NavigationBar from "../header/nav";
 import { RootState } from "../../store";
 import { useSelector } from "react-redux";
 import { ui } from "../../helpers/theme";
+import { fetchUnreadNotificationCount } from "../../features/notifications/api";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../../features/notifications/events";
 
 function PageHeader() {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
@@ -17,9 +19,39 @@ function PageHeader() {
   const isMobile = size === "small";
   const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (userId) setAuthOpen(false);
+  }, [userId]);
+
+  useEffect(() => {
+    if (typeof fetch !== "function" || !userId) {
+      setUnreadCount(0);
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    const loadUnreadCount = () => {
+      fetchUnreadNotificationCount()
+        .then((unread) => {
+          if (isMounted) setUnreadCount(unread);
+        })
+        .catch(() => {
+          if (isMounted) setUnreadCount(0);
+        });
+    };
+
+    loadUnreadCount();
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount);
+    window.addEventListener("focus", loadUnreadCount);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount);
+      window.removeEventListener("focus", loadUnreadCount);
+    };
   }, [userId]);
 
   useEffect(() => {
@@ -97,16 +129,31 @@ function PageHeader() {
         </Box>
 
         <Box flex basis="0" direction="row" gap="medium" align="center" justify="end">
-          <Button
-            a11yTitle="Notifications"
-            onClick={() => {
-              closeMenu();
-              navigate("/notifications");
-            }}
-            icon={<Notification color={iconColor} size="20px" />}
-            plain
-            disabled={!userId}
-          />
+          <Box style={{ position: "relative" }}>
+            <Button
+              a11yTitle="Notifications"
+              onClick={() => {
+                closeMenu();
+                navigate("/notifications");
+              }}
+              icon={<Notification color={iconColor} size="20px" />}
+              plain
+              disabled={!userId}
+            />
+            {unreadCount > 0 && (
+              <Box
+                background={ui.accent}
+                pad={{ horizontal: "xsmall" }}
+                round
+                aria-label={`${unreadCount} unread notifications`}
+                style={{ position: "absolute", top: "-8px", right: "-10px" }}
+              >
+                <Text size="xsmall" color="white">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
+              </Box>
+            )}
+          </Box>
           <Box style={{ position: "relative" }}>
             <Button
               a11yTitle="Basket"

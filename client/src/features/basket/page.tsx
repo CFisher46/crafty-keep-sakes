@@ -17,6 +17,7 @@ import {
 import type { DeliveryAddress } from "../../types";
 import { ui } from "../../helpers/theme";
 import { ActionButton } from "../landingPage/components/ActionButton";
+import { notifyNotificationsChanged } from "../notifications/events";
 
 function Basket() {
   const dispatch = useDispatch<any>();
@@ -118,6 +119,7 @@ function Basket() {
       };
 
       dispatch(clearBasket());
+      notifyNotificationsChanged();
       localStorage.removeItem('basket');
       setInvoiceId(String(payload.invoice_id ?? payload.invoice_number ?? 'N/A'));
       setCheckoutMessage(`Checkout successful! Invoice ${payload.invoice_number ?? 'N/A'} has been created.`);
