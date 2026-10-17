@@ -1,5 +1,5 @@
 import { Box, Text } from "grommet";
-export default function FeedbackPage() {
+export default function ReviewsPage() {
     return (
         <Box pad="medium">
             <Text>Customer Feedback</Text>

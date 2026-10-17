@@ -1,9 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Review } from "../../types";
-import { createAuditEntry } from "../audit/auditThunks";
+import { createAuditEntry } from "../audits/auditThunks"; 
 import {buildApiUrl} from "../../api/apiPath";
 
-const parseProductsPayload = (raw: unknown): Review[] => {
+const parseReviewsPayload = (raw: unknown): Review[] => {
   const normalizeArray = (input: unknown[]): Review[] => {
     if (!input.length) {
       return [];
@@ -51,11 +51,11 @@ const getChangedBy = (state: any) => {
     : "Unknown";
 };
 
-export const fetchProductById = createAsyncThunk<Review, string>(
-  "products/fetchById",
+export const fetchReviewsById = createAsyncThunk<Review, string>(
+  "reviews/fetchById",
   async (id: string) => {
     const res = await fetch(
-      buildApiUrl('products', `/${id}`)
+      buildApiUrl('reviews', `/${id}`)
     );
     const raw = await res.json();
     const result = JSON.parse(raw[0].result);
@@ -68,7 +68,7 @@ export const createReview = createAsyncThunk(
   "reviews/createReview",
   async (product: Review, { dispatch, rejectWithValue, getState }) => {
     try {
-      const res = await fetch(buildApiUrl('about_us'), {
+      const res = await fetch(buildApiUrl('reviews'), {
         method: "POST",
         credentials: 'include',
         headers: {
@@ -98,6 +98,77 @@ export const createReview = createAsyncThunk(
       return data; 
     } catch (err: any) {
       return rejectWithValue(err.message || "Unexpected error");
+    }
+  }
+);
+
+export const updateReview = createAsyncThunk<
+  Review, 
+  { id: string; review: Partial<Review>; previousReview?: Review }, 
+  { rejectValue: string }
+>(
+  "reviews/updateReview",
+  async ({ id, review, previousReview }, { dispatch, rejectWithValue, getState }) => {
+  try {
+    const response = await fetch(
+      buildApiUrl('reviews', `/${id}`),
+      {
+        method: "PUT",
+        credentials: 'include',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(review)
+      }
+    );
+
+    if (!response.ok) {
+      const errorMessage = await response.text();
+      return rejectWithValue(errorMessage);
+    }
+
+    const updatedReview = await response.json();
+
+    if (previousReview) {
+      const changedBy = getChangedBy(getState());
+
+      Object.keys(review).forEach((key) => {
+        const typedKey = key as keyof Review;
+        const oldValue = previousReview[typedKey];
+        const newValue = review[typedKey];
+
+        if (oldValue !== newValue) {
+          dispatch(
+            createAuditEntry({
+              user: id,
+              field_changed: typedKey,
+              action_type: "UPDATE",
+              api_source: `/reviews`,
+              changed_by: changedBy
+            })
+          );
+        }
+      });
+    }
+
+    return updatedReview;
+  } catch (err) {
+    return rejectWithValue("Network error");
+  }
+}
+);
+
+export const fetchAllReviewsForAdmin = createAsyncThunk<Review[]>(
+  "reviews/fetchAllForAdmin",
+  async (_, thunkAPI) => {
+    try {
+      const res = await fetch(buildApiUrl('reviews'));
+      const data = await res.json();
+      if (data && data.data !== undefined) {
+        return parseReviewsPayload(data.data);
+      } else {
+        throw new Error("Invalid API response structure");
+      }
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(err.message);
     }
   }
 );

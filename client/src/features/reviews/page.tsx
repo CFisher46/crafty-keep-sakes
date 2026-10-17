@@ -1,11 +1,11 @@
-import FeedbackPage from "./feedback/page";
+import ReviewsPage from "./feedback/page";
 import IntroductionsPage from "./introductions/page";
 
-export default function AboutUsPage() {
+export default function ReviewsOverviewPage() {
     return (
         <>
             <IntroductionsPage />
-            <FeedbackPage />
+            <ReviewsPage />
         </>
     );
 }
