@@ -1,7 +1,7 @@
 import {createSlice, PayloadAction} from "@reduxjs/toolkit";
 import { Review } from "../../types";
 import {RootState} from "..";
-import {createReview, updateReview, fetchAllReviewsForAdmin, fetchReviewsById } from "./reviewsThunks"
+import {createReview, updateReview, fetchAllReviewsForAdmin, fetchReviewsById } from "./reviewThunks"
 
 const initialState: {
   list: Review[];
