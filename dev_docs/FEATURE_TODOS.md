@@ -22,6 +22,10 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
 
+-   [ ] CKS-2-022 : Add, Update, Delete customer reviewse
+    -   AS a Customer, WHEN viewing the 'About Us', I WANT to see reviews from other Clients
+    -   AS an ADMIN, I WANT to be able to Add, Delete and Update Customer reviews.
+
 
 ## Enhancements
 

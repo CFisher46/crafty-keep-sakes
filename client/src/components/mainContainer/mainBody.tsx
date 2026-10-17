@@ -12,6 +12,7 @@ import Register from "../../components/login/register";
 import ProtectedRoute from "../../helpers/protectedRoutes";
 // import ContactUs from '../../pages/contactUs/contactUs';
 import { Box } from "grommet";
+import AboutUsPage from "../../features/about_us/page";
 // import UserRegistration from '../../pages/registration/registration';
 
 function MainBody() {
@@ -48,6 +49,7 @@ function MainBody() {
           {/* <Route path="/Contact" element={<ContactUs />} /> */}
           <Route path="/Login" element={<Login />} />
           <Route path="/Register" element={<Register />} />
+          <Route path="/About" element={<AboutUsPage />} />
         </Routes>
       </Box>
     </Box>
