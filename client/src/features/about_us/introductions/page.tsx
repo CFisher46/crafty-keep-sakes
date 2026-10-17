@@ -1,5 +1,4 @@
 import { Box, Text } from "grommet";
-import FeedbackPage from "../feedback/page";
 export default function IntroductionsPage() {
     return (
         <>

@@ -1,12 +1,11 @@
 import express from "express";
 import { db } from '../../../../ts-common/database';
-import { User } from '../../../../ts-common/user-types';
 import { createReviewV2Query } from '../sql';
 import { insertAuditEvent } from '../../audit-events';
 import { toInteger } from "../../../../ts-common/validators";
 import { Review } from '../../../../ts-common/review-types';
 import { requireRole, verifyAuthToken , getRequestUser} from "../../../../ts-common/middleware";
-import { Connection, ResultSetHeader } from "mysql2";
+import { ResultSetHeader } from "mysql2";
 
 
 const router = express.Router();
