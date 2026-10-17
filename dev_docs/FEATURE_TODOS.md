@@ -24,11 +24,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an POST Author, I WANT a notification, WHEN a post has been reacted to OR when a comment has been added that was not by me.
 
 -   [WIP] CKS-2-022 : Add, Update, Delete customer reviewse
-    -   AS a Customer, WHEN viewing the 'About Us', I WANT to see reviews from other Clients
-    -   AS an ADMIN, I WANT to be able to Add, Delete and Update Customer reviews.
-
--   [ ] CKS-2-023 : Create Basic Admin reports
-    -   AS an ADMIN, I WANT some basic reports for, Products (All or With Filters), Invoices (All or with Filters).
+    -   AS a Customer, WHEN viewing the 'About Us', I WANT to see reviews from other ClientsATE
     -   AS an ADMIN, I WANT to be able to export these reports in XLSX or CSV format AND they must reflect the filtered view.
 
 

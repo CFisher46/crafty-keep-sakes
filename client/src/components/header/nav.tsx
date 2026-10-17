@@ -79,7 +79,7 @@ function NavigationBar({
 
   const items = ([
     { label: 'Shop', route: '/Shop' },
-    { label: 'About', route: '/About' },
+    { label: 'Reviews', route: '/Reviews' },
     {
       label: (
         <Box direction="row" align="center" gap="xsmall">

@@ -16,6 +16,14 @@ export type User = {
   password: string;
 };
 
+export type Review = {
+  id: string;
+  star_count: number;
+  source: string;
+  comment: string;
+  submit_date: Date;
+};
+
 export type Product = {
   id: string;
   category: string;
