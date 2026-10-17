@@ -9,6 +9,7 @@ const DEFAULT_DOMAIN_FLAGS: DomainFlagMap = {
   audit: 'v2',
   basket: 'v2',
   blog: 'v2',
+  reviews: 'v2',
 };
 
 function readFlag(
@@ -32,6 +33,7 @@ export function resolveDomainFlags(): DomainFlagMap {
     audit: readFlag(process.env.REACT_APP_API_AUDIT_VERSION),
     basket: readFlag(process.env.REACT_APP_API_BASKET_VERSION),
     blog: readFlag(process.env.REACT_APP_API_BLOG_VERSION),
+    reviews: readFlag(process.env.REACT_APP_API_REVIEWS_VERSION),
   };
 }
 
