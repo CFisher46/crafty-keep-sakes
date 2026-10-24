@@ -1,9 +1,10 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import PageHeader from './header';
 import authReducer from '../../store/auth/authSlice';
 import basketReducer from '../../store/basket/basketSlice';
+import { NOTIFICATIONS_CHANGED_EVENT } from '../../features/notifications/events';
 
 const mockNavigate = jest.fn();
 let mockPathname = '/Home';
@@ -22,10 +23,21 @@ const rootReducer = combineReducers({ auth: authReducer, basket: basketReducer }
 const buildStore = (preloadedState?: any) =>
   configureStore({ reducer: rootReducer, preloadedState });
 
+const mockFetch = (unread = 0) => {
+  global.fetch = jest.fn(async (url: string) => {
+    if (String(url).includes('notifications')) {
+      return { ok: true, json: async () => ({ unread }) };
+    }
+
+    return { ok: true, json: async () => ({ data: [] }) };
+  }) as unknown as typeof fetch;
+};
+
 describe('PageHeader', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
     mockPathname = '/Home';
+    mockFetch(0);
   });
 
   it('navigates home when the logo is clicked', () => {
@@ -142,5 +154,72 @@ describe('PageHeader', () => {
 
     expect(listener).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog', { name: 'Sign in' })).not.toBeInTheDocument();
+  });
+
+  it('shows an unread count on the notifications bell', async () => {
+    mockFetch(4);
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '7', type: 'admin' } },
+      basket: { items: [], totalItems: 0 },
+    });
+
+    render(
+      <Provider store={store}>
+        <PageHeader />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('4 unread notifications')).toHaveTextContent('4');
+    });
+  });
+
+  it('does not fetch a notification count for guests', () => {
+    const store = buildStore({
+      auth: { isLoggedIn: false, user: null },
+      basket: { items: [], totalItems: 0 },
+    });
+
+    render(
+      <Provider store={store}>
+        <PageHeader />
+      </Provider>
+    );
+
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/unread notifications/)).not.toBeInTheDocument();
+  });
+
+  it('refreshes the bell count when notifications change', async () => {
+    let unread = 0;
+    global.fetch = jest.fn(async (url: string) => {
+      if (String(url).includes('notifications')) {
+        return { ok: true, json: async () => ({ unread }) };
+      }
+
+      return { ok: true, json: async () => ({ data: [] }) };
+    }) as unknown as typeof fetch;
+
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '7', type: 'customer' } },
+      basket: { items: [], totalItems: 0 },
+    });
+
+    render(
+      <Provider store={store}>
+        <PageHeader />
+      </Provider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByLabelText(/unread notifications/)).not.toBeInTheDocument();
+    });
+
+    unread = 2;
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('2 unread notifications')).toHaveTextContent('2');
+    });
   });
 });
