@@ -235,8 +235,10 @@ Goal: Cloudflare in front of Vercel (frontend) and Railway (API) acting as DNS a
 | Hostname | Points to | Notes |
 |----------|-----------|-------|
 | `craftykeepsakes.uk`, `www` | Vercel | Add both under the Vercel project's Domains settings |
-| `api.craftykeepsakes.uk` | Railway API service | Add under the service's Networking > Custom Domain |
-| `files.craftykeepsakes.uk` (optional) | Railway MinIO S3 port | Only if browsers load images directly |
+| `api.craftykeepsakes.uk` | NAS (Cloudflare Tunnel `cks-api`) until cutover, then Railway API | Stays on the NAS until cutover. Do not repoint it early |
+| `api-prd.craftykeepsakes.uk` | Railway API service | Railway-behind-Cloudflare test hostname, set up first with DNS only, then proxied |
+| `api-dev.craftykeepsakes.uk` | NAS (same tunnel `cks-api`, second published route) | Fallback and test-data API. Verified 2026-11-01. Add it to the NAS `CORS_ORIGIN` if browsers call it directly |
+| `files.craftykeepsakes.uk` | Railway MinIO (bucket) service | Stable public image URL. Set `MINIO_PUBLIC_URL=https://files.craftykeepsakes.uk/images` before real data, because the DB stores full URLs |
 
 For dev/prod separation, reserve a parallel set (for example `dev.`, `api-dev.`, `files-dev.`) and use separate Railway environments.
 
@@ -265,10 +267,11 @@ Today `client/vercel.json` rewrites `/api/*` to `https://api.craftykeepsakes.uk`
 
 Railway has no IP allowlist, so the `*.up.railway.app` URL can bypass the WAF.
 
-- Add a Cloudflare Transform Rule that sets a secret request header (for example `X-CF-Secret`) on requests to `api.*`.
-- Reject API requests without the correct header in server middleware. Store the value as a Railway variable.
-- Use `CF-Connecting-IP` for the client IP in logging and rate limiting, and configure Express `trust proxy` accordingly.
-- Remove or disable the generated `*.up.railway.app` domain once the custom domain works, if the header check is not in place.
+- Add a Cloudflare Transform Rule (Rules > Transform Rules > Modify Request Header) that sets a static request header `X-CF-Secret` on requests where the hostname is `api-prd.craftykeepsakes.uk` (later `api.`). Generate the value with `openssl rand -hex 32`.
+- Set the same value as `ORIGIN_SECRET` on the Railway API. The middleware (`ts-common/origin-guard.ts`, built, K4) rejects other requests with 403, and is inactive while the variable is unset. `/health` and the Square webhook paths are exempt.
+- Client IP (K1, built): only a request with the valid secret is trusted to have come through Cloudflare, so only then is `CF-Connecting-IP` used as `req.ip`. The rate limiters therefore see the real client. `trust proxy` stays at 1 for the non-Cloudflare case.
+- Rollout order: deploy the code, add the Transform Rule, confirm `curl https://api-prd.../api/v2/products` still returns 200, then set `ORIGIN_SECRET` on Railway. Setting the variable before the rule exists locks you out (403), and the fix is to unset it.
+- Remove or disable the generated `*.up.railway.app` domain once `ORIGIN_SECRET` is enforced.
 - **Exempt the Square webhook** (`POST /api/v2/payments/webhook` and `/api/payments/webhook`) from the secret-header check, WAF challenges, bot fight mode and body-modifying rules. Square sends no secret header and calls from its own IPs. The route is protected by Square's HMAC signature over the raw body, so do not add any rule that rewrites or compresses the body. Rate limit it loosely, and never let it share the per-IP bucket used for logins.
 
 ### Suggested WAF baseline
@@ -389,9 +392,9 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 - [ ] (Planned) Config: cutover window and write freeze agreed, row counts verified after import (C2)
 - [ ] (Planned) Config: `CORS_ORIGIN` lists apex and `www`; login tested on the real domain (C3, C4)
 - [ ] (Planned) Config: image volume seeded or replaced by MinIO (C8)
-- [ ] (Planned) Code: `trust proxy` / client IP fix for rate limiters (K1)
+- [x] Code: `trust proxy` / client IP fix for rate limiters (K1) and origin secret middleware (K4), built and inactive until `ORIGIN_SECRET` is set (section 7)
+- [x] Code: DB host startup guard (K5), built (`ts-common/db-target.ts`, `ALLOW_REMOTE_DB=1` set by `npm run dev:railway`)
 - [x] Code: `/health` endpoint (K3), built. It is also set as the Railway health check path in `railway.json` (C5); confirm the dashboard shows `/health` after the first deploy
-- [ ] (Planned) Code: origin secret middleware (K4) and DB host startup guard (K5)
 - [ ] (Planned) Code: MinIO storage adapter and image path migration (K7)
 
 ## 11. Switchover test plan (temporary)
