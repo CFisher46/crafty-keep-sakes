@@ -35,8 +35,8 @@ NAS (still the live API):
 
 Not yet done, in suggested order:
 1. Set `CORS_ORIGIN` on Railway to every origin that will call the API (comma-separated, no spaces, no trailing slash).
-2. **Client app domain.** The client has secured a separate domain for the app (not `craftykeepsakes.uk`). Decide its mapping before Phase D (see "Client domain" in section 11). Until then cookie behaviour from the browser is untested.
-3. Phase D: browser test against `api-prd`. More testing is planned, so the clean-up wipe (below) is the last step before go-live.
+2. **Client domain.** Plan: keep the app and API on `craftykeepsakes.uk`, and redirect `craftykeepsakestorbay.co.uk` to it at go-live (section 11 "Client domain"). Confirm with the client that they agree, and that their DNS provider (phase8) supports pointing the apex and `www` at Vercel or a redirect.
+3. Phase D: browser test from `dev.craftykeepsakes.uk` (or another `craftykeepsakes.uk` subdomain) against `api-prd`. More testing is planned, so the clean-up wipe (below) is the last step before go-live.
 4. Phase E: Square sandbox on Railway (second webhook subscription, `SQUARE_WEBHOOK_URL` on `api-prd`).
 5. Set `MINIO_PUBLIC_URL=https://files.craftykeepsakes.uk/images` on Railway before any real product is added, because full URLs are stored in the DB.
 6. **No data move.** Everything in the NAS and Railway databases so far is mock data, so Railway starts clean. No image migration is needed either.
@@ -421,12 +421,27 @@ Temporary runbook for proving Railway works end to end before `api.craftykeepsak
 ### Is MinIO needed now?
 Yes, and it is connected. Uploads on Railway go to the `images` bucket (adapter in `ts-common/image-storage.ts`, `MINIO_*` variables set). Existing NAS images are mock data and will not be migrated.
 
-### Client domain
-The client has secured a separate domain for the app, so the browser origin will not be `craftykeepsakes.uk`. The auth cookie is `sameSite: strict` with no `domain`, so it only works when the app and the API are same-site (share a registrable domain). Pick one before Phase D:
-- **Same registrable domain (recommended):** serve the API from a subdomain of the client's domain (for example `api.<client-domain>`), proxied through Cloudflare the same way as `api-prd`, and point `REACT_APP_API_URL` at it. Cookies then work with no code change.
-- **Keep the API on `craftykeepsakes.uk`:** the browser then calls a different site from the page, so the strict cookie is dropped. This would need a server change (for example `sameSite: none; secure`, plus CSRF review) or keeping the Vercel `/api` rewrite so calls stay same-origin. Rewriting loses the real client IP for Cloudflare rules, because the caller is Vercel (section 7).
+### Client domain (plan, to confirm with the client)
+The client owns `craftykeepsakestorbay.co.uk`, which currently serves their existing site from `103.169.142.6` (DNS at `ns0/1/2.phase8.net`, with something Cloudflare-like in front of the site). We do not control that DNS.
 
-For whichever hostname the API ends up on: add the apex and `www` of the client domain to `CORS_ORIGIN`, add the new hostname to Cloudflare with the `X-Origin-Secret` rule, set `SQUARE_WEBHOOK_URL` and `CLIENT_URL` to match, and add the domain in Vercel and its DNS.
+**Plan:** run the app and API on `craftykeepsakes.uk`, which we control, and redirect the client's domain to it at go-live.
+- App: `craftykeepsakes.uk` and `www` on Vercel. API: `api.craftykeepsakes.uk` (`api-prd` until cutover). Images: `files.craftykeepsakes.uk`. All same-site, so the `sameSite: strict` cookie works with no code change, and Cloudflare, the origin lock and the WAF already apply.
+- Test hostname for Phase D: a subdomain of `craftykeepsakes.uk` such as `dev.craftykeepsakes.uk`, pointed at a Vercel build with `REACT_APP_API_URL=https://api-prd.craftykeepsakes.uk`.
+- The client's current site is untouched until go-live.
+
+**Redirect at go-live (needs the client's DNS provider):**
+1. Add `craftykeepsakestorbay.co.uk` and `www` as domains on the Vercel project, set to redirect (301) to `craftykeepsakes.uk`. Vercel then shows the DNS records needed.
+2. The provider at phase8 changes the apex and `www` records to those values (no nameserver move). Lower the TTL a day before.
+3. Leave their MX/TXT (email) records alone.
+4. Rollback: restore the old apex and `www` records (`103.169.142.6`). Keep the old hosting running until sign-off.
+
+**To confirm with the client before relying on this:**
+- They agree customers will see `craftykeepsakes.uk` as the address, rather than their own domain.
+- The phase8 provider can change the apex and `www` records to point at Vercel (an apex needs an A or ALIAS/ANAME record, and some providers cannot do that), or can do a redirect another way (for example a URL forward to `https://craftykeepsakes.uk`, which is simpler but does not keep paths).
+- Who is allowed to request DNS changes, and the lead time.
+- SEO: the 301 passes most ranking over but the old results take time to update. Consider adding the new domain in Google Search Console.
+
+**If this is redesigned later** (client domain as the main address): put the API on a subdomain of that domain behind Cloudflare, then change `REACT_APP_API_URL`, `CORS_ORIGIN`, `CLIENT_URL`, `SQUARE_WEBHOOK_URL`, the Cloudflare secret-header rule and the Vercel domains together. A nameserver move to Cloudflare would be needed for the WAF to cover it.
 
 ### Phase A: seed the admin on Railway
 1. On your laptop, in `server/`, generate the SQL (needs no database): `npm run user:generate-insert -- --email <admin email> --password '<strong temporary password>' --firstName <first> --lastName <last> --role admin`. Do not paste the password into chat or commit it.
@@ -458,7 +473,7 @@ Run against `https://crafty-keep-sakes-production.up.railway.app` with curl or P
 - [x] Secret header (K4): requests without `X-Origin-Secret` are rejected (403), `/health` and the Square webhook paths are exempt
 
 ### Phase D: browser and Vercel test
-Use a Vercel build or preview that sets `REACT_APP_API_URL` to the API hostname, served from a hostname that is same-site with it (see "Client domain" above). A `*.vercel.app` preview is cross-site and will drop the `sameSite: strict` auth cookie (C4).
+Use a Vercel build or preview that sets `REACT_APP_API_URL` to the API hostname, served from a hostname that is same-site with it (see "Client domain" above, `dev.craftykeepsakes.uk`). A `*.vercel.app` preview is cross-site and will drop the `sameSite: strict` auth cookie (C4).
 - [ ] Add the origin to Railway `CORS_ORIGIN` (comma-separated, apex and `www` as needed)
 - [ ] Log in, refresh the page (session restore), log out
 - [ ] Browse products, add to basket, check out (the logged-in checkout redirect works)
@@ -483,7 +498,8 @@ Use a Vercel build or preview that sets `REACT_APP_API_URL` to the API hostname,
 2. No data import: Railway starts with the schema, the roles and the admin user only.
 3. Repoint `api.craftykeepsakes.uk` to Railway (DNS only, then proxied), set the Vercel `REACT_APP_API_URL`, update `SQUARE_WEBHOOK_URL` and the Square subscription if the hostname changed, then repeat Phases B to E on the live name.
 4. Rollback: repoint `api` back to the NAS tunnel and keep the NAS running until sign-off.
-5. Clean up: re-enable the pre-deploy command, disable the MySQL TCP proxy, remove the stale `*.up.railway.app` domain once K4 is enforced, and delete this section.
+5. Go live: point `craftykeepsakes.uk` and `www` at Vercel, then ask the client's DNS provider to redirect `craftykeepsakestorbay.co.uk` and `www` to it (section 11 "Client domain").
+6. Clean up: re-enable the pre-deploy command, disable the MySQL TCP proxy, remove the stale `*.up.railway.app` domain once K4 is enforced, and delete this section.
 
 ### Gaps found by this plan
 - **`/health` endpoint** (K3) is built: `GET /health` runs `SELECT 1` (3 s timeout) and returns `{"status":"ok"}` or 503 `{"status":"unavailable"}`, with no auth and no rate limit. Railway's health check path is set to `/health` in `railway.json`.
