@@ -3,6 +3,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { verifyAuthToken, requireRole } from '../../ts-common/middleware';
 import { insertAuditEvent } from './audit-events';
+import { notify } from '../../notifications/service';
 
 const router = express.Router();
 
@@ -410,9 +411,10 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
 
     // Get the current invoice details
     const [invoiceRows] = await connection.query<RowDataPacket[]>(
-      `SELECT order_id, invoice_status, tracking_info
-       FROM invoices_v2
-       WHERE id = ?
+      `SELECT i.order_id, i.invoice_status, i.tracking_info, i.invoice_number, o.user_id
+       FROM invoices_v2 i
+       JOIN orders_v2 o ON o.id = i.order_id
+       WHERE i.id = ?
        LIMIT 1`,
       [invoiceId]
     );
@@ -501,6 +503,31 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
           : invoice.tracking_info,
       },
     });
+
+    const customerId = Number(invoice.user_id);
+    const invoiceNumber = String(invoice.invoice_number ?? '');
+
+    if (Number.isFinite(customerId)) {
+      if (statusChanged) {
+        await notify('invoice_status_changed', {
+          userId: customerId,
+          orderId,
+          invoiceId,
+          invoiceNumber,
+          status: status as 'unpaid' | 'paid' | 'void',
+        });
+      }
+
+      if (trackingInfo && trackingInfo !== String(invoice.tracking_info ?? '')) {
+        await notify('tracking_added', {
+          userId: customerId,
+          orderId,
+          invoiceId,
+          invoiceNumber,
+          trackingInfo,
+        });
+      }
+    }
 
     res.json({
       message: 'Invoice updated',
@@ -803,6 +830,13 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
     });
 
     await connection.commit();
+
+    await notify('order_placed', {
+      orderId,
+      invoiceId,
+      invoiceNumber,
+      totalDue: grandTotal,
+    });
 
     res.status(201).json({
       message: 'Checkout complete',

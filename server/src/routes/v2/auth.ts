@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
+import { notify } from '../../notifications/service';
 import { decrypt } from '../../ts-common/helpers';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
@@ -438,6 +439,12 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
 
     await connection.commit();
     res.status(201).json({ message: 'Account created' });
+
+    await notify('user_registered', {
+      userId,
+      name: `${String(first_name).trim()} ${String(last_name).trim()}`.trim(),
+      email: String(email).trim(),
+    });
   } catch (err) {
     await connection.rollback();
 

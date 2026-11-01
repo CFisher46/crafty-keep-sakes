@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
+import { notify } from '../../../../notifications/service';
 import { User } from '../../../../ts-common/user-types';
 import {
   verifyAuthToken,
@@ -97,6 +98,8 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
     });
 
     await connection.commit();
+
+    await notify('account_created', { userId });
 
     res.status(201).json({
       message: 'User created',
