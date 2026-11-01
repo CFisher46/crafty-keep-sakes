@@ -36,12 +36,13 @@ NAS (still the live API):
 Not yet done, in suggested order:
 1. Set `CORS_ORIGIN` on Railway to every origin that will call the API (comma-separated, no spaces, no trailing slash).
 2. **Client app domain.** The client has secured a separate domain for the app (not `craftykeepsakes.uk`). Decide its mapping before Phase D (see "Client domain" in section 11). Until then cookie behaviour from the browser is untested.
-3. Phase D: browser test against `api-prd`.
+3. Phase D: browser test against `api-prd`. More testing is planned, so the clean-up wipe (below) is the last step before go-live.
 4. Phase E: Square sandbox on Railway (second webhook subscription, `SQUARE_WEBHOOK_URL` on `api-prd`).
-5. Migrate existing NAS images to the bucket and rewrite the DB paths. Existing stored paths are `/images/...` on disk. `MINIO_PUBLIC_URL` should be `https://files.craftykeepsakes.uk/images` before real data, because full URLs are stored.
-6. Decide and run the data move from the NAS (section 5), with a write freeze and no pending payment links (C2).
-7. Cutover (Phase F): repoint `api` to Railway, keep `api-dev` on the NAS as the fallback, then remove the `up.railway.app` domain, the Vercel `/api` rewrite and the unused TCP proxy.
-8. Housekeeping: rotate the secrets that were exposed during setup (`JWT_SECRET`, the NAS DB password, `ENCRYPTION_KEY`, the Cloudflare tunnel token, the Square sandbox keys, the MinIO access key), delete the `CHANGELOG_PAT` secret, remove the test product and its image, and keep real secret values out of chat and logs.
+5. Set `MINIO_PUBLIC_URL=https://files.craftykeepsakes.uk/images` on Railway before any real product is added, because full URLs are stored in the DB.
+6. **No data move.** Everything in the NAS and Railway databases so far is mock data, so Railway starts clean. No image migration is needed either.
+7. **Wipe the Railway test data, as the very last step before go-live** (section 12): the test products, product images, audit events and anything else created while testing, plus the test files in the `images` bucket. Keep the admin user and the roles.
+8. Cutover (Phase F): repoint `api` to Railway, keep `api-dev` on the NAS as the fallback, then remove the `up.railway.app` domain, the Vercel `/api` rewrite and the unused TCP proxy.
+9. Housekeeping: rotate the secrets that were exposed during setup (`JWT_SECRET`, the NAS DB password, `ENCRYPTION_KEY`, the Cloudflare tunnel token, the Square sandbox keys, the MinIO access key), delete the `CHANGELOG_PAT` secret, remove the test product and its image, and keep real secret values out of chat and logs.
 
 Earlier status (2026-10-13):
 - A MinIO template has been added to the Railway project. Nothing uses it yet (section 6).
@@ -193,7 +194,7 @@ Product and blog images are stored on disk, not in the database. Only the paths 
 - Blog uploads go to `client/public/images/blog`, and product images go under `client/public/images`.
 - The NAS compose file mounts a volume at `/app/client/public/images`.
 - On Railway, attach a volume at the same path. Without it, uploaded images disappear on every deploy.
-- Copy the existing image files from the NAS volume into the new one so existing products and posts keep their pictures.
+- Existing NAS images are mock data and are not copied.
 
 ## 4. Client
 
@@ -201,7 +202,9 @@ Product and blog images are stored on disk, not in the database. Only the paths 
 - Make sure the API's `CORS_ORIGIN` matches the client's URL, because auth uses cookies (`credentials: include`).
 - In production the auth cookie is `secure`, so both sides must be served over HTTPS.
 
-## 5. Data move (if keeping existing data)
+## 5. Data move (not needed: only mock data exists, see section 12)
+
+Skip this section. It is kept for reference in case real data ever needs moving.
 Export from the NAS database and import into Railway after the schema is created. Do it in this order so foreign keys are satisfied:
 
 1. `roles_v2`, `users_v2`, `user_roles_v2`, `customer_profiles_v2`
@@ -347,8 +350,8 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 
 | # | Gap | Action |
 |---|-----|--------|
-| C1 | **No backups for the Railway MySQL.** The NAS is the only safe copy until the move | Enable Railway volume backups on the MySQL service if the plan supports it, and take a manual `mysqldump` of the NAS before the data move and of Railway right after it. Record where dumps are kept and test one restore |
-| C2 | **No cutover window or write freeze** | Pick a quiet time. Put the site in maintenance or stop NAS writes, take the final export, import into Railway (section 5), verify row counts per table, switch `REACT_APP_API_URL`/DNS, then re-enable. Orders placed on the NAS after the export are lost, so the freeze must cover the export, import and switch. **Payments:** before the final export, wait until no invoice is `unpaid` with a recent `payment_link_created` row in `payments_v2`. A Square webhook that reaches Railway for an invoice that only exists on the NAS finds no invoice, so the customer pays but the invoice stays unpaid. If the webhook URL changes, update `SQUARE_WEBHOOK_URL` and the Square subscription together |
+| C1 | **No backups for the Railway MySQL.** Once real orders exist it is the only copy | Enable Railway volume backups on the MySQL service if the plan supports it, and take a manual `mysqldump` right after the clean-up wipe and before launch. Record where dumps are kept and test one restore |
+| C2 | **Cutover timing** | There is no data to move, so no write freeze is needed for a data import. Still pick a quiet time, switch DNS and `REACT_APP_API_URL`, and keep the NAS as the rollback. **Payments:** if the NAS has any real unpaid invoices with a recent `payment_link_created` row in `payments_v2`, let them settle first. A Square webhook that reaches Railway for an invoice that only exists on the NAS finds no invoice. If the webhook URL changes, update `SQUARE_WEBHOOK_URL` and the Square subscription together |
 | C3 | **`CORS_ORIGIN` is a comma-separated list** (`app.ts` splits on `,`) | Set it to every real origin, for example `https://craftykeepsakes.uk,https://www.craftykeepsakes.uk`, not a single URL. Set separately per Railway environment |
 | C4 | **Cookie behaviour once the browser calls `api.` directly.** The auth cookie is `httpOnly`, `secure` in production and `sameSite: 'strict'` with no `domain` (`routes/v2/auth.ts`). `api.craftykeepsakes.uk` and `www.craftykeepsakes.uk` are same-site, so this works | It will **not** work from `*.vercel.app` preview URLs, because they are cross-site to the API and the cookie is dropped. Test logins on the real domain only, or give previews a subdomain of `craftykeepsakes.uk` (for example `dev.`) |
 | C5 | **Railway deploy health** | After the code change in K3, set the health check path on the Railway service (or in `railway.json`) so a failing deploy is not promoted and rollback works |
@@ -386,14 +389,14 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 - [x] API variables set
 - [ ] Payment variables set (`PAYMENTS_PROVIDER=square`, `SQUARE_ENVIRONMENT=sandbox`, `SQUARE_SANDBOX_*`, `SQUARE_WEBHOOK_URL`, `CLIENT_URL`)
 - [ ] Square webhook URL still matches `SQUARE_WEBHOOK_URL` after the move; a sandbox payment flips the invoice to paid on Railway
-- [ ] No pending Square payment links at the cutover freeze
+- [ ] No pending Square payment links on the NAS at cutover (only matters if the NAS has real invoices)
 - [ ] Square webhook exempted from the origin-secret check and WAF rules
 - [ ] Image volume attached and files copied
 - [ ] Client points at the new API and CORS matches
 - [ ] Login, registration, shop, basket, checkout and blog checked on the new environment
 - [ ] TCP proxy (if enabled) disabled once setup and data import are done
 - [ ] NAS left running until Railway is verified
-- [x] MinIO bucket, access key and private-network connection set up. [ ] Existing image path migration still to do
+- [x] MinIO bucket, access key and private-network connection set up (no image migration needed, mock data only)
 - [x] Railway custom domain (`api-prd`, `files`) verified, then proxied with SSL mode Full (strict)
 - [ ] (Planned) Vercel domains added; `REACT_APP_API_URL` and `CORS_ORIGIN` updated; `/api` rewrite removed
 - [x] Origin secret header enforced; `*.up.railway.app` bypass closed (domain can now be removed)
@@ -401,21 +404,22 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 - [ ] (Planned) Local `server/.env` confirmed to point at the NAS DB with a separate `JWT_SECRET`, and Railway credentials absent from local files
 - [ ] (Planned) Vercel `REACT_APP_API_URL` scoped per environment (Production vs Preview/Development)
 - [ ] (Planned) Dev/prod split reviewed across domains, environments, buckets and credentials
-- [ ] (Planned) Config: Railway MySQL backups enabled, NAS dump taken, restore tested (C1)
-- [ ] (Planned) Config: cutover window and write freeze agreed, row counts verified after import (C2)
+- [ ] (Planned) Config: Railway MySQL backups enabled, a dump taken after the clean-up wipe, restore tested (C1)
+- [ ] (Planned) Config: cutover time agreed (C2)
+- [ ] (Planned) Last step before go-live: Railway test data wiped (section 12)
 - [ ] (Planned) Config: `CORS_ORIGIN` lists apex and `www`; login tested on the real domain (C3, C4)
 - [ ] (Planned) Config: image volume seeded or replaced by MinIO (C8)
 - [x] Code: `trust proxy` / client IP fix for rate limiters (K1) and origin secret middleware (K4), built and inactive until `ORIGIN_SECRET` is set (section 7)
 - [x] Code: DB host startup guard (K5), built (`ts-common/db-target.ts`, `ALLOW_REMOTE_DB=1` set by `npm run dev:railway`)
 - [x] Code: `/health` endpoint (K3), built. It is also set as the Railway health check path in `railway.json` (C5); confirm the dashboard shows `/health` after the first deploy
-- [x] Code: MinIO storage adapter (K7). [ ] Image path migration script still to do
+- [x] Code: MinIO storage adapter (K7). Image path migration is not needed
 
 ## 11. Switchover test plan (temporary)
 
 Temporary runbook for proving Railway works end to end before `api.craftykeepsakes.uk` is repointed. Remove or fold into section 10 once the cutover is done. The NAS stays the live API throughout. Test against a temporary hostname such as `api-prd.craftykeepsakes.uk`, never the live `api.` name, until phase E.
 
 ### Is MinIO needed now?
-Yes, and it is connected. Uploads on Railway go to the `images` bucket (adapter in `ts-common/image-storage.ts`, `MINIO_*` variables set). Existing images saved as `/images/...` on the NAS disk still load from disk, and need migrating before cutover (see "Not yet done" in the progress log).
+Yes, and it is connected. Uploads on Railway go to the `images` bucket (adapter in `ts-common/image-storage.ts`, `MINIO_*` variables set). Existing NAS images are mock data and will not be migrated.
 
 ### Client domain
 The client has secured a separate domain for the app, so the browser origin will not be `craftykeepsakes.uk`. The auth cookie is `sameSite: strict` with no `domain`, so it only works when the app and the API are same-site (share a registrable domain). Pick one before Phase D:
@@ -475,8 +479,8 @@ Use a Vercel build or preview that sets `REACT_APP_API_URL` to the API hostname,
 - [ ] The webhook is not affected by rate limits or the secret header
 
 ### Phase F: cutover and rollback
-1. Pre-cutover: take a NAS `mysqldump` and a Railway backup, wait for no unpaid invoices with recent payment links, and agree the write freeze (C2).
-2. Export from the NAS and import into Railway in the section 5 order, then compare row counts per table.
+1. Pre-cutover: finish all testing, then run the clean-up wipe in section 12 and take a Railway backup or dump. Check there are no real unpaid NAS invoices with recent payment links (C2).
+2. No data import: Railway starts with the schema, the roles and the admin user only.
 3. Repoint `api.craftykeepsakes.uk` to Railway (DNS only, then proxied), set the Vercel `REACT_APP_API_URL`, update `SQUARE_WEBHOOK_URL` and the Square subscription if the hostname changed, then repeat Phases B to E on the live name.
 4. Rollback: repoint `api` back to the NAS tunnel and keep the NAS running until sign-off.
 5. Clean up: re-enable the pre-deploy command, disable the MySQL TCP proxy, remove the stale `*.up.railway.app` domain once K4 is enforced, and delete this section.
@@ -487,3 +491,21 @@ Use a Vercel build or preview that sets `REACT_APP_API_URL` to the API hostname,
 - **No origin lock** (K4), so the `*.up.railway.app` host bypasses Cloudflare.
 - **Uploads are not durable** on Railway without a volume or MinIO (C8, K7).
 - **Pre-deploy schema step is off** until this PR merges.
+
+## 12. Clean-up wipe before go-live (last step)
+
+All data so far, on the NAS and on Railway, is mock or test data, so nothing is migrated. Do this only after all testing is finished, because it removes the test data the checks rely on. Keep `roles_v2` and the admin user (`users_v2`, `user_roles_v2`, `customer_profiles_v2` rows for that user).
+
+1. Take a Railway backup first, in case something needed is removed.
+2. Check what exists: `SELECT COUNT(*) FROM <table>` for each table below.
+3. Delete in this order so foreign keys are satisfied (RESTRICT constraints block parent deletes). Run each statement separately in the Railway MySQL query tab:
+   - Orders and payments: `payments_v2`, `invoice_items_v2`, `invoice_views_v2`, `invoices_v2`, `order_items_v2`, `orders_v2`, `basket_items_v2`, `baskets_v2`
+   - Products: `product_images_v2`, `product_categories_v2`, `products_v2`, and `categories_v2` if the test categories should go
+   - Content: `blog_post_reactions_v2`, `blog_post_comments_v2`, `blog_post_images_v2`, `blog_post_views_v2`, `blog_posts_v2`, `reviews_v2`
+   - Other: `notifications_v2`, `audit_events_v2`
+   - Test users: delete any test customer users other than the admin, from `users_v2` (`user_roles_v2` and `customer_profiles_v2` rows cascade)
+   Use `DELETE FROM`, not `TRUNCATE`, because `TRUNCATE` fails on tables that are referenced by foreign keys.
+4. Delete the test files from the `images` bucket (the MinIO console, or the S3 API with the access key). Product images from the DB rows are no longer referenced once the rows are gone.
+5. Delete the test product's leftover local file `client/public/images/1793563700578-test_button.jpg` if it exists in a working copy.
+6. Verify: row counts are zero, the admin can log in, and `GET /api/v2/products` returns an empty list with `total_count: 0`. Add a first real product and check its image loads from `files.craftykeepsakes.uk`.
+7. Take a final Railway backup or dump. Disable the MySQL TCP proxy and remove the `up.railway.app` domain if not already done.
