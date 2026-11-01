@@ -17,12 +17,15 @@ export type User = {
 };
 
 export type Review = {
-  id: string;
+  id: number;
+  reviewer_name: string;
   star_count: number;
   source: string;
   comment: string;
-  submit_date: Date;
+  submit_date: string;
 };
+
+export type ReviewInput = Omit<Review, 'id'>;
 
 export type Product = {
   id: string;

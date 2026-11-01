@@ -35,7 +35,7 @@ describe('NavigationBar', () => {
     );
 
     expect(screen.getByText('Shop')).toBeInTheDocument();
-    expect(screen.getByText('About')).toBeInTheDocument();
+    expect(screen.getByText('Reviews')).toBeInTheDocument();
     expect(screen.getByText('Blog')).toBeInTheDocument();
     expect(screen.getByText('Contact Us')).toBeInTheDocument();
   });

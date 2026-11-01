@@ -1,174 +1,87 @@
-import { createAsyncThunk } from "@reduxjs/toolkit";
-import { Review } from "../../types";
-import { createAuditEntry } from "../audits/auditThunks"; 
-import {buildApiUrl} from "../../api/apiPath";
+import { createAsyncThunk } from '@reduxjs/toolkit';
+import { Review, ReviewInput } from '../../types';
+import { buildApiUrl } from '../../api/apiPath';
 
-const parseReviewsPayload = (raw: unknown): Review[] => {
-  const normalizeArray = (input: unknown[]): Review[] => {
-    if (!input.length) {
-      return [];
-    }
-
-    if (typeof input[0] === "string") {
-      return input
-        .map((item) => {
-          if (typeof item !== "string") {
-            return null;
-          }
-
-          try {
-            return JSON.parse(item);
-          } catch {
-            return null;
-          }
-        })
-        .filter((item): item is Review => Boolean(item));
-    }
-
-    return input as Review[];
-  };
-
-  if (Array.isArray(raw)) {
-    return normalizeArray(raw);
+const readError = async (response: Response, fallback: string): Promise<string> => {
+  try {
+    const body = await response.json();
+    return body?.error || body?.message || fallback;
+  } catch {
+    return fallback;
   }
+};
 
-  if (typeof raw === "string" && raw.trim()) {
+export const fetchReviews = createAsyncThunk<Review[], void, { rejectValue: string }>(
+  'reviews/fetchReviews',
+  async (_, { rejectWithValue }) => {
     try {
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? normalizeArray(parsed) : [];
+      const response = await fetch(buildApiUrl('reviews', '/'));
+      if (!response.ok) {
+        return rejectWithValue(await readError(response, 'Failed to load reviews'));
+      }
+      const body = await response.json();
+      return Array.isArray(body?.data) ? (body.data as Review[]) : [];
     } catch {
-      return [];
+      return rejectWithValue('Failed to load reviews');
     }
-  }
-
-  return [];
-};
-
-const getChangedBy = (state: any) => {
-  const loggedInUser = state.auth?.user;
-  return loggedInUser
-    ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
-    : "Unknown";
-};
-
-export const fetchReviewsById = createAsyncThunk<Review, string>(
-  "reviews/fetchById",
-  async (id: string) => {
-    const res = await fetch(
-      buildApiUrl('reviews', `/${id}`)
-    );
-    const raw = await res.json();
-    const result = JSON.parse(raw[0].result);
-    const review = JSON.parse(result.data)[0];
-    return review;
   }
 );
 
-export const createReview = createAsyncThunk(
-  "reviews/createReview",
-  async (product: Review, { dispatch, rejectWithValue, getState }) => {
+export const createReview = createAsyncThunk<void, ReviewInput, { rejectValue: string }>(
+  'reviews/createReview',
+  async (review, { dispatch, rejectWithValue }) => {
     try {
-      const res = await fetch(buildApiUrl('reviews'), {
-        method: "POST",
+      const response = await fetch(buildApiUrl('reviews', '/'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(product)
+        body: JSON.stringify(review),
       });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        return rejectWithValue(errorData.error || "Failed to create product");
+      if (!response.ok) {
+        return rejectWithValue(await readError(response, 'Failed to create review'));
       }
-
-      const data = await res.json();
-
-      const changedBy = getChangedBy(getState());
-      dispatch(
-        createAuditEntry({
-          user: String(product.id || data.insertId || ""),
-          field_changed: "review_created",
-          action_type: "CREATE",
-          api_source: "/reviews",
-          changed_by: changedBy
-        })
-      );
-
-      return data; 
-    } catch (err: any) {
-      return rejectWithValue(err.message || "Unexpected error");
+      await dispatch(fetchReviews());
+    } catch {
+      return rejectWithValue('Failed to create review');
     }
   }
 );
 
 export const updateReview = createAsyncThunk<
-  Review, 
-  { id: string; review: Partial<Review>; previousReview?: Review }, 
+  void,
+  { id: number; changes: Partial<ReviewInput> },
   { rejectValue: string }
->(
-  "reviews/updateReview",
-  async ({ id, review, previousReview }, { dispatch, rejectWithValue, getState }) => {
+>('reviews/updateReview', async ({ id, changes }, { dispatch, rejectWithValue }) => {
   try {
-    const response = await fetch(
-      buildApiUrl('reviews', `/${id}`),
-      {
-        method: "PUT",
-        credentials: 'include',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(review)
-      }
-    );
-
+    const response = await fetch(buildApiUrl('reviews', `/${id}`), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(changes),
+    });
     if (!response.ok) {
-      const errorMessage = await response.text();
-      return rejectWithValue(errorMessage);
+      return rejectWithValue(await readError(response, 'Failed to update review'));
     }
-
-    const updatedReview = await response.json();
-
-    if (previousReview) {
-      const changedBy = getChangedBy(getState());
-
-      Object.keys(review).forEach((key) => {
-        const typedKey = key as keyof Review;
-        const oldValue = previousReview[typedKey];
-        const newValue = review[typedKey];
-
-        if (oldValue !== newValue) {
-          dispatch(
-            createAuditEntry({
-              user: id,
-              field_changed: typedKey,
-              action_type: "UPDATE",
-              api_source: `/reviews`,
-              changed_by: changedBy
-            })
-          );
-        }
-      });
-    }
-
-    return updatedReview;
-  } catch (err) {
-    return rejectWithValue("Network error");
+    await dispatch(fetchReviews());
+  } catch {
+    return rejectWithValue('Failed to update review');
   }
-}
-);
+});
 
-export const fetchAllReviewsForAdmin = createAsyncThunk<Review[]>(
-  "reviews/fetchAllForAdmin",
-  async (_, thunkAPI) => {
+export const deleteReview = createAsyncThunk<void, number, { rejectValue: string }>(
+  'reviews/deleteReview',
+  async (id, { dispatch, rejectWithValue }) => {
     try {
-      const res = await fetch(buildApiUrl('reviews'));
-      const data = await res.json();
-      if (data && data.data !== undefined) {
-        return parseReviewsPayload(data.data);
-      } else {
-        throw new Error("Invalid API response structure");
+      const response = await fetch(buildApiUrl('reviews', `/${id}`), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        return rejectWithValue(await readError(response, 'Failed to delete review'));
       }
-    } catch (err: any) {
-      return thunkAPI.rejectWithValue(err.message);
+      await dispatch(fetchReviews());
+    } catch {
+      return rejectWithValue('Failed to delete review');
     }
   }
 );

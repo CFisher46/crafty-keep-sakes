@@ -23,9 +23,10 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
     -   AS an POST Author, I WANT a notification, WHEN a post has been reacted to OR when a comment has been added that was not by me.
 
--   [WIP] CKS-2-022 : Add, Update, Delete customer reviewse
-    -   AS a Customer, WHEN viewing the 'About Us', I WANT to see reviews from other ClientsATE
-    -   AS an ADMIN, I WANT to be able to export these reports in XLSX or CSV format AND they must reflect the filtered view.
+-   [WIP] CKS-2-022 : Add, Update, Delete customer reviews
+    -   AS a Customer, WHEN viewing the Reviews page, I WANT to see feedback from other clients.
+    -   AS an ADMIN, I WANT to add, update and delete feedback gathered from external sources (stored in `reviews_v2`) so it can be shared with customers.
+    -   Notes: The admin Reports area was replaced by Reviews. Report export (XLSX/CSV) will be tackled separately with a different approach.
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.

@@ -1,96 +1,34 @@
-import {createSlice, PayloadAction} from "@reduxjs/toolkit";
-import { Review } from "../../types";
-import {RootState} from "..";
-import {createReview, updateReview, fetchAllReviewsForAdmin, fetchReviewsById } from "./reviewThunks"
+import { createSlice } from '@reduxjs/toolkit';
+import { Review } from '../../types';
+import { fetchReviews } from './reviewThunks';
 
-const initialState: {
-  list: Review[];
+interface ReviewsState {
+  items: Review[];
   loading: boolean;
-  createStatus: "idle" | "loading" | "succeeded" | "failed";
   error: string | null;
-} = {
-  list: [],
-  loading: false,
-  createStatus: "idle",
-  error: null,
-};
+}
+
+const initialState: ReviewsState = { items: [], loading: false, error: null };
 
 const reviewsSlice = createSlice({
-  name: "reviews",
+  name: 'reviews',
   initialState,
-  reducers: {
-    resetCreateStatus: (state) => {
-        state.createStatus = "idle";
-        state.error = null;
-    }
-  },
-
+  reducers: {},
   extraReducers: (builder) => {
     builder
-      .addCase(createReview.pending, (state) => {
-        state.createStatus = "loading";
-        state.error = null;
-      })
-      .addCase(createReview.fulfilled, (state, action) => {
-        state.createStatus = "succeeded";
-      })
-      .addCase(createReview.rejected, (state, action) => {
-        state.createStatus = "failed";
-        state.error = action.payload as string;
-      })
-      .addCase(fetchAllReviewsForAdmin.pending, (state) => {
+      .addCase(fetchReviews.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchAllReviewsForAdmin.fulfilled, (state, action) => {
+      .addCase(fetchReviews.fulfilled, (state, action) => {
         state.loading = false;
-        state.list = action.payload;
+        state.items = action.payload;
       })
-      .addCase(fetchAllReviewsForAdmin.rejected, (state, action) => {
+      .addCase(fetchReviews.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload as string;
-      })
-      .addCase(fetchReviewsById.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(fetchReviewsById.fulfilled, (state, action) => {
-        state.loading = false;
-        state.error = null;
-
-        const payload = action.payload;
-        state.list = typeof payload === "string" ? JSON.parse(payload) : payload;
-      })
-      .addCase(fetchReviewsById.rejected, (state, action) => {
-        state.loading = false;
-        state.error = (action.payload as string) ?? "Failed to filter products";
-      })
-      
-      .addCase(updateReview.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(
-        updateReview.fulfilled,
-        (state, action: PayloadAction<Review>) => {
-          state.loading = false;
-          state.error = null;
-
-          const index = state.list.findIndex((p) => p.id === action.payload.id);
-          if (index !== -1) {
-            state.list[index] = action.payload;
-          }
-
-        }
-      )
-      .addCase(updateReview.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload ?? "Failed to update review";
+        state.error = action.payload ?? 'Failed to load reviews';
       });
-  }
+  },
 });
-
-export const selectReviewsState = (state: RootState) => state.reviews;
-
 
 export default reviewsSlice.reducer;
