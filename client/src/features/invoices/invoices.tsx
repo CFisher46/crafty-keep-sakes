@@ -57,14 +57,14 @@ function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProp
 
       const result = await dispatch(fetchInvoiceById(selectedInvoiceId));
       if (fetchInvoiceById.fulfilled.match(result)) {
-        setInvoice(result.payload);
-        setInvoiceUpdateMessage(null);
         // Opening an invoice marks it as seen on the server, so drop the highlight here too
         setOrders((current) =>
           current.map((order) =>
             String(order.invoice_id) === selectedInvoiceId ? { ...order, has_changes: false } : order
           )
         );
+        setInvoice(result.payload);
+        setInvoiceUpdateMessage(null);
       }
     };
 

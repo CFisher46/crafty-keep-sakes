@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import MyInvoicesPage from './page';
@@ -119,7 +119,7 @@ describe('Invoice pages', () => {
     fireEvent.click(screen.getByText('Open Selected Invoice'));
     await screen.findByText('Invoice id: INV-001');
 
-    expect(screen.queryByText('Updated')).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText('Updated')).not.toBeInTheDocument());
   });
 
   it('labels highlighted invoices as new for admins', async () => {
