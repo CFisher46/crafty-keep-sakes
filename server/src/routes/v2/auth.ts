@@ -149,12 +149,10 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
       type: roleType,
     });
 
-    if (authUser.source === 'v2') {
-      try {
-        await db.query('UPDATE users_v2 SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
-      } catch (err) {
-        console.error('Failed to record last login:', err);
-      }
+    try {
+      await db.query('UPDATE users_v2 SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
+    } catch (err) {
+      console.error('Failed to record last login:', err);
     }
 
     const token = jwt.sign(payload, JWT_SECRET, {
