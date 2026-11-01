@@ -13,26 +13,49 @@ export type SquareConfig = {
   environment: 'sandbox' | 'production';
 };
 
+const read = (env: NodeJS.ProcessEnv, name: string): string => (env[name] || '').trim();
+
+/**
+ * Resolves which Square environment to use and its credentials.
+ *
+ * - Outside NODE_ENV=production only the sandbox is ever used. Asking for production there is an
+ *   error, so a developer's machine can never take real payments.
+ * - In production, SQUARE_ENVIRONMENT must say "production" to go live; anything else stays on sandbox.
+ * - Each environment reads its own SQUARE_SANDBOX_* / SQUARE_PRODUCTION_* credentials, so a sandbox
+ *   token can never be sent to the live host. The unprefixed SQUARE_* names still work for sandbox.
+ */
 export const readSquareConfig = (env: NodeJS.ProcessEnv = process.env): SquareConfig => {
-  const config = {
-    accessToken: (env.SQUARE_ACCESS_TOKEN || '').trim(),
-    locationId: (env.SQUARE_LOCATION_ID || '').trim(),
-    webhookSignatureKey: (env.SQUARE_WEBHOOK_SIGNATURE_KEY || '').trim(),
-    webhookUrl: (env.SQUARE_WEBHOOK_URL || '').trim(),
-    environment: (env.SQUARE_ENVIRONMENT || 'sandbox').trim().toLowerCase() === 'production' ? 'production' : 'sandbox',
-  } as SquareConfig;
+  const requested = read(env, 'SQUARE_ENVIRONMENT').toLowerCase();
+  const isProductionRuntime = read(env, 'NODE_ENV').toLowerCase() === 'production';
+
+  if (requested === 'production' && !isProductionRuntime) {
+    throw new Error('Square production is only available when NODE_ENV=production; use the sandbox locally');
+  }
+
+  const environment: SquareConfig['environment'] = isProductionRuntime && requested === 'production' ? 'production' : 'sandbox';
+  const prefix = environment === 'production' ? 'SQUARE_PRODUCTION_' : 'SQUARE_SANDBOX_';
+  const pick = (name: string) =>
+    read(env, `${prefix}${name}`) || (environment === 'sandbox' ? read(env, `SQUARE_${name}`) : '');
+
+  const config: SquareConfig = {
+    accessToken: pick('ACCESS_TOKEN'),
+    locationId: pick('LOCATION_ID'),
+    webhookSignatureKey: pick('WEBHOOK_SIGNATURE_KEY'),
+    webhookUrl: read(env, 'SQUARE_WEBHOOK_URL'),
+    environment,
+  };
 
   const missing = [
-    ['SQUARE_ACCESS_TOKEN', config.accessToken],
-    ['SQUARE_LOCATION_ID', config.locationId],
-    ['SQUARE_WEBHOOK_SIGNATURE_KEY', config.webhookSignatureKey],
+    [`${prefix}ACCESS_TOKEN`, config.accessToken],
+    [`${prefix}LOCATION_ID`, config.locationId],
+    [`${prefix}WEBHOOK_SIGNATURE_KEY`, config.webhookSignatureKey],
     ['SQUARE_WEBHOOK_URL', config.webhookUrl],
   ]
     .filter(([, value]) => !value)
     .map(([name]) => name);
 
   if (missing.length > 0) {
-    throw new Error(`Square is not configured. Missing: ${missing.join(', ')}`);
+    throw new Error(`Square ${environment} is not configured. Missing: ${missing.join(', ')}`);
   }
 
   return config;

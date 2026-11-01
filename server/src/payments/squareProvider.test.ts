@@ -102,16 +102,45 @@ describe('square provider', () => {
   });
 
   describe('readSquareConfig', () => {
-    it('lists every missing setting', () => {
-      expect(() => readSquareConfig({} as NodeJS.ProcessEnv)).toThrow(
-        'Missing: SQUARE_ACCESS_TOKEN, SQUARE_LOCATION_ID, SQUARE_WEBHOOK_SIGNATURE_KEY, SQUARE_WEBHOOK_URL'
+    const sandbox = { SQUARE_SANDBOX_ACCESS_TOKEN: 'sb-token', SQUARE_SANDBOX_LOCATION_ID: 'sb-loc', SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY: 'sb-key', SQUARE_WEBHOOK_URL: 'https://x/hook' };
+    const live = { SQUARE_PRODUCTION_ACCESS_TOKEN: 'live-token', SQUARE_PRODUCTION_LOCATION_ID: 'live-loc', SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY: 'live-key', SQUARE_WEBHOOK_URL: 'https://x/hook' };
+    const env = (vars: Record<string, string>) => vars as unknown as NodeJS.ProcessEnv;
+
+    it('lists every missing setting for the active environment', () => {
+      expect(() => readSquareConfig(env({}))).toThrow(
+        'Square sandbox is not configured. Missing: SQUARE_SANDBOX_ACCESS_TOKEN, SQUARE_SANDBOX_LOCATION_ID, SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY, SQUARE_WEBHOOK_URL'
       );
     });
 
-    it('defaults to sandbox and reads production when asked', () => {
-      const env = { SQUARE_ACCESS_TOKEN: 'a', SQUARE_LOCATION_ID: 'b', SQUARE_WEBHOOK_SIGNATURE_KEY: 'c', SQUARE_WEBHOOK_URL: 'd' } as NodeJS.ProcessEnv;
-      expect(readSquareConfig(env).environment).toBe('sandbox');
-      expect(readSquareConfig({ ...env, SQUARE_ENVIRONMENT: 'Production' }).environment).toBe('production');
+    it('uses the sandbox by default, including the legacy unprefixed names', () => {
+      expect(readSquareConfig(env(sandbox))).toMatchObject({ environment: 'sandbox', accessToken: 'sb-token' });
+      const legacy = { SQUARE_ACCESS_TOKEN: 'a', SQUARE_LOCATION_ID: 'b', SQUARE_WEBHOOK_SIGNATURE_KEY: 'c', SQUARE_WEBHOOK_URL: 'd' };
+      expect(readSquareConfig(env(legacy))).toMatchObject({ environment: 'sandbox', accessToken: 'a' });
+    });
+
+    it('refuses production outside a production runtime, even with live credentials present', () => {
+      expect(() => readSquareConfig(env({ ...live, ...sandbox, SQUARE_ENVIRONMENT: 'production' }))).toThrow('only available when NODE_ENV=production');
+      expect(() => readSquareConfig(env({ ...live, SQUARE_ENVIRONMENT: 'production', NODE_ENV: 'development' }))).toThrow('only available when NODE_ENV=production');
+    });
+
+    it('stays on the sandbox in production until SQUARE_ENVIRONMENT=production', () => {
+      expect(readSquareConfig(env({ ...sandbox, ...live, NODE_ENV: 'production' })).environment).toBe('sandbox');
+    });
+
+    it('goes live only with production runtime, the production flag and production credentials', () => {
+      expect(readSquareConfig(env({ ...live, NODE_ENV: 'production', SQUARE_ENVIRONMENT: 'Production' }))).toMatchObject({
+        environment: 'production',
+        accessToken: 'live-token',
+        locationId: 'live-loc',
+        webhookSignatureKey: 'live-key',
+      });
+    });
+
+    it('never falls back to sandbox or unprefixed credentials for production', () => {
+      const legacy = { SQUARE_ACCESS_TOKEN: 'a', SQUARE_LOCATION_ID: 'b', SQUARE_WEBHOOK_SIGNATURE_KEY: 'c', SQUARE_WEBHOOK_URL: 'd' };
+      expect(() => readSquareConfig(env({ ...sandbox, ...legacy, NODE_ENV: 'production', SQUARE_ENVIRONMENT: 'production' }))).toThrow(
+        'Square production is not configured. Missing: SQUARE_PRODUCTION_ACCESS_TOKEN'
+      );
     });
   });
 });

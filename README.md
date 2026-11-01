@@ -229,7 +229,16 @@ Payments sit behind a provider interface in `server/src/payments/`. Checkout cre
 | `mock` | Local testing. The "payment page" is a simulated screen at `/payments/mock` with success and failure buttons. Refused when `NODE_ENV=production`. |
 | `square` | Square hosted checkout (Payment Links). Needs the `SQUARE_*` values in `server/.env.example`. Use `SQUARE_ENVIRONMENT=sandbox` with sandbox credentials until going live. |
 
-For Square, create a webhook subscription for `payment.updated` pointing at `SQUARE_WEBHOOK_URL` and copy its signature key into `SQUARE_WEBHOOK_SIGNATURE_KEY`. The URL must match exactly. Square sends customers back to `CLIENT_URL/payments/result` after paying.
+**Square environments.** Sandbox and production use separate credentials (`SQUARE_SANDBOX_*` and `SQUARE_PRODUCTION_*`: access token, location ID and webhook signature key), so a sandbox token can never be sent to the live host. The unprefixed `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID` and `SQUARE_WEBHOOK_SIGNATURE_KEY` still work for the sandbox.
+- Locally, and anywhere `NODE_ENV` is not `production`, only the sandbox is used. `SQUARE_ENVIRONMENT=production` is refused with an error, so a development machine cannot take real payments.
+- In production the sandbox stays active until `SQUARE_ENVIRONMENT=production` is set.
+
+**Going live:**
+1. In Square, create a production application and note its access token and location ID.
+2. Create a production webhook subscription for `payment.updated` at `SQUARE_WEBHOOK_URL` and copy its signature key.
+3. On the NAS, set the three `SQUARE_PRODUCTION_*` values and `SQUARE_ENVIRONMENT=production`, then restart the API. Make one small real payment to check it, and refund it from the Square dashboard.
+
+The webhook URL must match the subscription exactly. Square sends customers back to `CLIENT_URL/payments/result` after paying.
 
 Set `CLIENT_URL` to the storefront's public URL so payment redirects return to the right place.
 
