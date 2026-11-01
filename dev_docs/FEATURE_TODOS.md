@@ -18,9 +18,20 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Features
 
--   [ ] CKS-2-006 : Introduction of  User Notifications (Next Priority)
+-   [WIP] CKS-2-006 : Introduction of  User Notifications (Next Priority)
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
+    -   AS an POST Author, I WANT a notification, WHEN a post has been reacted to OR when a comment has been added that was not by me.
+
+-   [WIP] CKS-2-022 : Add, Update, Delete customer reviews
+    -   AS a Customer, WHEN viewing the Reviews page, I WANT to see feedback from other clients.
+    -   AS an ADMIN, I WANT to add, update and delete feedback gathered from external sources (stored in `reviews_v2`) so it can be shared with customers.
+    -   Notes: The admin Reports area was replaced by Reviews. Report export (XLSX/CSV) will be tackled separately with a different approach.
+
+-   [ ] CKS-2-023 : "My invoices" page in the profile menu
+    -   AS a CUSTOMER, WHEN I open the profile menu, I WANT a "My invoices" option that takes me to a dedicated invoices page.
+    -   AS a CUSTOMER, WHEN viewing my profile, I WANT it to focus on my account details, with the invoice table no longer shown there.
+    -   Notes: Add a "My invoices" item to the header account menu (alongside "My profile" and "Log out"). Move the invoice table and invoice details out of the profile view (`features/profile/invoice-history.tsx`, `invoice-details.tsx`) into their own routed page.
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.

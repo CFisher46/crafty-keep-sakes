@@ -16,6 +16,17 @@ export type User = {
   password: string;
 };
 
+export type Review = {
+  id: number;
+  reviewer_name: string;
+  star_count: number;
+  source: string;
+  comment: string;
+  submit_date: string;
+};
+
+export type ReviewInput = Omit<Review, 'id'>;
+
 export type Product = {
   id: string;
   category: string;

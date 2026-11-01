@@ -9,15 +9,16 @@ import { fetchAllUsers, fetchUserById } from '../../store/users/usersThunks';
 import DeleteExisitingUser from './userManagement/deleteUser';
 import CreateNewProduct from './productManagement/createProduct';
 import UpdateProduct from './productManagement/updateProdct';
+import ReviewManagement from './reviewManagement/reviewManagement';
 import { ui } from '../../helpers/theme';
 
-type Area = 'Users' | 'Products' | 'Reports' | 'Audit log';
+type Area = 'Users' | 'Products' | 'Reviews' | 'Audit log';
 type Action = 'Add' | 'Update' | 'Delete';
 
 const areaActions: Record<Area, Action[]> = {
   Users: ['Add', 'Update', 'Delete'],
   Products: ['Add', 'Update'],
-  Reports: ['Add', 'Update', 'Delete'],
+  Reviews: ['Add', 'Update', 'Delete'],
   'Audit log': [],
 };
 
@@ -155,11 +156,7 @@ function AdminTools() {
     if (area === 'Products') {
       return action === 'Add' ? <CreateNewProduct /> : <UpdateProduct />;
     }
-    return (
-      <Box pad="medium">
-        <Text color={ui.muted}>Reports are coming soon.</Text>
-      </Box>
-    );
+    return <ReviewManagement action={action} />;
   };
 
   const tool = area === 'Audit log' ? null : renderTool();

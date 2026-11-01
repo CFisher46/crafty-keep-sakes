@@ -6,12 +6,14 @@ import authReducer from '../../store/auth/authSlice';
 import usersReducer from '../../store/users/usersSlice';
 import auditReducer from '../../store/audits/auditSlice';
 import productsReducer from '../../store/products/productsSlice';
+import reviewsReducer from '../../store/reviews/reviewsSlice';
 
 const rootReducer = combineReducers({
   auth: authReducer,
   users: usersReducer,
   audit: auditReducer,
   products: productsReducer,
+  reviews: reviewsReducer,
 });
 
 const buildStore = () => configureStore({ reducer: rootReducer });
@@ -38,7 +40,7 @@ describe('AdminTools page', () => {
   it('shows all admin areas as tabs', () => {
     renderPage();
 
-    ['Users', 'Products', 'Reports', 'Audit log'].forEach((name) => {
+    ['Users', 'Products', 'Reviews', 'Audit log'].forEach((name) => {
       expect(screen.getByRole('tab', { name })).toBeInTheDocument();
     });
     expect(screen.getByRole('tab', { name: 'Users' })).toHaveAttribute('aria-selected', 'true');
