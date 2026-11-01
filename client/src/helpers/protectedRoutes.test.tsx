@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import ProtectedRoute from './protectedRoutes';
@@ -53,8 +53,26 @@ describe('ProtectedRoute', () => {
       </Provider>
     );
 
-    expect(mockNavigate).toHaveBeenCalledWith('/home');
     expect(screen.queryByText('Secret Content')).not.toBeInTheDocument();
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/home'));
+  });
+
+  it('waits for the session check instead of redirecting on a fresh page load', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ user: { id: '1', type: 'customer' } }),
+    });
+    const store = buildStore({ auth: { isLoggedIn: false, user: null } });
+
+    render(
+      <Provider store={store}>
+        <ProtectedRoute element={<div>Secret Content</div>} requiredTypes={['customer']} />
+      </Provider>
+    );
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(await screen.findByText('Secret Content')).toBeInTheDocument();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('renders the element regardless of requiredTypes when a user is already present', () => {

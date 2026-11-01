@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import InvoiceDetailsDialog from './invoice-details';
 
 // Grommet's Layer portals and leaves clones behind, so render it inline for predictable queries
@@ -63,5 +63,63 @@ describe('InvoiceDetailsDialog', () => {
 
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave).toHaveBeenCalledWith({ status: 'paid', trackingInfo: 'RM777' });
+  });
+
+  describe('paying an unpaid invoice', () => {
+    const renderAs = (userType: string, status = 'unpaid') =>
+      render(
+        <InvoiceDetailsDialog
+          invoice={{ ...invoice, invoice_status: status }}
+          billingAddress={address}
+          userType={userType}
+          updateMessage={null}
+          onClose={jest.fn()}
+          onSave={jest.fn()}
+        />
+      );
+
+    it('lets a customer start payment and sends them to the payment page', async () => {
+      const assign = jest.fn();
+      const originalLocation = window.location;
+      delete (window as any).location;
+      (window as any).location = { ...originalLocation, assign };
+
+      try {
+        global.fetch = jest.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ payment_url: 'https://pay.example/abc' }),
+        }) as any;
+        renderAs('customer');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Pay now' }));
+
+        await waitFor(() => expect(assign).toHaveBeenCalledWith('https://pay.example/abc'));
+        expect(String((global.fetch as jest.Mock).mock.calls[0][0])).toContain('/payments/invoices/90/pay');
+      } finally {
+        (window as any).location = originalLocation;
+      }
+    });
+
+    it('shows the error when payment cannot be started', async () => {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        json: async () => ({ error: 'Payments are not enabled' }),
+      }) as any;
+      renderAs('customer');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Pay now' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Payments are not enabled');
+      expect(screen.getByRole('button', { name: 'Pay now' })).toBeEnabled();
+    });
+
+    it('does not offer payment for paid invoices or to admins', () => {
+      const { unmount } = renderAs('customer', 'paid');
+      expect(screen.queryByRole('button', { name: 'Pay now' })).not.toBeInTheDocument();
+      unmount();
+
+      renderAs('admin');
+      expect(screen.queryByRole('button', { name: 'Pay now' })).not.toBeInTheDocument();
+    });
   });
 });

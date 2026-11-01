@@ -11,6 +11,8 @@ import Login from "../../components/login/login";
 import Register from "../../components/login/register";
 import NotificationsPage from "../../features/notifications/page";
 import ProtectedRoute from "../../helpers/protectedRoutes";
+import MockPaymentPage from "../../features/payments/mockPaymentPage";
+import PaymentResultPage from "../../features/payments/resultPage";
 // import ContactUs from '../../pages/contactUs/contactUs';
 import { Box } from "grommet";
 import ReviewsPage from "../../features/reviews/page";
@@ -54,6 +56,24 @@ function MainBody() {
               />
             }
           />{" "}
+          <Route
+            path="/payments/mock"
+            element={
+              <ProtectedRoute
+                element={<MockPaymentPage />}
+                requiredTypes={["customer", "admin", "Customer", "Admin"]}
+              />
+            }
+          />
+          <Route
+            path="/payments/result"
+            element={
+              <ProtectedRoute
+                element={<PaymentResultPage />}
+                requiredTypes={["customer", "admin", "Customer", "Admin"]}
+              />
+            }
+          />
           <Route
             path="/invoices"
             element={

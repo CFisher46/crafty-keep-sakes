@@ -17,6 +17,7 @@ jest.mock('../../ts-common/database', () => ({
 }));
 
 import app from '../../app';
+import { db } from '../../ts-common/database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
@@ -30,6 +31,8 @@ const authCookie = (id: string | number, role: string) => {
 
 describe('v2 basket routes', () => {
   beforeEach(() => {
+    // A developer's .env may enable payments; these tests assume the default (off)
+    delete process.env.PAYMENTS_PROVIDER;
     mockConnection.beginTransaction.mockReset();
     mockConnection.commit.mockReset();
     mockConnection.rollback.mockReset();
@@ -185,6 +188,8 @@ describe('v2 basket routes', () => {
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
       message: 'Checkout complete',
+      payment_url: null,
+      payment_error: false,
       basket_id: 12,
       order_id: 40,
       invoice_id: 90,
@@ -221,6 +226,43 @@ describe('v2 basket routes', () => {
         postcode: 'BS1 1AA',
       },
     });
+  });
+
+  it('keeps the order pending and returns a payment link when payments are enabled', async () => {
+    process.env.PAYMENTS_PROVIDER = 'mock';
+    try {
+      mockConnection.query
+        .mockResolvedValueOnce([[]])
+        .mockResolvedValueOnce([{ insertId: 12 }])
+        .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set' }]])
+        .mockResolvedValueOnce([[{ Field: 'billing_address_line1' }, { Field: 'billing_address_line2' }, { Field: 'billing_address_line3' }, { Field: 'billing_town' }, { Field: 'billing_county' }, { Field: 'billing_postcode' }]])
+        .mockResolvedValueOnce([{ insertId: 40 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ insertId: 90 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ insertId: 999 }]);
+      (db.query as jest.Mock).mockReset();
+      (db.query as jest.Mock).mockResolvedValue([{ insertId: 1 }]);
+
+      const response = await request(app)
+        .post('/api/v2/basket/checkout')
+        .set('Cookie', authCookie(7, 'customer'))
+        .send({ delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
+
+      expect(response.status).toBe(201);
+      expect(response.body.payment_error).toBe(false);
+      expect(response.body.payment_url).toMatch(/\/payments\/mock\?ref=mock_[a-f0-9]+&invoice=90$/);
+
+      const orderInsert = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders_v2'));
+      expect(orderInsert?.[1]).toContain('pending');
+
+      const queries = (db.query as jest.Mock).mock.calls.map(([sql]) => String(sql));
+      expect(queries.some((sql) => sql.includes('INSERT INTO payments_v2'))).toBe(true);
+      expect(queries.some((sql) => sql.includes('INSERT INTO notifications_v2'))).toBe(false);
+    } finally {
+      delete process.env.PAYMENTS_PROVIDER;
+    }
   });
 
   it('adds missing billing columns before writing the invoice when the schema is older', async () => {

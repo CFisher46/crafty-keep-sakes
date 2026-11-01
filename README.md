@@ -27,7 +27,7 @@ Online shop and business website for hand crafted wedding keepsakes. Customers c
 
 ### Customers
 
-- **Basket and checkout**: add items, then place an order. This creates an order and an invoice (payment is not yet taken online).
+- **Basket and checkout**: add items, then place an order. This creates an order and an invoice. With `PAYMENTS_PROVIDER` set, the customer is then sent to a hosted payment page and the invoice is marked paid automatically when the vendor's webhook confirms it (see [Payments](#payments)). Without it, no payment is taken online.
 - **My invoices** (`/invoices`): invoice history with status, tracking and totals. Invoices changed since you last opened them are highlighted, and the five latest updates also appear on the home page.
 - **Profile**: update account and delivery details.
 - **Journal**: comment on posts and like or dislike them.
@@ -144,6 +144,7 @@ All routes are under `/api/v2` and use the auth cookie. Unless noted, they need 
 | Auth | `/auth` | Login, register, `me`, logout, verify password. Login also records `last_login_at` |
 | Products | `/products` | Public read, admin write, image upload |
 | Users | `/users` | Profile access, admin management |
+| Payments | `/payments` | `/webhook` (vendor, signature-verified), `/status/:invoiceId`, `/invoices/:id/pay` |
 | Basket | `/basket` | Basket, checkout, `/orders` (own), `/orders/all` (admin), `/invoices/:id` |
 | Blog | `/blog` | Posts, comments, reactions, NEW tracking |
 | Notifications | `/notifications` | List and mark as read |
@@ -217,6 +218,29 @@ Copy the emitted key into `ENCRYPTION_KEY` in `server/.env`.
 - Store `ENCRYPTION_KEY` and `ENCRYPTION_KEY_PREVIOUS` in a password manager or secret manager (not only local `.env`).
 - Keep at least two backups in separate secure locations.
 - Record fingerprints with `npm run key:fingerprints` and store them with release notes to verify the intended keys are loaded.
+
+## Payments
+
+Payments sit behind a provider interface in `server/src/payments/`. Checkout creates a pending order and an unpaid invoice, asks the provider for a hosted payment link, and redirects the customer to it. The provider calls `POST /api/v2/payments/webhook`; the server verifies its signature, records the event once in `payments_v2`, checks the amount matches the invoice, then marks the invoice paid, confirms the order and notifies the customer and admins. Failed or abandoned payments leave the invoice unpaid, and the customer can retry from the payment result page.
+
+| `PAYMENTS_PROVIDER` | Behaviour |
+| --- | --- |
+| empty | Payments off. Checkout only creates an unpaid invoice (the original behaviour). |
+| `mock` | Local testing. The "payment page" is a simulated screen at `/payments/mock` with success and failure buttons. Refused when `NODE_ENV=production`. |
+| `square` | Square hosted checkout (Payment Links). Needs the `SQUARE_*` values in `server/.env.example`. Use `SQUARE_ENVIRONMENT=sandbox` with sandbox credentials until going live. |
+
+**Square environments.** Sandbox and production use separate credentials (`SQUARE_SANDBOX_*` and `SQUARE_PRODUCTION_*`: access token, location ID and webhook signature key), so a sandbox token can never be sent to the live host. The unprefixed `SQUARE_ACCESS_TOKEN`, `SQUARE_LOCATION_ID` and `SQUARE_WEBHOOK_SIGNATURE_KEY` still work for the sandbox.
+- Locally, and anywhere `NODE_ENV` is not `production`, only the sandbox is used. `SQUARE_ENVIRONMENT=production` is refused with an error, so a development machine cannot take real payments.
+- In production the sandbox stays active until `SQUARE_ENVIRONMENT=production` is set.
+
+**Going live:**
+1. In Square, create a production application and note its access token and location ID.
+2. Create a production webhook subscription for `payment.updated` at `SQUARE_WEBHOOK_URL` and copy its signature key.
+3. On the NAS, set the three `SQUARE_PRODUCTION_*` values and `SQUARE_ENVIRONMENT=production`, then restart the API. Make one small real payment to check it, and refund it from the Square dashboard.
+
+The webhook URL must match the subscription exactly. Square sends customers back to `CLIENT_URL/payments/result` after paying.
+
+Set `CLIENT_URL` to the storefront's public URL so payment redirects return to the right place.
 
 ## Further documentation
 

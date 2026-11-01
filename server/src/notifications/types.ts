@@ -50,6 +50,12 @@ export type NotificationPayloads = {
     commenterName: string;
     comment: string;
   };
+  payment_failed: {
+    userId: number;
+    orderId: number;
+    invoiceId: number;
+    invoiceNumber: string;
+  };
   tracking_added: {
     userId: number;
     orderId: number;
