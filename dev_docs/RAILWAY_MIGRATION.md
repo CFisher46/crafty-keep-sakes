@@ -267,7 +267,7 @@ Today `client/vercel.json` rewrites `/api/*` to `https://api.craftykeepsakes.uk`
 
 Railway has no IP allowlist, so the `*.up.railway.app` URL can bypass the WAF.
 
-- Add a Cloudflare Transform Rule (Rules > Transform Rules > Modify Request Header) that sets a static request header `X-CF-Secret` on requests where the hostname is `api-prd.craftykeepsakes.uk` (later `api.`). Generate the value with `openssl rand -hex 32`.
+- Add a Cloudflare Transform Rule (Rules > Overview > Create rule > Modify Request Header) that sets a static request header `X-Origin-Secret` on requests where the hostname is `api-prd.craftykeepsakes.uk` (later `api.`). Cloudflare rejects header names starting with `x-cf-`, so do not use that prefix. Generate the value with `openssl rand -hex 32`.
 - Set the same value as `ORIGIN_SECRET` on the Railway API. The middleware (`ts-common/origin-guard.ts`, built, K4) rejects other requests with 403, and is inactive while the variable is unset. `/health` and the Square webhook paths are exempt.
 - Client IP (K1, built): only a request with the valid secret is trusted to have come through Cloudflare, so only then is `CF-Connecting-IP` used as `req.ip`. The rate limiters therefore see the real client. `trust proxy` stays at 1 for the non-Cloudflare case.
 - Rollout order: deploy the code, add the Transform Rule, confirm `curl https://api-prd.../api/v2/products` still returns 200, then set `ORIGIN_SECRET` on Railway. Setting the variable before the rule exists locks you out (403), and the fix is to unset it.
@@ -350,7 +350,7 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 | K1 | **Fix `trust proxy`** (also keep the Square webhook out of the shared limiter buckets). `app.set("trust proxy", 1)` in `server/src/app.ts` assumes one proxy. With Cloudflare then Railway there are two hops | Otherwise `req.ip` is a Cloudflare address and the auth, register and failed-login rate limiters share a bucket across all users. Use the real client IP (`CF-Connecting-IP`, trusted only when the origin secret header is valid) as the limiter key, or raise the hop count. Add a test |
 | K2 | **Schema runner repeatability: no change needed.** All 24 tables use `CREATE TABLE IF NOT EXISTS` and the roles seed uses `ON DUPLICATE KEY UPDATE`, so the pre-deploy command is safe on every deploy | Keep it that way. Any future schema change must be additive and idempotent, or it will block every deploy |
 | K3 | **Add a health endpoint** (for example `GET /health` that checks the DB with `SELECT 1`) | Needed for C5. Keep it out of the rate limiters and the auth |
-| K4 | **Origin secret header middleware** (reject `api.*` requests without the Cloudflare-set `X-CF-Secret`, value from a Railway variable) | Section 7. Exempt `/health` so Railway's checks pass, and the Square webhook paths (`/api/payments/webhook`, `/api/v2/payments/webhook`), which carry no secret header |
+| K4 | **Origin secret header middleware** (reject `api.*` requests without the Cloudflare-set `X-Origin-Secret`, value from a Railway variable) | Section 7. Exempt `/health` so Railway's checks pass, and the Square webhook paths (`/api/payments/webhook`, `/api/v2/payments/webhook`), which carry no secret header |
 | K5 | **Startup guard for the DB host** (log host only, never the password; refuse to start in non-production if the host is the Railway MySQL host) | Section 8. Prevents local use of the production DB |
 | K6 | **Remove or replace the `/api` rewrite in `client/vercel.json`** and move to per-environment `REACT_APP_API_URL` | Sections 7 and 8. Previews must not call the production API |
 | K7 | **MinIO storage adapter** replacing disk writes in `image-upload.ts` / `upload-images-directory.ts`, plus an image-path migration for existing rows | Section 6. Larger piece of work, do it as its own PR |
@@ -431,7 +431,7 @@ Run against `https://crafty-keep-sakes-production.up.railway.app` with curl or P
 - [ ] Bot fight mode and managed rules are on, and do not block normal curl or browser calls to the API
 - [ ] Caching: `api-new` responses are not cached (`cf-cache-status: DYNAMIC` or `BYPASS`)
 - [ ] Client IP: confirm in the server logs which address is seen. If it is a Cloudflare IP, K1 (`trust proxy` and `CF-Connecting-IP`) is needed before rate limits are meaningful
-- [ ] Secret header (K4), once built: requests without `X-CF-Secret` to `api-new` are rejected, `/health` and the Square webhook paths are exempt
+- [ ] Secret header (K4), once built: requests without `X-Origin-Secret` to `api-new` are rejected, `/health` and the Square webhook paths are exempt
 
 ### Phase D: browser and Vercel test
 Use a Vercel build or preview that sets `REACT_APP_API_URL=https://api-new.craftykeepsakes.uk`, served from a hostname under `craftykeepsakes.uk` (for example `dev.craftykeepsakes.uk`). A `*.vercel.app` preview is cross-site and will drop the `sameSite: strict` auth cookie (C4).
@@ -463,7 +463,7 @@ Use a Vercel build or preview that sets `REACT_APP_API_URL=https://api-new.craft
 
 ### Gaps found by this plan
 - **`/health` endpoint** (K3) is built: `GET /health` runs `SELECT 1` (3 s timeout) and returns `{"status":"ok"}` or 503 `{"status":"unavailable"}`, with no auth and no rate limit. Railway's health check path is set to `/health` in `railway.json`.
-- **Rate limiters may see Cloudflare IPs** (K1) until `trust proxy` and `CF-Connecting-IP` are handled.
+- **Rate limiters and client IP** (K1) are fixed in code: the real IP comes from `CF-Connecting-IP`, trusted only on requests with a valid `X-Origin-Secret`. This needs the Transform Rule and `ORIGIN_SECRET` (section 7) to take effect.
 - **No origin lock** (K4), so the `*.up.railway.app` host bypasses Cloudflare.
 - **Uploads are not durable** on Railway without a volume or MinIO (C8, K7).
 - **Pre-deploy schema step is off** until this PR merges.

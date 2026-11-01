@@ -4,7 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 // Paths that never carry the Cloudflare secret: platform health checks and Square's webhook.
 const EXEMPT_PATHS = new Set(["/health", "/api/payments/webhook", "/api/v2/payments/webhook"]);
 
-const SECRET_HEADER = "x-cf-secret";
+const SECRET_HEADER = "x-origin-secret";
 
 const secretsMatch = (provided: string | undefined, expected: string): boolean => {
   if (!provided) return false;

@@ -38,7 +38,7 @@ describe('originGuard', () => {
   it('rejects requests with a wrong secret', async () => {
     process.env.ORIGIN_SECRET = 'a-long-origin-secret';
 
-    const response = await request(buildApp()).get('/api/v2/products').set('X-CF-Secret', 'nope');
+    const response = await request(buildApp()).get('/api/v2/products').set('X-Origin-Secret', 'nope');
 
     expect(response.status).toBe(403);
   });
@@ -56,7 +56,7 @@ describe('originGuard', () => {
 
     const response = await request(buildApp())
       .get('/api/v2/products')
-      .set('X-CF-Secret', 'a-long-origin-secret')
+      .set('X-Origin-Secret', 'a-long-origin-secret')
       .set('CF-Connecting-IP', '203.0.113.9');
 
     expect(response.status).toBe(200);
