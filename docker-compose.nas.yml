@@ -23,6 +23,8 @@ services:
       AUDIT_API_SOURCE: ${AUDIT_API_SOURCE:-v2}
       BASKET_API_SOURCE: ${BASKET_API_SOURCE:-v2}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CLIENT_URL: ${CLIENT_URL:-}
+      PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
     volumes:
       - product-images:/app/client/public/images
     # Only reachable from the tunnel container, never published on the LAN/WAN

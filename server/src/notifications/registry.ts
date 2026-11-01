@@ -48,16 +48,16 @@ export const notificationDefinitions: NotificationDefinitions = {
     build: ({ orderId, invoiceId, invoiceNumber, totalDue }) => ({
       title: 'New order placed',
       body: `Order #${orderId} (${invoiceNumber}) for ${formatCurrency(totalDue)} is ready to process.`,
-      link: '/Admin',
+      link: `/Reporting/invoices?invoice=${invoiceId}`,
       data: { orderId, invoiceId, invoiceNumber },
     }),
   },
   invoice_status_changed: {
     resolveRecipients: async (_executor, { userId }) => [userId],
-    build: ({ userId, orderId, invoiceId, invoiceNumber, status }) => ({
+    build: ({ orderId, invoiceId, invoiceNumber, status }) => ({
       title: invoiceStatusTitles[status],
       body: `Invoice ${invoiceNumber}: ${invoiceStatusMessages[status]}`,
-      link: `/profile/${userId}`,
+      link: `/invoices?invoice=${invoiceId}`,
       data: { orderId, invoiceId, invoiceNumber, status },
     }),
   },
@@ -124,12 +124,21 @@ export const notificationDefinitions: NotificationDefinitions = {
       data: { postId },
     }),
   },
+  payment_failed: {
+    resolveRecipients: async (_executor, { userId }) => [userId],
+    build: ({ orderId, invoiceId, invoiceNumber }) => ({
+      title: 'Payment unsuccessful',
+      body: `Your payment for invoice ${invoiceNumber} did not go through. You can try again from your invoices.`,
+      link: `/invoices?invoice=${invoiceId}`,
+      data: { orderId, invoiceId, invoiceNumber },
+    }),
+  },
   tracking_added: {
     resolveRecipients: async (_executor, { userId }) => [userId],
-    build: ({ userId, orderId, invoiceId, invoiceNumber, trackingInfo }) => ({
+    build: ({ orderId, invoiceId, invoiceNumber, trackingInfo }) => ({
       title: 'Your order is on its way',
       body: `Invoice ${invoiceNumber}: tracking details have been added (${trackingInfo}).`,
-      link: `/profile/${userId}`,
+      link: `/invoices?invoice=${invoiceId}`,
       data: { orderId, invoiceId, invoiceNumber, trackingInfo },
     }),
   },

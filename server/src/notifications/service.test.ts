@@ -52,7 +52,7 @@ describe('notify', () => {
     const [, params] = mockQuery.mock.calls[0];
     expect(params[0]).toBe(7);
     expect(params[1]).toBe('invoice_status_changed');
-    expect(params[4]).toBe('/profile/7');
+    expect(params[4]).toBe('/invoices?invoice=90');
   });
 
   it('notifies the customer when tracking is added', async () => {

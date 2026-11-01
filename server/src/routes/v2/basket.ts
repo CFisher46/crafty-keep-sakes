@@ -4,6 +4,8 @@ import { db } from '../../ts-common/database';
 import { verifyAuthToken, requireRole } from '../../ts-common/middleware';
 import { insertAuditEvent } from './audit-events';
 import { notify } from '../../notifications/service';
+import { isPaymentsEnabled } from '../../payments';
+import { createPaymentForInvoice } from '../../payments/service';
 
 const router = express.Router();
 
@@ -797,11 +799,13 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
     );
     const taxTotal = toCurrency(subtotal * 0); //set Tax to Zero
     const grandTotal = toCurrency(subtotal + taxTotal);
+    // With payments on, the order stays pending until the payment is confirmed
+    const paymentsEnabled = isPaymentsEnabled();
 
     const [orderResult] = await connection.query<ResultSetHeader>(
       `INSERT INTO orders_v2 (user_id, basket_id, subtotal, discount_total, tax_total, grand_total, order_status)
-       VALUES (?, ?, ?, 0.00, ?, ?, 'placed')`,
-      [userId, basketId, toCurrency(subtotal), taxTotal, grandTotal]
+       VALUES (?, ?, ?, 0.00, ?, ?, ?)`,
+      [userId, basketId, toCurrency(subtotal), taxTotal, grandTotal, paymentsEnabled ? 'pending' : 'placed']
     );
 
     const orderId = orderResult.insertId;
@@ -890,22 +894,37 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         invoice_id: invoiceId,
         invoice_number: invoiceNumber,
         total_due: grandTotal,
-        order_status: 'placed',
+        order_status: paymentsEnabled ? 'pending' : 'placed',
         delivery_address: resolvedDeliveryAddress,
       },
     });
 
     await connection.commit();
 
-    await notify('order_placed', {
-      orderId,
-      invoiceId,
-      invoiceNumber,
-      totalDue: grandTotal,
-    });
+    let paymentUrl: string | null = null;
+    let paymentError = false;
+
+    if (paymentsEnabled) {
+      try {
+        paymentUrl = await createPaymentForInvoice({ invoiceId, invoiceNumber, amount: grandTotal });
+      } catch (paymentErr) {
+        // The order and invoice exist, so the customer can retry payment from their invoice
+        console.error('Create Payment Link Error:', paymentErr);
+        paymentError = true;
+      }
+    } else {
+      await notify('order_placed', {
+        orderId,
+        invoiceId,
+        invoiceNumber,
+        totalDue: grandTotal,
+      });
+    }
 
     res.status(201).json({
       message: 'Checkout complete',
+      payment_url: paymentUrl,
+      payment_error: paymentError,
       basket_id: basketId,
       order_id: orderId,
       invoice_id: invoiceId,

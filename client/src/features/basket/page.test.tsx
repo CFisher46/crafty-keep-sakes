@@ -200,6 +200,81 @@ describe('Basket page', () => {
   });
 
 
+  it('sends the customer to the payment page when checkout returns a payment link', async () => {
+    const assign = jest.fn();
+    const originalLocation = window.location;
+    delete (window as any).location;
+    (window as any).location = { ...originalLocation, assign };
+
+    try {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          message: 'Checkout complete',
+          basket_id: 1,
+          order_id: 10,
+          invoice_id: 90,
+          invoice_number: 'INV-001',
+          total_due: 20,
+          payment_url: 'https://pay.example/checkout/abc',
+          payment_error: false,
+        }),
+      });
+
+      const store = buildStore({
+        basket: { items: [basketItem], totalItems: 2 },
+        auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+      });
+
+      render(
+        <Provider store={store}>
+          <Basket />
+        </Provider>
+      );
+
+      fireEvent.click(screen.getByText('Checkout'));
+      screen.getAllByText('Confirm checkout').forEach((el) => fireEvent.click(el));
+
+      await waitFor(() => expect(assign).toHaveBeenCalledWith('https://pay.example/checkout/abc'));
+    } finally {
+      (window as any).location = originalLocation;
+    }
+  });
+
+  it('explains how to pay later when the payment could not be started', async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        message: 'Checkout complete',
+        basket_id: 1,
+        order_id: 10,
+        invoice_id: 90,
+        invoice_number: 'INV-001',
+        total_due: 20,
+        payment_url: null,
+        payment_error: true,
+      }),
+    });
+
+    const store = buildStore({
+      basket: { items: [basketItem], totalItems: 2 },
+      auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+    });
+
+    render(
+      <Provider store={store}>
+        <Basket />
+      </Provider>
+    );
+
+    fireEvent.click(screen.getByText('Checkout'));
+    screen.getAllByText('Confirm checkout').forEach((el) => fireEvent.click(el));
+
+    await waitFor(() => {
+      expect(screen.getByText(/could not start the payment/)).toBeInTheDocument();
+    });
+  });
+
   it('shows a failure message when checkout fails', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,

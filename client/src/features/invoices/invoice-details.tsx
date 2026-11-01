@@ -3,6 +3,7 @@ import { Box, Layer, Select, Text, TextInput } from 'grommet';
 import { ui } from '../../helpers/theme';
 import { ActionButton } from '../landingPage/components/ActionButton';
 import type { DeliveryAddress, InvoiceDetails } from '../../types';
+import { startPayment } from '../payments/paymentsApi';
 
 interface InvoiceDetailsProps {
   invoice: InvoiceDetails;
@@ -48,6 +49,8 @@ function InvoiceDetailsDialog({
 }: InvoiceDetailsProps) {
   const [pendingStatus, setPendingStatus] = useState(invoice.invoice_status);
   const [trackingInfo, setTrackingInfo] = useState(invoice.tracking_info ?? '');
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
 
   useEffect(() => {
     setPendingStatus(invoice.invoice_status);
@@ -57,6 +60,20 @@ function InvoiceDetailsDialog({
   const isAdmin = userType?.toLowerCase() === 'admin';
   const statusChanged = !!pendingStatus && pendingStatus !== invoice.invoice_status;
   const trackingChanged = trackingInfo !== (invoice.tracking_info ?? '');
+
+  const canPay = !isAdmin && invoice.invoice_status === 'unpaid';
+
+  const handlePay = async () => {
+    setPaying(true);
+    setPayError(null);
+    try {
+      const { payment_url } = await startPayment(String(invoice.id));
+      window.location.assign(payment_url);
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : 'Could not start payment');
+      setPaying(false);
+    }
+  };
 
   const handleSave = () => {
     onSave({
@@ -145,6 +162,23 @@ function InvoiceDetailsDialog({
                   </tbody>
                 </table>
               </Box>
+            </Box>
+          )}
+
+          {canPay && (
+            <Box gap="small" pad="medium" background={ui.page} border={{ color: ui.line }}>
+              <Text style={labelStyle}>Payment</Text>
+              <Text size="small" style={{ color: ui.muted }}>
+                This invoice is awaiting payment of £{Number(invoice.total_due).toFixed(2)}.
+              </Text>
+              <Box direction="row">
+                <ActionButton label={paying ? 'Redirecting…' : 'Pay now'} onClick={handlePay} disabled={paying} />
+              </Box>
+              {payError && (
+                <Text role="alert" size="small" color="status-critical">
+                  {payError}
+                </Text>
+              )}
             </Box>
           )}
 
