@@ -9,6 +9,7 @@ import type { DeliveryAddress, InvoiceDetails, InvoiceOrder } from '../../types'
 import { useAppDispatch } from '../../store/hooks';
 import InvoiceDetailsDialog from './invoice-details';
 import InvoiceHistory from './invoice-history';
+import { notifyNotificationsChanged } from '../notifications/events';
 
 interface InvoicesProps {
   userId?: string;
@@ -91,6 +92,7 @@ function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
     }
 
     setInvoiceUpdateMessage('Invoice status updated');
+    notifyNotificationsChanged();
     await refreshInvoiceData();
   };
 
@@ -109,6 +111,7 @@ function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
     }
 
     setInvoiceUpdateMessage('Invoice tracking info updated');
+    notifyNotificationsChanged();
     await refreshInvoiceData();
   };
 

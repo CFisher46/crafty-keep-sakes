@@ -471,9 +471,9 @@ describe('v2 basket routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1, statusChanged: true, trackingUpdated: false });
-    expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT order_id, invoice_status, tracking_info');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('SELECT i.order_id, i.invoice_status, i.tracking_info');
     expect(String(mockConnection.query.mock.calls[0][0])).toContain('FROM invoices_v2');
-    expect(String(mockConnection.query.mock.calls[0][0])).toContain('WHERE id = ?');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain('WHERE i.id = ?');
     expect(String(mockConnection.query.mock.calls[0][0])).toContain('LIMIT 1');
     expect(String(mockConnection.query.mock.calls[1][0])).toContain('UPDATE invoices_v2');
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('UPDATE orders_v2');

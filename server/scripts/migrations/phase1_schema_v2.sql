@@ -243,6 +243,21 @@ CREATE TABLE IF NOT EXISTS audit_events_v2 (
   CONSTRAINT fk_audit_events_v2_actor FOREIGN KEY (actor_user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS notifications_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  type VARCHAR(64) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  body VARCHAR(1000) NOT NULL,
+  link VARCHAR(255) NULL,
+  data_json JSON NULL,
+  read_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_notifications_v2_user_read (user_id, read_at, created_at),
+  CONSTRAINT fk_notifications_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS blog_posts_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,

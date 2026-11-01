@@ -2,6 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
+import { notify } from '../../../../notifications/service';
 import { User } from '../../../../ts-common/user-types';
 import {
   verifyAuthToken,
@@ -210,6 +211,27 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
     });
 
     await connection.commit();
+
+    // Tell the user when an admin (not the user themselves) changed their account.
+    if (isAdminRequest && actorUserId !== Number(id)) {
+      const changes: Array<'status' | 'role' | 'details'> = [];
+      if (updates.status !== undefined && updates.status !== previousUser.status) {
+        changes.push('status');
+      }
+      if (hasRoleUpdate && updates.type !== previousUser.role_code) {
+        changes.push('role');
+      }
+      if (hasProfileUpdates || (updates.email_address !== undefined && updates.email_address !== previousUser.email)) {
+        changes.push('details');
+      }
+      if (changes.length) {
+        await notify('account_updated', {
+          userId: Number(id),
+          changes,
+          status: updates.status !== undefined ? String(updates.status) : undefined,
+        });
+      }
+    }
 
     res.status(200).json({
       message: 'User updated',
