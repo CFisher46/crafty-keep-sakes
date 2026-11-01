@@ -8,11 +8,13 @@ import usersReducer from '../../store/users/usersSlice';
 import basketReducer from '../../store/basket/basketSlice';
 
 const mockNavigate = jest.fn();
+let mockSearch = '';
 
 jest.mock(
   'react-router-dom',
   () => ({
     useNavigate: () => mockNavigate,
+    useSearchParams: () => [new URLSearchParams(mockSearch), jest.fn()],
   }),
   { virtual: true }
 );
@@ -96,6 +98,54 @@ describe('Invoice pages', () => {
     expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDisabled();
     expect(screen.queryByText('Confirm Update')).not.toBeInTheDocument();
     expect(screen.queryByText('Update Tracking Info')).not.toBeInTheDocument();
+  });
+
+  it('highlights changed invoices and clears the highlight once opened', async () => {
+    mockApi([
+      { ...order, has_changes: true },
+      { ...order, id: 11, invoice_id: 91, invoice_number: 'INV-002', has_changes: false },
+    ]);
+
+    render(
+      <Provider store={buildStore()}>
+        <MyInvoicesPage />
+      </Provider>
+    );
+
+    await screen.findByText('INV-002');
+    expect(screen.getAllByText('Updated')).toHaveLength(1);
+
+    fireEvent.click(screen.getByText('INV-001'));
+    fireEvent.click(screen.getByText('Open Selected Invoice'));
+    await screen.findByText('Invoice id: INV-001');
+
+    expect(screen.queryByText('Updated')).not.toBeInTheDocument();
+  });
+
+  it('labels highlighted invoices as new for admins', async () => {
+    mockApi([{ ...order, customer_name: 'Ada Lovelace', has_changes: true }]);
+
+    render(
+      <Provider store={buildStore()}>
+        <AllInvoicesPage />
+      </Provider>
+    );
+
+    expect(await screen.findByText('New')).toBeInTheDocument();
+  });
+
+  it('opens the invoice named in the invoice query parameter', async () => {
+    mockSearch = 'invoice=90';
+    mockApi([order]);
+
+    render(
+      <Provider store={buildStore()}>
+        <MyInvoicesPage />
+      </Provider>
+    );
+
+    expect(await screen.findByText('Invoice id: INV-001')).toBeInTheDocument();
+    mockSearch = '';
   });
 
   it('shows an empty state when the customer has no orders', async () => {

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   fetchAllOrders,
   fetchInvoiceById,
@@ -30,7 +31,8 @@ function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProp
   const loadOrdersThunk = scope === 'all' ? fetchAllOrders : fetchOrderHistory;
   const dispatch = useAppDispatch();
   const [orders, setOrders] = useState<InvoiceOrder[]>([]);
-  const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState(searchParams.get('invoice') ?? '');
   const [invoice, setInvoice] = useState<InvoiceDetails | null>(null);
   const [invoiceUpdateMessage, setInvoiceUpdateMessage] = useState<string | null>(null);
 
@@ -57,6 +59,12 @@ function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProp
       if (fetchInvoiceById.fulfilled.match(result)) {
         setInvoice(result.payload);
         setInvoiceUpdateMessage(null);
+        // Opening an invoice marks it as seen on the server, so drop the highlight here too
+        setOrders((current) =>
+          current.map((order) =>
+            String(order.invoice_id) === selectedInvoiceId ? { ...order, has_changes: false } : order
+          )
+        );
       }
     };
 
@@ -78,6 +86,9 @@ function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProp
   };
 
   const closeInvoice = () => {
+    if (searchParams.has('invoice')) {
+      setSearchParams({}, { replace: true });
+    }
     setSelectedInvoiceId('');
     setInvoice(null);
     setInvoiceUpdateMessage(null);

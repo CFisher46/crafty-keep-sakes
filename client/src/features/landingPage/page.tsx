@@ -19,6 +19,7 @@ import { ui } from '../../helpers/theme';
 import PopularGallery from './components/PopularGallery';
 import ActionButton from './components/ActionButton';
 import ProductCarousel from './components/ProductCarousel';
+import RecentInvoicesTile from './components/RecentInvoicesTile';
 import BlogSummarySection, { HomepageBlogItem } from './components/BlogSummarySection';
 
 function Home() {
@@ -232,6 +233,9 @@ function Home() {
               <Box direction="row" gap="small" margin={{ top: 'small' }}>
                 <ActionButton label="My Profile" onClick={() => navigate('/profile/' + (userDetails?.id ?? ''))} />
                 <ActionButton label="Log Out" secondary onClick={handleLogout} />
+              </Box>
+              <Box border={{ side: 'top', color: ui.line }} margin={{ top: 'small' }} pad={{ top: 'small' }}>
+                <RecentInvoicesTile isAdmin={userType === 'admin'} />
               </Box>
             </Box>
           ) : authView !== 'none' ? (

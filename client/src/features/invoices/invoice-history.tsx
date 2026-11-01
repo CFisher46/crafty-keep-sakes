@@ -11,6 +11,8 @@ interface InvoiceHistoryProps {
   onOpenInvoice: (invoiceId: string) => void;
 }
 
+const HIGHLIGHT_BACKGROUND = '#EEF3EC';
+
 const cellStyle: React.CSSProperties = {
   padding: '12px',
   whiteSpace: 'nowrap',
@@ -127,7 +129,7 @@ function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, o
                           )
                         }
                         style={{
-                          background: isSelected ? ui.sand : 'transparent',
+                          background: isSelected ? ui.sand : order.has_changes ? HIGHLIGHT_BACKGROUND : 'transparent',
                           cursor: 'pointer',
                           borderBottom: `1px solid ${ui.line}`,
                           transition: 'background-color 0.15s ease',
@@ -139,12 +141,30 @@ function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, o
                         }}
                         onMouseLeave={(event) => {
                           if (!isSelected) {
-                            event.currentTarget.style.background = 'transparent';
+                            event.currentTarget.style.background = order.has_changes ? HIGHLIGHT_BACKGROUND : 'transparent';
                           }
                         }}
                       >
                         <td style={cellStyle}>{order.id}</td>
-                        <td style={cellStyle}>{order.invoice_number ?? '—'}</td>
+                        <td style={cellStyle}>
+                          {order.invoice_number ?? '—'}
+                          {order.has_changes && (
+                            <span
+                              style={{
+                                marginLeft: 8,
+                                padding: '2px 8px',
+                                background: ui.accent,
+                                color: '#fff',
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                              }}
+                            >
+                              {showCustomer ? 'New' : 'Updated'}
+                            </span>
+                          )}
+                        </td>
                         {showCustomer && (
                           <td style={cellStyle}>{order.customer_name || order.customer_email || `User ${order.user_id}`}</td>
                         )}

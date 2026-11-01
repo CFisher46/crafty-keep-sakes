@@ -84,6 +84,8 @@ export interface InvoiceOrder {
   invoice_number?: string | null;
   invoice_status?: string | null;
   tracking_info?: string | null;
+  has_changes?: boolean;
+  invoice_updated_at?: string | null;
   customer_name?: string | null;
   customer_email?: string | null;
   placed_at: string;
