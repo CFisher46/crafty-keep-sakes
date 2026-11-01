@@ -5,24 +5,21 @@
   "main": "index.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:railway": "DOTENV_CONFIG_PATH=.env.railway ALLOW_REMOTE_DB=1 ts-node-dev --respawn --transpile-only -r dotenv/config src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint 'src/**/*.ts'",
     "test": "jest --passWithNoTests",
     "test:ci": "jest --coverage --runInBand --passWithNoTests && node scripts/report-coverage-by-domain.js",
-    "repair:encrypted-users": "node scripts/repair-encrypted-users.js",
-    "repair:encrypted-users:apply": "node scripts/repair-encrypted-users.js --apply",
+    "db:apply-schema": "node scripts/apply-schema.js",
     "seed:products:v2": "node scripts/seed-products-v2.js",
-    "user:generate-insert": "node scripts/generate-user-insert.js",
-    "user:generate-insert:legacy": "node scripts/generate-user-insert.js --target legacy",
-    "user:v2:generate-insert": "node scripts/generate-user-insert.js --target v2",
-    "key:generate": "node scripts/generate-encryption-key.js",
-    "key:fingerprints": "node scripts/print-key-fingerprints.js"
+    "user:generate-insert": "node scripts/generate-user-insert.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
     "@reduxjs/toolkit": "^2.8.2",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",

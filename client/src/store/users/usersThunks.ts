@@ -1,6 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { User } from '../../types';
-import { createAuditEntry } from '../audits/auditThunks';
 import { buildApiUrl } from '../../api/apiPath';
 
 type RawUserRecord = Partial<User> & {
@@ -25,13 +24,6 @@ const normalizeUserRecord = (user: RawUserRecord): User => ({
   invoice_id: Number(user.invoice_id ?? 0),
   password: String(user.password ?? ''),
 });
-
-const getChangedBy = (state: any) => {
-  const loggedInUser = state.auth?.user;
-  return loggedInUser
-    ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
-    : 'Unknown';
-};
 
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
   const res = await fetch(buildApiUrl('users'), {
@@ -74,9 +66,8 @@ export const updateUser = createAsyncThunk(
     {
       id,
       user,
-      previousUser,
     }: { id: string; user: Partial<User>; previousUser?: User },
-    { dispatch, rejectWithValue, getState }
+    { rejectWithValue }
   ) => {
     try {
       const res = await fetch(buildApiUrl('users', `/${id}`), {
@@ -93,26 +84,6 @@ export const updateUser = createAsyncThunk(
 
       await res.json();
 
-      if (previousUser) {
-        const changedBy = getChangedBy(getState());
-        Object.keys(user).forEach((key) => {
-          const oldValue = previousUser[key as keyof User];
-          const newValue = user[key as keyof User];
-
-          if (oldValue !== newValue && key !== 'password') {
-            dispatch(
-              createAuditEntry({
-                user: id,
-                field_changed: key,
-                action_type: 'UPDATE',
-                api_source: '/user/{id}',
-                changed_by: changedBy,
-              })
-            );
-          }
-        });
-      }
-
       return { ...user, id };
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
@@ -121,7 +92,7 @@ export const updateUser = createAsyncThunk(
 );
 export const createUser = createAsyncThunk(
   'users/create',
-  async (newUser: Partial<User>, { dispatch, rejectWithValue, getState }) => {
+  async (newUser: Partial<User>, { rejectWithValue }) => {
     try {
       const res = await fetch(buildApiUrl('users'), {
         method: 'POST',
@@ -137,17 +108,6 @@ export const createUser = createAsyncThunk(
 
       const data = await res.json();
 
-      const changedBy = getChangedBy(getState());
-      dispatch(
-        createAuditEntry({
-          user: data.insertId.toString(),
-          field_changed: 'user_created',
-          action_type: 'CREATE',
-          api_source: '/admin',
-          changed_by: changedBy, 
-        })
-      );
-
       return data;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Network error');
@@ -157,21 +117,11 @@ export const createUser = createAsyncThunk(
 
 export const deleteUser = createAsyncThunk(
   'users/delete',
-  async (id: string, { dispatch, getState }) => {
+  async (id: string) => {
     await fetch(buildApiUrl('users', `/${id}`), {
       method: 'DELETE',
       credentials: 'include',
     });
-    const changedBy = getChangedBy(getState());
-    dispatch(
-      createAuditEntry({
-        user: id,
-        field_changed: 'user_deleted',
-        action_type: 'DELETE',
-        api_source: '/admin',
-        changed_by: changedBy,
-      })
-    );
 
     return id;
   }

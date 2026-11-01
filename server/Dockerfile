@@ -13,6 +13,9 @@ WORKDIR /app/server
 COPY server/package*.json ./
 RUN npm ci --omit=dev
 COPY --from=build /app/server/dist ./dist
+# Schema runner, used as a Railway pre-deploy command (npm run db:apply-schema)
+COPY server/scripts/apply-schema.js ./scripts/apply-schema.js
+COPY server/scripts/migrations ./scripts/migrations
 # Uploaded and seeded product images live here (see upload-images-directory.ts)
 COPY client/public/images /app/client/public/images
 EXPOSE 3001

@@ -1,7 +1,6 @@
 -- Phase 1 schema bootstrap
 -- Creates parallel v2 tables so migration can happen incrementally with zero naming conflicts.
 
-START TRANSACTION;
 
 CREATE TABLE IF NOT EXISTS roles_v2 (
   id TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -347,4 +346,3 @@ CREATE TABLE IF NOT EXISTS reviews_v2 (
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-COMMIT;

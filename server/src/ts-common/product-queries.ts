@@ -2,8 +2,6 @@ import { generateSortSql } from './sql-utils';
 import { DefaultQueryParams } from './types';
 import { SortOptions, Product } from './product-types';
 
-type ProductReadSource = 'legacy' | 'v2';
-
 export const SORT_OPTIONS: SortOptions = {
   product_name: { alias: 'fp' },
   id: { alias: 'fp' },
@@ -28,13 +26,6 @@ const toBooleanSqlValue = (value: string): 'TRUE' | 'FALSE' | null => {
   if (['false', '0', 'no', 'n'].includes(normalized)) return 'FALSE';
 
   return null;
-};
-
-const buildTextInClause = (alias: string, column: string, value?: string) => {
-  const values = splitCsv(value).map((item) => `'${escapeSqlLiteral(item)}'`);
-  if (!values.length) return '';
-
-  return `${alias}.${column} IN (${values.join(', ')})`;
 };
 
 const buildV2CategoryClause = (value?: string) => {
@@ -79,16 +70,11 @@ const buildBooleanInClause = (
 };
 
 export function GetAllProductsQuery(
-  queryStringParams?: DefaultQueryParams,
-  source: ProductReadSource = 'legacy'
-) {
-  const productsTable = source === 'v2' ? 'products_v2' : 'products';
-  const productImagesTable =
-    source === 'v2' ? 'product_images_v2' : 'product_images';
+  queryStringParams?: DefaultQueryParams) {
+  const productsTable = 'products_v2';
+  const productImagesTable = 'product_images_v2';
 
-  const baseProductsSql =
-    source === 'v2'
-      ? `
+  const baseProductsSql = `
         SELECT
             p.id,
             COALESCE(GROUP_CONCAT(DISTINCT c.name ORDER BY c.name SEPARATOR ', '), '') AS category,
@@ -110,21 +96,6 @@ export function GetAllProductsQuery(
         LEFT JOIN product_categories_v2 pc ON pc.product_id = p.id
         LEFT JOIN categories_v2 c ON c.id = pc.category_id
         GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.created_at
-      `
-      : `
-        SELECT
-            p.id,
-            p.category,
-            p.description,
-            p.price,
-            p.quantity,
-            p.on_sale,
-            p.product_name,
-            p.is_live,
-            p.sale_percent,
-            NULL AS created_at,
-            0 AS units_sold
-        FROM ${productsTable} p
       `;
 
   const whereClauses: string[] = [];
@@ -141,10 +112,7 @@ export function GetAllProductsQuery(
   );
   if (productNameClause) whereClauses.push(productNameClause);
 
-  const categoryClause =
-    source === 'v2'
-      ? buildV2CategoryClause(queryStringParams?.category)
-      : buildTextInClause('fp', 'category', queryStringParams?.category);
+  const categoryClause = buildV2CategoryClause(queryStringParams?.category);
   if (categoryClause) whereClauses.push(categoryClause);
 
   const onSaleClause = buildBooleanInClause(
@@ -244,17 +212,12 @@ export function GetAllProductsQuery(
 }
 
 export function GetSpecificProductsQuery(
-  id: string,
-  source: ProductReadSource = 'legacy'
-) {
+  id: string) {
   const escapedId = escapeSqlLiteral(id);
-  const productsTable = source === 'v2' ? 'products_v2' : 'products';
-  const productImagesTable =
-    source === 'v2' ? 'product_images_v2' : 'product_images';
+  const productsTable = 'products_v2';
+  const productImagesTable = 'product_images_v2';
 
-  const baseProductsSql =
-    source === 'v2'
-      ? `
+  const baseProductsSql = `
         SELECT
             p.id,
             COALESCE(GROUP_CONCAT(DISTINCT c.name ORDER BY c.name SEPARATOR ', '), '') AS category,
@@ -270,26 +233,9 @@ export function GetSpecificProductsQuery(
         LEFT JOIN product_categories_v2 pc ON pc.product_id = p.id
         LEFT JOIN categories_v2 c ON c.id = pc.category_id
         GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.sku
-      `
-      : `
-        SELECT
-            p.id,
-            p.category,
-            p.description,
-            p.price,
-            p.quantity,
-            p.on_sale,
-            p.product_name,
-            p.is_live,
-            p.sale_percent,
-            CAST(p.id AS CHAR) AS sku
-        FROM ${productsTable} p
       `;
 
-  const lookupPredicate =
-    source === 'v2'
-      ? `CAST(fp.id AS CHAR) = '${escapedId}' OR fp.sku = '${escapedId}'`
-      : `CAST(fp.id AS CHAR) = '${escapedId}'`;
+  const lookupPredicate = `CAST(fp.id AS CHAR) = '${escapedId}' OR fp.sku = '${escapedId}'`;
 
   const result = `
     WITH BaseProducts AS (
@@ -356,59 +302,6 @@ export function GetSpecificProductsQuery(
   `;
 
   return result;
-}
-
-export function createProductQuery(product: Product) {
-  return {
-    sql: `
-      INSERT INTO products
-        (id, category, description, price, quantity, on_sale, product_name, is_live, sale_percent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    values: [
-      product.id,
-      product.category,
-      product.description,
-      product.price,
-      product.quantity,
-      product.on_sale,
-      product.product_name,
-      product.is_live,
-      product.sale_percent,
-    ],
-  };
-}
-
-
-
-
-export function updateProductQuery(id: string, product: Product) {
-  return {
-    sql: `
-      UPDATE products
-      SET
-        category = ?,
-        description = ?,
-        price = ?,
-        quantity = ?,
-        on_sale = ?,
-        product_name = ?,
-        is_live = ?,
-        sale_percent = ?
-      WHERE id = ?
-    `,
-    values: [
-      product.category,
-      product.description,
-      product.price,
-      product.quantity,
-      product.on_sale,
-      product.product_name,
-      product.is_live,
-      product.sale_percent,
-      id,
-    ],
-  };
 }
 
 type MutableProductField =

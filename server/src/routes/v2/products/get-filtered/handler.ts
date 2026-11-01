@@ -12,7 +12,7 @@ router.get("/filter", async (req, res) => {
   try {
     const queryStringParams = req.query as DefaultQueryParams;
 
-    const [rows] = await db.query(GetAllProductsQuery(queryStringParams, "v2"));
+    const [rows] = await db.query(GetAllProductsQuery(queryStringParams));
 
     const parsedResult = parseJsonResult(
       (rows as { result: unknown }[])?.[0]?.result

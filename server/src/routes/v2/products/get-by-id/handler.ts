@@ -8,7 +8,7 @@ router.get("/:id", async (req: Request, res: Response) => {  console.log(`GET /a
   const id = String(req.params.id);
 
   try {
-    const [rows] = await db.query(GetSpecificProductsQuery(id, "v2"));
+    const [rows] = await db.query(GetSpecificProductsQuery(id));
     res.json(rows);
   } catch (err) {
     console.error("V2 Product By ID DB Error:", err);

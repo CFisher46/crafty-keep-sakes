@@ -1,6 +1,4 @@
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../../ts-common/database';
 import {
@@ -14,28 +12,12 @@ import {
   getRequestUser,
 } from '../../../../../ts-common/middleware';
 import { imageFileFilter, IMAGE_UPLOAD_LIMITS } from '../../../../../ts-common/image-upload';
-import { getProductImagesDirectory } from '../../../../../ts-common/upload-images-directory';
+import { createImageUpload, getStoredImagePath } from '../../../../../ts-common/image-storage';
 import { insertAuditEvent } from '../../../audit-events';
 
 const router = express.Router();
 
-const imagesDirectory = getProductImagesDirectory();
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, imagesDirectory);
-  },
-  filename: (_req, file, cb) => {
-    const extension = path.extname(file.originalname);
-    const basename = path
-      .basename(file.originalname, extension)
-      .replace(/[^a-zA-Z0-9-_]/g, '_');
-    cb(null, `${Date.now()}-${basename}${extension}`);
-  },
-});
-
-const upload = multer({
-  storage,
+const upload = createImageUpload('', {
   fileFilter: imageFileFilter,
   limits: IMAGE_UPLOAD_LIMITS,
 });
@@ -81,7 +63,7 @@ router.post(
       );
 
       const maxSort = Number(sortRows[0]?.max_sort ?? -1);
-      const imagePaths = files.map((file) => `/images/${file.filename}`);
+      const imagePaths = files.map((file) => getStoredImagePath(file));
 
       await Promise.all(
         imagePaths.map((imagePath, index) =>

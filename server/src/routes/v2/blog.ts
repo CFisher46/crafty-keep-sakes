@@ -1,39 +1,16 @@
 import express from 'express';
-import fs from 'fs';
 import jwt from 'jsonwebtoken';
 import type { RowDataPacket } from 'mysql2';
-import multer from 'multer';
-import path from 'path';
 import { notify } from '../../notifications/service';
 import { db } from '../../ts-common/database';
+import { createImageUpload, getStoredImagePath } from '../../ts-common/image-storage';
 import { imageFileFilter, IMAGE_UPLOAD_LIMITS } from '../../ts-common/image-upload';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, requireRole, getRequestUser } from '../../ts-common/middleware';
 
 const router = express.Router();
 
-const blogImagesDirectory = path.resolve(__dirname, '../../../../client/public/images/blog');
-
-if (!fs.existsSync(blogImagesDirectory)) {
-  fs.mkdirSync(blogImagesDirectory, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, blogImagesDirectory);
-  },
-  filename: (_req, file, cb) => {
-    const extension = path.extname(file.originalname);
-    const safeName = path
-      .basename(file.originalname, extension)
-      .replace(/[^a-zA-Z0-9-_]/g, '_');
-
-    cb(null, `${Date.now()}-${safeName}${extension}`);
-  },
-});
-
-const upload = multer({
-  storage,
+const upload = createImageUpload('blog/', {
   fileFilter: imageFileFilter,
   limits: IMAGE_UPLOAD_LIMITS,
 });
@@ -213,7 +190,7 @@ router.post('/posts', verifyAuthToken, requireRole('admin'), upload.array('image
         files.map((file, index) =>
           db.query(
             'INSERT INTO blog_post_images_v2 (post_id, image_url, sort_order) VALUES (?, ?, ?)',
-            [postId, `/images/blog/${file.filename}`, index + 1]
+            [postId, getStoredImagePath(file, 'blog/'), index + 1]
           )
         )
       );
@@ -235,7 +212,7 @@ router.post('/posts', verifyAuthToken, requireRole('admin'), upload.array('image
       created_at: post?.created_at ?? new Date().toISOString(),
       images: files.map((file, index) => ({
         id: null,
-        image_url: `/images/blog/${file.filename}`,
+        image_url: getStoredImagePath(file, 'blog/'),
         sort_order: index + 1,
       })),
     };
@@ -422,7 +399,7 @@ router.post('/posts/:id/images/upload', verifyAuthToken, requireRole('admin'), u
       return;
     }
 
-    const imageRecords = files.map((file, index) => [postId, `/images/blog/${file.filename}`, index + 1]);
+    const imageRecords = files.map((file, index) => [postId, getStoredImagePath(file, 'blog/'), index + 1]);
 
     await Promise.all(
       imageRecords.map(([post_id, image_url, sort_order]) =>

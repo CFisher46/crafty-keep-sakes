@@ -88,34 +88,3 @@ export const fetchAuditFilterOptions = createAsyncThunk<AuditFilterOptions>(
     }
   }
 );
-
-export const createAuditEntry = createAsyncThunk<
-  Audit,
-  {
-    user: string;
-    field_changed: string;
-    action_type: string;
-    api_source: string;
-    changed_by: string;
-  },
-  { rejectValue: string }
->('audits/create', async (auditData, { rejectWithValue }) => {
-  try {
-    const res = await fetch(buildApiUrl('audit'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(auditData),
-    });
-
-    if (!res.ok) {
-      const errorData = await res.json();
-      return rejectWithValue(errorData.error || 'Failed to create audit entry');
-    }
-
-    const data = await res.json();
-    return data;
-  } catch (error: any) {
-    return rejectWithValue(error.message || 'Network error');
-  }
-});

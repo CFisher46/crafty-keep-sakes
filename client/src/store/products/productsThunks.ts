@@ -1,6 +1,5 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { Product } from "../../types";
-import { createAuditEntry } from "../audits/auditThunks";
 import { buildApiUrl } from "../../api/apiPath";
 
 const parseProductsPayload = (raw: unknown): Product[] => {
@@ -42,13 +41,6 @@ const parseProductsPayload = (raw: unknown): Product[] => {
   }
 
   return [];
-};
-
-const getChangedBy = (state: any) => {
-  const loggedInUser = state.auth?.user;
-  return loggedInUser
-    ? `${loggedInUser.last_name}, ${loggedInUser.first_name}`
-    : "Unknown";
 };
 
 export const fetchProductById = createAsyncThunk<Product, string>(
@@ -103,7 +95,7 @@ export const fetchAllProductsForAdmin = createAsyncThunk<Product[]>(
 
 export const createProduct = createAsyncThunk(
   "products/createProduct",
-  async (product: Product, { dispatch, rejectWithValue, getState }) => {
+  async (product: Product, { rejectWithValue }) => {
     try {
       const res = await fetch(buildApiUrl('products'), {
         method: "POST",
@@ -120,17 +112,6 @@ export const createProduct = createAsyncThunk(
       }
 
       const data = await res.json();
-
-      const changedBy = getChangedBy(getState());
-      dispatch(
-        createAuditEntry({
-          user: String(product.id || data.insertId || ""),
-          field_changed: "product_created",
-          action_type: "CREATE",
-          api_source: "/products",
-          changed_by: changedBy
-        })
-      );
 
       return data; 
     } catch (err: any) {
@@ -174,7 +155,7 @@ export const updateProduct = createAsyncThunk<
   { rejectValue: string }
 >(
   "products/updateProduct",
-  async ({ id, product, previousProduct }, { dispatch, rejectWithValue, getState }) => {
+  async ({ id, product }, { rejectWithValue }) => {
   try {
     const response = await fetch(
       buildApiUrl('products', `/${id}`),
@@ -192,28 +173,6 @@ export const updateProduct = createAsyncThunk<
     }
 
     const updatedProduct = await response.json();
-
-    if (previousProduct) {
-      const changedBy = getChangedBy(getState());
-
-      Object.keys(product).forEach((key) => {
-        const typedKey = key as keyof Product;
-        const oldValue = previousProduct[typedKey];
-        const newValue = product[typedKey];
-
-        if (typedKey !== "images" && oldValue !== newValue) {
-          dispatch(
-            createAuditEntry({
-              user: id,
-              field_changed: typedKey,
-              action_type: "UPDATE",
-              api_source: `/products`,
-              changed_by: changedBy
-            })
-          );
-        }
-      });
-    }
 
     return updatedProduct;
   } catch (err) {
