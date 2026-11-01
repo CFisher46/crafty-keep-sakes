@@ -105,8 +105,51 @@ describe('PageHeader', () => {
     name: 'Profile',
   });
     fireEvent.click(profileButton);
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'My profile' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/profile/42');
+    expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument();
+  });
+
+  it('logs the user out from the account menu', async () => {
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '42' } },
+      basket: { items: [], totalItems: 0 },
+    });
+
+    render(
+      <Provider store={store}>
+        <PageHeader />
+      </Provider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Log out' }));
+
+    await waitFor(() => expect(store.getState().auth.isLoggedIn).toBe(false));
+    expect(mockNavigate).toHaveBeenCalledWith('/Home');
+    expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument();
+  });
+
+  it('closes the account menu on Escape', () => {
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '42' } },
+      basket: { items: [], totalItems: 0 },
+    });
+
+    render(
+      <Provider store={store}>
+        <PageHeader />
+      </Provider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    expect(screen.getByRole('menu', { name: 'Account' })).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument();
   });
 
   it('opens a sign-in panel instead of navigating when logged out', () => {

@@ -9,6 +9,9 @@ import { useSelector } from "react-redux";
 import { ui } from "../../helpers/theme";
 import { fetchUnreadNotificationCount } from "../../features/notifications/api";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../../features/notifications/events";
+import { useAppDispatch } from "../../store/hooks";
+import { performLogout } from "../../store/auth/authThunks";
+import { clearSelectedUser } from "../../store/users/usersSlice";
 
 const NOTIFICATION_POLL_MS = 60000;
 
@@ -21,6 +24,8 @@ function PageHeader() {
   const isMobile = size === "small";
   const [menuOpen, setMenuOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const dispatch = useAppDispatch();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -61,13 +66,28 @@ function PageHeader() {
   }, [userId]);
 
   useEffect(() => {
-    if (!authOpen) return undefined;
+    if (!authOpen && !accountMenuOpen) return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setAuthOpen(false);
+      if (event.key === "Escape") {
+        setAuthOpen(false);
+        setAccountMenuOpen(false);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [authOpen]);
+  }, [authOpen, accountMenuOpen]);
+
+  useEffect(() => {
+    if (!userId) setAccountMenuOpen(false);
+  }, [userId]);
+
+  const handleLogout = () => {
+    setAccountMenuOpen(false);
+    closeMenu();
+    dispatch(performLogout());
+    dispatch(clearSelectedUser());
+    navigate("/Home");
+  };
 
   const closeMenu = () => setMenuOpen(false);
   const iconColor = ui.ink;
@@ -185,11 +205,12 @@ function PageHeader() {
           </Box>
           <Button
             a11yTitle="Profile"
-            aria-expanded={userId ? undefined : authOpen}
+            aria-expanded={userId ? accountMenuOpen : authOpen}
+            aria-haspopup={userId ? "menu" : undefined}
             onClick={() => {
               closeMenu();
               if (userId) {
-                navigate(`/profile/${userId}`);
+                setAccountMenuOpen((open) => !open);
               } else if (location.pathname.toLowerCase() === "/home") {
                 // The landing page has its own sign-in panel
                 setAuthOpen(false);
@@ -203,6 +224,58 @@ function PageHeader() {
           />
         </Box>
       </Box>
+
+      {accountMenuOpen && userId && (
+        <>
+          <div
+            data-testid="account-menu-backdrop"
+            onClick={() => setAccountMenuOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: -1 }}
+          />
+          <Box
+            background="white"
+            role="menu"
+            aria-label="Account"
+            border={{ color: ui.line }}
+            style={{
+              position: "absolute",
+              top: "100%",
+              right: "16px",
+              minWidth: "180px",
+              boxShadow: "0 12px 32px rgba(43, 38, 35, 0.14)",
+            }}
+          >
+            {[
+              {
+                label: "My profile",
+                onClick: () => {
+                  setAccountMenuOpen(false);
+                  navigate(`/profile/${userId}`);
+                },
+              },
+              { label: "Log out", onClick: handleLogout },
+            ].map((item) => (
+              <Button
+                key={item.label}
+                role="menuitem"
+                plain
+                onClick={item.onClick}
+                style={{
+                  padding: "12px 16px",
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  letterSpacing: "0.12em",
+                  textTransform: "uppercase",
+                  color: ui.ink,
+                  textAlign: "left",
+                }}
+              >
+                {item.label}
+              </Button>
+            ))}
+          </Box>
+        </>
+      )}
 
       {authOpen && !userId && (
         <>

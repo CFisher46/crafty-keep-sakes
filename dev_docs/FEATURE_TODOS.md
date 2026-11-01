@@ -28,6 +28,11 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an ADMIN, I WANT to add, update and delete feedback gathered from external sources (stored in `reviews_v2`) so it can be shared with customers.
     -   Notes: The admin Reports area was replaced by Reviews. Report export (XLSX/CSV) will be tackled separately with a different approach.
 
+-   [ ] CKS-2-023 : "My invoices" page in the profile menu
+    -   AS a CUSTOMER, WHEN I open the profile menu, I WANT a "My invoices" option that takes me to a dedicated invoices page.
+    -   AS a CUSTOMER, WHEN viewing my profile, I WANT it to focus on my account details, with the invoice table no longer shown there.
+    -   Notes: Add a "My invoices" item to the header account menu (alongside "My profile" and "Log out"). Move the invoice table and invoice details out of the profile view (`features/profile/invoice-history.tsx`, `invoice-details.tsx`) into their own routed page.
+
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.
     -   Notes: Parked. Many products are hand crafted and may be made on an order-by-order basis, so a quantity of 0 is not necessarily a problem. Stock is also not currently reduced at checkout. Needs a per-product "made to order" flag (to exclude those from alerts), stock decrement on checkout, and a de-duplicated alert (once per threshold crossing, not on every order). A previous implementation used a threshold of 5 (and 0 for out of stock) and was removed.
