@@ -1,4 +1,4 @@
-import { fetchAuditLogs, createAuditEntry } from './auditThunks';
+import { fetchAuditLogs } from './auditThunks';
 
 describe('auditThunks', () => {
   beforeEach(() => {
@@ -62,66 +62,6 @@ describe('auditThunks', () => {
 
       expect(result.type).toBe('audit/fetchLogs/rejected');
       expect(result.payload).toBe('Network down');
-    });
-  });
-
-  describe('createAuditEntry', () => {
-    const auditData = {
-      user: '7',
-      field_changed: 'email_address',
-      action_type: 'UPDATE',
-      api_source: '/user/{id}',
-      changed_by: 'Doe, John',
-    };
-
-    it('creates an audit entry successfully', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 1, ...auditData }),
-      });
-
-      const result = await createAuditEntry(auditData)(jest.fn(), jest.fn(), undefined);
-
-      expect(result.type).toBe('audits/create/fulfilled');
-    });
-
-    it('sends a POST request with the audit payload', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 1, ...auditData }),
-      });
-
-      await createAuditEntry(auditData)(jest.fn(), jest.fn(), undefined);
-
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api'),
-        expect.objectContaining({
-          method: 'POST',
-          credentials: 'include',
-          body: JSON.stringify(auditData),
-        })
-      );
-    });
-
-    it('rejects with server error message on failure', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: false,
-        json: async () => ({ error: 'Invalid audit data' }),
-      });
-
-      const result = await createAuditEntry(auditData)(jest.fn(), jest.fn(), undefined);
-
-      expect(result.type).toBe('audits/create/rejected');
-      expect(result.payload).toBe('Invalid audit data');
-    });
-
-    it('rejects on network error', async () => {
-      (global.fetch as jest.Mock).mockRejectedValue(new Error('Timeout'));
-
-      const result = await createAuditEntry(auditData)(jest.fn(), jest.fn(), undefined);
-
-      expect(result.type).toBe('audits/create/rejected');
-      expect(result.payload).toBe('Timeout');
     });
   });
 });

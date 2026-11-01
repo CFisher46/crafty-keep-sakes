@@ -2,7 +2,6 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import {
   fetchAuditFilterOptions,
   fetchAuditLogs,
-  createAuditEntry,
   AuditLogResponse,
 } from './auditThunks';
 import { Audit, AuditFilterOptions } from '../../types';
@@ -72,18 +71,6 @@ const auditSlice = createSlice({
         state.filterOptionsLoading = false;
         state.filterOptionsError =
           (action.payload as string) || action.error.message || 'Failed to fetch audit filter options';
-      })
-      .addCase(createAuditEntry.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(createAuditEntry.fulfilled, (state, action: PayloadAction<Audit>) => {
-        state.loading = false;
-        state.logs.unshift(action.payload);
-      })
-      .addCase(createAuditEntry.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
       });
   },
 });

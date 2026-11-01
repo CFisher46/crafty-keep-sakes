@@ -1,5 +1,5 @@
 import reducer, { clearAuditLogs } from './auditSlice';
-import { fetchAuditLogs, createAuditEntry } from './auditThunks';
+import { fetchAuditLogs } from './auditThunks';
 
 const initialState = {
   logs: [],
@@ -65,39 +65,6 @@ describe('auditSlice', () => {
 
       expect(state.loading).toBe(false);
       expect(state.error).toBe('failed to load');
-    });
-  });
-
-  describe('createAuditEntry', () => {
-    it('sets loading true on pending', () => {
-      const state = reducer(initialState, createAuditEntry.pending('id', {} as any));
-
-      expect(state.loading).toBe(true);
-    });
-
-    it('prepends the new entry to logs on fulfilled', () => {
-      const existingEntry = { ...sampleAudit, id: 2 };
-
-      const state = reducer(
-        { ...initialState, logs: [existingEntry] },
-        createAuditEntry.fulfilled(sampleAudit, 'id', {} as any)
-      );
-
-      expect(state.logs[0]).toEqual(sampleAudit);
-      expect(state.logs).toHaveLength(2);
-    });
-
-    it('sets an error on rejected', () => {
-      const action = createAuditEntry.rejected(
-        new Error('failed'),
-        'id',
-        {} as any,
-        'Invalid audit data'
-      );
-
-      const state = reducer(initialState, action);
-
-      expect(state.error).toBe('Invalid audit data');
     });
   });
 

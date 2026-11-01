@@ -1,8 +1,7 @@
 import { updateUser, deleteUser, verifyCurrentPassword, fetchUserById, createUser } from './usersThunks';
 
-jest.mock('../audits/auditThunks', () => ({
-  createAuditEntry: (payload: any) => ({ type: 'audits/createAuditEntry', payload }),
-}));
+const auditPosts = () =>
+  (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes('/audit'));
 
 describe('usersThunks (write operations)', () => {
   beforeEach(() => {
@@ -55,7 +54,7 @@ describe('usersThunks (write operations)', () => {
       expect(payload.first_name).toBe('Jane');
     });
 
-    it('dispatches audit entries for changed fields excluding password', async () => {
+    it('does not post a separate audit entry, because the server audits the update', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({}),
@@ -70,12 +69,8 @@ describe('usersThunks (write operations)', () => {
         previousUser: { first_name: 'John', password: 'oldpass' } as any,
       })(dispatch, getState, undefined);
 
-      const auditCalls = dispatch.mock.calls.filter(
-        ([action]) => action.type === 'audits/createAuditEntry'
-      );
-
-      expect(auditCalls).toHaveLength(1);
-      expect(auditCalls[0][0].payload.field_changed).toBe('first_name');
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(auditPosts()).toHaveLength(0);
     });
 
     it('rejects with server error message on failure', async () => {
@@ -111,7 +106,7 @@ describe('usersThunks (write operations)', () => {
   });
 
   describe('deleteUser', () => {
-    it('deletes a user and dispatches an audit entry', async () => {
+    it('deletes a user without posting a separate audit entry', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
 
       const dispatch = jest.fn();
@@ -121,9 +116,8 @@ describe('usersThunks (write operations)', () => {
 
       expect(result.type).toBe('users/delete/fulfilled');
       expect(result.payload).toBe('7');
-      expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'audits/createAuditEntry' })
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(auditPosts()).toHaveLength(0);
     });
 
     it('sends a DELETE request to the correct endpoint', async () => {
@@ -174,7 +168,7 @@ describe('usersThunks (write operations)', () => {
   });
 
   describe('createUser', () => {
-    it('creates a user and dispatches an audit entry with the new insertId', async () => {
+    it('creates a user without posting a separate audit entry', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({ insertId: 55 }),
@@ -186,12 +180,8 @@ describe('usersThunks (write operations)', () => {
       const result = await createUser({ first_name: 'New' })(dispatch, getState, undefined);
 
       expect(result.type).toBe('users/create/fulfilled');
-      expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'audits/createAuditEntry',
-          payload: expect.objectContaining({ user: '55' }),
-        })
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(auditPosts()).toHaveLength(0);
     });
 
     it('rejects on network error', async () => {

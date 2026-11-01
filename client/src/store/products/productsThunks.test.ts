@@ -11,9 +11,8 @@ jest.mock('../../api/apiPath', () => ({
   buildApiUrl: (_domain: string, path = '') => `/api/products${path}`,
 }));
 
-jest.mock('../audits/auditThunks', () => ({
-  createAuditEntry: (payload: any) => ({ type: 'audits/createAuditEntry', payload }),
-}));
+const auditPosts = () =>
+  (global.fetch as jest.Mock).mock.calls.filter(([url]) => String(url).includes('/audit'));
 
 describe('productsThunks', () => {
   beforeEach(() => {
@@ -154,7 +153,7 @@ describe('productsThunks', () => {
       images: '',
     } as any;
 
-    it('creates a product and dispatches an audit entry', async () => {
+    it('creates a product without posting a separate audit entry', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({ message: 'Created', insertId: 1 }),
@@ -166,9 +165,8 @@ describe('productsThunks', () => {
       const result = await createProduct(product)(dispatch, getState, undefined);
 
       expect(result.type).toBe('products/createProduct/fulfilled');
-      expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'audits/createAuditEntry' })
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(auditPosts()).toHaveLength(0);
     });
 
     it('rejects with server error message on failure', async () => {
@@ -220,7 +218,7 @@ describe('productsThunks', () => {
       expect(payload.product_name).toBe('Updated Mug');
     });
 
-    it('dispatches audit entries for changed fields', async () => {
+    it('does not post a separate audit entry, because the server audits the update', async () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
         json: async () => ({ id: 'P1', product_name: 'Updated Mug' }),
@@ -235,29 +233,8 @@ describe('productsThunks', () => {
         previousProduct: { product_name: 'Old Mug' } as any,
       })(dispatch, getState, undefined);
 
-      expect(dispatch).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'audits/createAuditEntry' })
-      );
-    });
-
-    it('does not dispatch audit entries for unchanged fields', async () => {
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 'P1', product_name: 'Mug' }),
-      });
-
-      const dispatch = jest.fn();
-      const getState = jest.fn(() => ({ auth: { user: null } }));
-
-      await updateProduct({
-        id: 'P1',
-        product: { product_name: 'Mug' },
-        previousProduct: { product_name: 'Mug' } as any,
-      })(dispatch, getState, undefined);
-
-      expect(dispatch).not.toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'audits/createAuditEntry' })
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(auditPosts()).toHaveLength(0);
     });
 
     it('rejects with response text on failure', async () => {
