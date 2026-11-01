@@ -16,6 +16,7 @@ import v2ReviewsRouter from "./routes/v2/reviews";
 import v2ReportsRouter from "./routes/v2/reports";
 import v2PaymentsRouter from "./routes/v2/payments";
 import healthRouter from "./routes/health";
+import { originGuard } from "./ts-common/origin-guard";
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ export function createApp() {
 
   // Behind the Cloudflare tunnel, trust one proxy hop so req.ip is the client
   app.set("trust proxy", 1);
+  app.use(originGuard);
   app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use("/health", healthRouter);
   app.use(cookieParser());
