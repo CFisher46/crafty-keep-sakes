@@ -34,12 +34,18 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an ADMIN, I WANT a "Reporting" page in the main navigation (admins only) with a link to an all-invoices page, so I can see every customer's invoices and update status and tracking.
     -   Notes: Invoice components now live in `features/invoices/`. Routes: `/invoices` (own invoices), `/Reporting` and `/Reporting/invoices` (admin only). The all-invoices list is served by the admin-only `GET /api/v2/basket/orders/all`. Report export (XLSX/CSV) is still a separate, later piece of work.
 
--   [ ] CKS-2-024 : Admin reports for monitoring the shop
+-   [x] CKS-2-024 : Admin reports for monitoring the shop
     -   AS an ADMIN, I WANT to run product reports (e.g. volumes sold over a period, best and slowest sellers) so I can see what to promote, restock or make.
     -   AS an ADMIN, I WANT to run user activity reports and see customers who have not logged in for some time, so I can spot dormant accounts.
     -   AS an ADMIN, I WANT to see blog stats (e.g. views, comments, most engaged posts) so I can see what content works.
     -   AS an ADMIN, I WANT to filter reports by date range, and export them to XLSX or CSV so the export reflects the filtered view.
     -   Notes: Lives on the admin-only Reporting page (`/Reporting`), alongside the existing "All invoices" link. Will need the login flow to record `users_v2.last_login_at` (the column exists but nothing writes to it yet), and server-side report endpoints since the data is aggregated across tables. Export was split out of CKS-2-022 and is covered here.
+    -   Built: admin-only `GET /api/v2/reports/{products,users,blog}` with `from`/`to` (YYYY-MM-DD, inclusive) filters, and `inactiveDays` for users. Client pages at `/Reporting/products`, `/Reporting/users` and `/Reporting/blog`, each with date filters and CSV export of the filtered view. Login now writes `users_v2.last_login_at`; accounts with no login recorded are measured from their registration date. XLSX export is not built yet (CSV opens in Excel); it would need a spreadsheet library.
+
+-   [ ] CKS-2-025 : IMPORTANT - Integrate a payments vendor
+    -   AS a CUSTOMER, WHEN I check out, I WANT to pay securely online so that my order is confirmed once payment is taken.
+    -   AS an ADMIN, WHEN a payment is taken, I WANT the invoice to be marked as paid automatically, so I don't have to update it by hand.
+    -   Notes: High priority. Today checkout creates the order and an `unpaid` invoice and an admin sets the status manually, so no money is actually taken. Vendor not chosen yet (e.g. Stripe, PayPal, Square). Things to decide and cover: use the vendor's hosted checkout so card details never touch our servers; confirm payment through a signed webhook rather than trusting the browser; keep orders pending until payment succeeds; handle failed, abandoned and refunded payments; store the vendor's payment reference on the invoice; notify the customer and admins on payment; keep secrets in environment config only; add tests for the webhook (including signature rejection and duplicate events).
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.

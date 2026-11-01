@@ -372,6 +372,7 @@ describe('endpoint inventory', () => {
           },
         ],
       ])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([
         [
           {

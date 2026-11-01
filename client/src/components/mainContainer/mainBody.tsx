@@ -17,6 +17,10 @@ import ReviewsPage from "../../features/reviews/page";
 import MyInvoicesPage from "../../features/invoices/page";
 import ReportingPage from "../../features/reporting/page";
 import AllInvoicesPage from "../../features/reporting/invoices/page";
+import DashboardPage from "../../features/reporting/dashboard/page";
+import ProductsReportPage from "../../features/reporting/reports/productsReport";
+import UsersReportPage from "../../features/reporting/reports/usersReport";
+import BlogReportPage from "../../features/reporting/reports/blogReport";
 // import UserRegistration from '../../pages/registration/registration';
 
 function MainBody() {
@@ -64,6 +68,42 @@ function MainBody() {
             element={
               <ProtectedRoute
                 element={<ReportingPage />}
+                requiredTypes={["Admin", "admin"]}
+              />
+            }
+          />
+          <Route
+            path="/Reporting/dashboard"
+            element={
+              <ProtectedRoute
+                element={<DashboardPage />}
+                requiredTypes={["Admin", "admin"]}
+              />
+            }
+          />
+          <Route
+            path="/Reporting/products"
+            element={
+              <ProtectedRoute
+                element={<ProductsReportPage />}
+                requiredTypes={["Admin", "admin"]}
+              />
+            }
+          />
+          <Route
+            path="/Reporting/users"
+            element={
+              <ProtectedRoute
+                element={<UsersReportPage />}
+                requiredTypes={["Admin", "admin"]}
+              />
+            }
+          />
+          <Route
+            path="/Reporting/blog"
+            element={
+              <ProtectedRoute
+                element={<BlogReportPage />}
                 requiredTypes={["Admin", "admin"]}
               />
             }
