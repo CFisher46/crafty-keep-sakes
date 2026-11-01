@@ -5,6 +5,7 @@
   "main": "index.ts",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "dev:railway": "DOTENV_CONFIG_PATH=.env.railway ALLOW_REMOTE_DB=1 ts-node-dev --respawn --transpile-only -r dotenv/config src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint 'src/**/*.ts'",
