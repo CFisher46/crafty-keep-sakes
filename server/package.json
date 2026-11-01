@@ -18,6 +18,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1161.0",
     "@reduxjs/toolkit": "^2.8.2",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
