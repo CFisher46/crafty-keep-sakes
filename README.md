@@ -227,7 +227,9 @@ Payments sit behind a provider interface in `server/src/payments/`. Checkout cre
 | --- | --- |
 | empty | Payments off. Checkout only creates an unpaid invoice (the original behaviour). |
 | `mock` | Local testing. The "payment page" is a simulated screen at `/payments/mock` with success and failure buttons. Refused when `NODE_ENV=production`. |
-| `square` | Square hosted checkout. Not built yet; needs the `SQUARE_*` values in `server/.env.example`. |
+| `square` | Square hosted checkout (Payment Links). Needs the `SQUARE_*` values in `server/.env.example`. Use `SQUARE_ENVIRONMENT=sandbox` with sandbox credentials until going live. |
+
+For Square, create a webhook subscription for `payment.updated` pointing at `SQUARE_WEBHOOK_URL` and copy its signature key into `SQUARE_WEBHOOK_SIGNATURE_KEY`. The URL must match exactly. Square sends customers back to `CLIENT_URL/payments/result` after paying.
 
 Set `CLIENT_URL` to the storefront's public URL so payment redirects return to the right place.
 

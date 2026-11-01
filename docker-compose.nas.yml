@@ -25,6 +25,11 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
       CLIENT_URL: ${CLIENT_URL:-}
       PAYMENTS_PROVIDER: ${PAYMENTS_PROVIDER:-}
+docker buildx build --platform linux/amd64 -f server/Dockerfile -t fisher46/cks-api:latest --push .      SQUARE_ENVIRONMENT: ${SQUARE_ENVIRONMENT:-sandbox}
+      SQUARE_ACCESS_TOKEN: ${SQUARE_ACCESS_TOKEN:-}
+      SQUARE_LOCATION_ID: ${SQUARE_LOCATION_ID:-}
+      SQUARE_WEBHOOK_SIGNATURE_KEY: ${SQUARE_WEBHOOK_SIGNATURE_KEY:-}
+      SQUARE_WEBHOOK_URL: ${SQUARE_WEBHOOK_URL:-}
     volumes:
       - product-images:/app/client/public/images
     # Only reachable from the tunnel container, never published on the LAN/WAN
