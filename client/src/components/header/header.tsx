@@ -133,9 +133,7 @@ function PageHeader() {
               onClick={() => setMenuOpen((open) => !open)}
               style={{ padding: "8px" }}
             />
-          ) : (
-            <NavigationBar onNavigate={() => undefined} resetActive={() => undefined} />
-          )}
+          ) : null}
         </Box>
 
         <Box flex={false}>
@@ -310,6 +308,16 @@ function PageHeader() {
             <AuthPanel onBack={() => setAuthOpen(false)} />
           </Box>
         </>
+      )}
+
+      {!isMobile && (
+        <Box
+          align="start"
+          pad={{ horizontal: "medium", bottom: "xsmall" }}
+          style={{ overflowX: "auto" }}
+        >
+          <NavigationBar onNavigate={() => undefined} resetActive={() => undefined} />
+        </Box>
       )}
 
       {isMobile && menuOpen && (
