@@ -16,6 +16,7 @@ interface InvoicesProps {
   scope: 'mine' | 'all';
   userType?: string;
   billingAddress?: DeliveryAddress;
+  tableMaxHeight?: string;
 }
 
 const NO_ADDRESS: DeliveryAddress = {
@@ -27,7 +28,7 @@ const NO_ADDRESS: DeliveryAddress = {
   postcode: '',
 };
 
-function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProps) {
+function Invoices({ scope, userType, billingAddress = NO_ADDRESS, tableMaxHeight }: InvoicesProps) {
   const loadOrdersThunk = scope === 'all' ? fetchAllOrders : fetchOrderHistory;
   const dispatch = useAppDispatch();
   const [orders, setOrders] = useState<InvoiceOrder[]>([]);
@@ -133,6 +134,7 @@ function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProp
         orders={orders}
         title={scope === 'all' ? 'All Invoices' : 'My Invoices'}
         showCustomer={scope === 'all'}
+        tableMaxHeight={tableMaxHeight}
         onOpenInvoice={setSelectedInvoiceId}
       />
     </>

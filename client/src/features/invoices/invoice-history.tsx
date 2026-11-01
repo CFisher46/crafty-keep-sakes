@@ -8,6 +8,7 @@ interface InvoiceHistoryProps {
   orders: InvoiceOrder[];
   title?: string;
   showCustomer?: boolean;
+  tableMaxHeight?: string;
   onOpenInvoice: (invoiceId: string) => void;
 }
 
@@ -30,7 +31,7 @@ const headingStyle: React.CSSProperties = {
   color: ui.ink,
 };
 
-function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, onOpenInvoice }: InvoiceHistoryProps) {
+function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, tableMaxHeight = '320px', onOpenInvoice }: InvoiceHistoryProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -101,7 +102,7 @@ function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, o
           {filteredOrders.length === 0 ? (
             <Text>No invoices match the current filter.</Text>
           ) : (
-            <Box border={{ color: ui.line }} overflow="auto" style={{ maxHeight: '320px' }}>
+            <Box border={{ color: ui.line }} overflow="auto" style={{ maxHeight: tableMaxHeight }}>
               <table
                 style={{
                   width: '100%',

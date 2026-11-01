@@ -11,16 +11,41 @@ export default function AllInvoicesPage() {
     <Box gap="medium" pad="xsmall">
       <Box direction="row" justify="between" align="end" wrap gap="small">
         <Box gap="xxsmall">
-          <Text style={{ fontSize: '11px', letterSpacing: '0.14em', textTransform: 'uppercase', color: ui.muted }}>
+          <Text
+            style={{
+              fontSize: '11px',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              color: ui.muted,
+            }}
+          >
             Reporting
           </Text>
-          <Text as="h1" margin="none" style={{ fontFamily: ui.serif, fontSize: '36px', fontWeight: 400, color: ui.ink }}>
+          <Text
+            as="h1"
+            margin="none"
+            style={{
+              fontFamily: ui.serif,
+              fontSize: '36px',
+              fontWeight: 400,
+              color: ui.ink,
+            }}
+          >
             All invoices
           </Text>
         </Box>
-        <ActionButton label="Back to reporting" secondary onClick={() => navigate('/Reporting')} fixed />
+        <ActionButton
+          label="Back to reporting"
+          secondary
+          onClick={() => navigate('/Reporting')}
+          fixed
+        />
       </Box>
-      <Invoices scope="all" userType="admin" />
+      <Invoices
+        scope="all"
+        userType="admin"
+        tableMaxHeight="max(420px, calc(100vh - 360px))"
+      />
     </Box>
   );
 }

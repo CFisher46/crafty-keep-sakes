@@ -12,12 +12,29 @@ jest.mock(
 );
 
 describe('ReportingPage', () => {
+  beforeEach(() => mockNavigate.mockClear());
+
   it('links admins to the unrestricted invoices page', () => {
     render(<ReportingPage />);
 
-    expect(screen.getByRole('heading', { name: 'Reporting' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Reporting' })
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'View all invoices' }));
 
     expect(mockNavigate).toHaveBeenCalledWith('/Reporting/invoices');
+  });
+
+  it.each([
+    ['Open dashboard', '/Reporting/dashboard'],
+    ['Product sales', '/Reporting/products'],
+    ['User activity', '/Reporting/users'],
+    ['Blog stats', '/Reporting/blog'],
+  ])('links to the %s report', (label, path) => {
+    render(<ReportingPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: label }));
+
+    expect(mockNavigate).toHaveBeenCalledWith(path);
   });
 });

@@ -13,6 +13,7 @@ import v2BasketRouter from "./routes/v2/basket";
 import v2BlogRouter from "./routes/v2/blog";
 import v2NotificationsRouter from "./routes/v2/notifications";
 import v2ReviewsRouter from "./routes/v2/reviews";
+import v2ReportsRouter from "./routes/v2/reports";
 
 dotenv.config();
 
@@ -86,6 +87,8 @@ export function createApp() {
   app.use("/api/v2/notifications", v2NotificationsRouter);
   app.use("/api/reviews", v2ReviewsRouter);
   app.use("/api/v2/reviews", v2ReviewsRouter);
+  app.use("/api/reports", v2ReportsRouter);
+  app.use("/api/v2/reports", v2ReportsRouter);
 
   app.use(
     "/images",
