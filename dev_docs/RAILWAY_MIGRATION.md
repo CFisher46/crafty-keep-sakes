@@ -26,7 +26,9 @@ Current state (2026-11-01):
 - The MySQL service is running, and the latest schema (24 tables) has been applied by the schema script.
 - The API can talk to the Railway database.
 - An earlier service created from the Railway Express starter template (Railpack/bun build, `/misc/status` healthcheck) was not our API. Do not use it, and delete it if it still exists.
-- Not yet done: Square payment variables on Railway, a first admin user, image storage, a custom domain, and the data move from the NAS. The NAS stays the live API until cutover.
+- Verified (2026-11-01) with the local app run via `npm run dev:railway` (loads `server/.env.railway`, sets `ALLOW_REMOTE_DB=1`) against the Railway DB and MinIO bucket: admin login, creating a product with an image upload (stored in the bucket, served from the public URL), and updating and deleting a user. The server prints `Database target: ...` on start, and refuses a non-local `DB_HOST` outside production unless `ALLOW_REMOTE_DB=1`.
+- Also fixed: the login handler never wrote `users_v2.last_login_at` (stale `source` check), which was behind the 3 failing server tests. The redundant client `POST /api/v2/audit` was removed because the server writes audit events itself.
+- Not yet done: `MINIO_*` variables on the Railway API (it runs `main`, which lacks the adapter), Square payment variables on Railway, a custom domain, K1/K3/K4, curl checks against the Railway URL (Phase B), Cloudflare and browser tests (Phases C and D), the existing-image migration, and the data move from the NAS. The NAS stays the live API until cutover.
 
 Earlier status (2026-10-13):
 - A MinIO template has been added to the Railway project. Nothing uses it yet (section 6).
