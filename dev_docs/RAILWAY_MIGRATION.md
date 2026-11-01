@@ -41,7 +41,7 @@ Next steps, in order:
    - `JWT_SECRET` set to a long random string, or the current NAS value to keep sessions valid
    - `CORS_ORIGIN` set to the site's public URL
    - `NODE_ENV=production`
-3. Redeploy. The deploy logs should show `Applied phase1_schema_v2.sql: 21 tables` and `Roles: admin, customer`, then `Server running on port <n>`.
+3. Redeploy. The deploy logs should show `Applied phase1_schema_v2.sql: 24 tables` and `Roles: admin, customer`, then `Server running on port <n>`.
 4. Generate a public domain and check `/api/v2/products` returns 200.
 5. Create the first admin (section 1, "First admin and sample data").
 6. Then continue with images (section 3), the client (section 4) and the data move (section 5).
@@ -75,11 +75,13 @@ Do this first. The most common failure is setting the service's **Root Directory
 ## 1. Database
 
 ### Schema source of truth
-[`server/scripts/migrations/phase1_schema_v2.sql`](../server/scripts/migrations/phase1_schema_v2.sql) creates all 21 `_v2` tables and seeds the `admin` and `customer` roles.
+[`server/scripts/migrations/phase1_schema_v2.sql`](../server/scripts/migrations/phase1_schema_v2.sql) creates all 24 `_v2` tables and seeds the `admin` and `customer` roles.
 It was compared with the live database and with every SQL statement in `server/src`. Tables, columns and enum values all match, including:
 
 - `invoices_v2.tracking_info` and the `billing_*` columns
 - the blog tables (`blog_posts_v2`, `blog_post_views_v2`, `blog_post_images_v2`, `blog_post_comments_v2`, `blog_post_reactions_v2`)
+- `invoice_views_v2`, `notifications_v2` and `reviews_v2`, added after the first 21 tables
+- `payments_v2`, which the Square integration writes to (`provider`, `provider_ref`, `event_type`)
 
 Re-run this comparison before migrating if the schema or queries have changed since.
 
@@ -111,17 +113,17 @@ Notes:
 ### Create the schema
 The schema script is many statements, and Railway's web query editor only runs one statement at a time (pasting the file fails with a syntax error at the second `CREATE TABLE`). Use one of these instead.
 
-**Option A (recommended, no egress): run it inside Railway.** The API image includes the runner (`server/scripts/apply-schema.js`) and the schema. `railway.json` sets the API service's pre-deploy command to `node scripts/apply-schema.js` (it can also be set under **Settings > Deploy > Pre-deploy Command**). Every deploy then applies the schema over Railway's private network using the service's `DB_*` variables. It is safe to repeat because every statement is `IF NOT EXISTS` or an upsert. The deploy fails if the schema fails. Check the deploy logs for `Applied phase1_schema_v2.sql: 21 tables` and `Roles: admin, customer`.
+**Option A (recommended, no egress): run it inside Railway.** The API image includes the runner (`server/scripts/apply-schema.js`) and the schema. `railway.json` sets the API service's pre-deploy command to `node scripts/apply-schema.js` (it can also be set under **Settings > Deploy > Pre-deploy Command**). Every deploy then applies the schema over Railway's private network using the service's `DB_*` variables. It is safe to repeat because every statement is `IF NOT EXISTS` or an upsert. The deploy fails if the schema fails. Check the deploy logs for `Applied phase1_schema_v2.sql: 24 tables` and `Roles: admin, customer`.
 
 **Option B: from your laptop through the TCP proxy.** The schema setup sends a few KB out of Railway, so the egress cost is negligible. Egress only matters for large exports or leaving the proxy open. From `server/`:
 `DB_HOST=<proxy-host> DB_PORT=<proxy-port> DB_USER=root DB_PASSWORD=<password> DB_DATABASE=railway npm run db:apply-schema`
 or with the `mysql` client:
 `mysql -h <proxy-host> -P <proxy-port> -u root -p railway < server/scripts/migrations/phase1_schema_v2.sql`
 
-**Option C: the web editor.** Paste and run each `CREATE TABLE` block and the final role insert one at a time, in file order (21 tables, then the roles). Slow and easy to get wrong.
+**Option C: the web editor.** Paste and run each `CREATE TABLE` block and the final role insert one at a time, in file order (24 tables, then the roles). Slow and easy to get wrong.
 
 After applying it:
-1. `SHOW TABLES;` should list 21 `_v2` tables on a fresh database.
+1. `SHOW TABLES;` should list 24 `_v2` tables on a fresh database.
 2. `SELECT code FROM roles_v2;` should show `admin` and `customer`. Registration relies on `customer`.
 
 ### First admin and sample data
@@ -146,6 +148,14 @@ Settings to set on the Railway service:
 | `CORS_ORIGIN` | The public URL of the site |
 | `NODE_ENV` | `production` |
 | `PORT` | Railway normally provides this |
+| `CLIENT_URL` | The public site URL. Square redirects customers back to `/payments/result` on it. Defaults to the first `CORS_ORIGIN` |
+| `PAYMENTS_PROVIDER` | `square`. Empty turns payments off. `mock` is refused when `NODE_ENV=production` |
+| `SQUARE_ENVIRONMENT` | `sandbox` (default) until going live, then `production` |
+| `SQUARE_SANDBOX_ACCESS_TOKEN`, `SQUARE_SANDBOX_LOCATION_ID`, `SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY` | Sandbox credentials. Set these first, as on the NAS |
+| `SQUARE_PRODUCTION_ACCESS_TOKEN`, `SQUARE_PRODUCTION_LOCATION_ID`, `SQUARE_PRODUCTION_WEBHOOK_SIGNATURE_KEY` | Live credentials. Only needed when `SQUARE_ENVIRONMENT=production`. Never put them in a local `.env` |
+| `SQUARE_WEBHOOK_URL` | Exactly the URL in the Square webhook subscription (`https://api.craftykeepsakes.uk/api/v2/payments/webhook`). The signature check fails if it differs |
+
+`ENCRYPTION_KEY` and the `*_API_SOURCE` variables are no longer read; leave them off Railway. Mark all the secrets above as Railway secrets, and see the README "Payments" and "Going live" sections for the Square steps.
 
 ### Database connection
 `server/src/ts-common/database.ts` creates the pool from the `DB_*` variables only. If Railway's MySQL requires TLS or a connection limit, that needs adding there.
@@ -171,9 +181,12 @@ Export from the NAS database and import into Railway after the schema is created
 1. `roles_v2`, `users_v2`, `user_roles_v2`, `customer_profiles_v2`
 2. `categories_v2`, `products_v2`, `product_categories_v2`, `product_images_v2`
 3. `baskets_v2`, `basket_items_v2`, `orders_v2`, `order_items_v2`
-4. `invoices_v2`, `invoice_items_v2`, `payments_v2`
+4. `invoices_v2`, `invoice_views_v2`, `invoice_items_v2`, `payments_v2`
 5. `blog_posts_v2`, `blog_post_views_v2`, `blog_post_images_v2`, `blog_post_comments_v2`, `blog_post_reactions_v2`
-6. `audit_events_v2`
+6. `reviews_v2`
+7. `notifications_v2`, `audit_events_v2`
+
+`invoice_views_v2`, `notifications_v2` and `reviews_v2` are easy to forget: without them, admin "new invoice" highlighting, notification history and customer reviews start empty.
 
 ## 6. Object storage (MinIO) — planned, not yet in use
 
@@ -231,11 +244,12 @@ Railway has no IP allowlist, so the `*.up.railway.app` URL can bypass the WAF.
 - Reject API requests without the correct header in server middleware. Store the value as a Railway variable.
 - Use `CF-Connecting-IP` for the client IP in logging and rate limiting, and configure Express `trust proxy` accordingly.
 - Remove or disable the generated `*.up.railway.app` domain once the custom domain works, if the header check is not in place.
+- **Exempt the Square webhook** (`POST /api/v2/payments/webhook` and `/api/payments/webhook`) from the secret-header check, WAF challenges, bot fight mode and body-modifying rules. Square sends no secret header and calls from its own IPs. The route is protected by Square's HMAC signature over the raw body, so do not add any rule that rewrites or compresses the body. Rate limit it loosely, and never let it share the per-IP bucket used for logins.
 
 ### Suggested WAF baseline
 
 - Managed rules enabled, and bot fight mode on.
-- Rate limit `/api/auth/*` (login and registration) and checkout endpoints.
+- Rate limit `/api/auth/*` (login and registration) and checkout endpoints. Do not rate limit or challenge the Square webhook (see above).
 - Cache rule for `files.*` images. Bypass cache for `api.*`.
 
 ### Cutover order
@@ -243,7 +257,7 @@ Railway has no IP allowlist, so the `*.up.railway.app` URL can bypass the WAF.
 1. Add the Railway custom domain and verify it with the proxy off.
 2. Turn the proxy on and set SSL to Full (strict).
 3. Update `REACT_APP_API_URL`, `CORS_ORIGIN` and the secret header, then redeploy both sides.
-4. Test login, basket, checkout and image loading end to end.
+4. Test login, basket, checkout (including a Square sandbox payment that marks the invoice paid via the webhook) and image loading end to end.
 5. Turn off the NAS cloudflared tunnel (`docker-compose.nas.yml`) only after everything is verified.
 
 ### Rollback
@@ -293,7 +307,7 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 | # | Gap | Action |
 |---|-----|--------|
 | C1 | **No backups for the Railway MySQL.** The NAS is the only safe copy until the move | Enable Railway volume backups on the MySQL service if the plan supports it, and take a manual `mysqldump` of the NAS before the data move and of Railway right after it. Record where dumps are kept and test one restore |
-| C2 | **No cutover window or write freeze** | Pick a quiet time. Put the site in maintenance or stop NAS writes, take the final export, import into Railway (section 5), verify row counts per table, switch `REACT_APP_API_URL`/DNS, then re-enable. Orders placed on the NAS after the export are lost, so the freeze must cover the export, import and switch |
+| C2 | **No cutover window or write freeze** | Pick a quiet time. Put the site in maintenance or stop NAS writes, take the final export, import into Railway (section 5), verify row counts per table, switch `REACT_APP_API_URL`/DNS, then re-enable. Orders placed on the NAS after the export are lost, so the freeze must cover the export, import and switch. **Payments:** before the final export, wait until no invoice is `unpaid` with a recent `payment_link_created` row in `payments_v2`. A Square webhook that reaches Railway for an invoice that only exists on the NAS finds no invoice, so the customer pays but the invoice stays unpaid. If the webhook URL changes, update `SQUARE_WEBHOOK_URL` and the Square subscription together |
 | C3 | **`CORS_ORIGIN` is a comma-separated list** (`app.ts` splits on `,`) | Set it to every real origin, for example `https://craftykeepsakes.uk,https://www.craftykeepsakes.uk`, not a single URL. Set separately per Railway environment |
 | C4 | **Cookie behaviour once the browser calls `api.` directly.** The auth cookie is `httpOnly`, `secure` in production and `sameSite: 'strict'` with no `domain` (`routes/v2/auth.ts`). `api.craftykeepsakes.uk` and `www.craftykeepsakes.uk` are same-site, so this works | It will **not** work from `*.vercel.app` preview URLs, because they are cross-site to the API and the cookie is dropped. Test logins on the real domain only, or give previews a subdomain of `craftykeepsakes.uk` (for example `dev.`) |
 | C5 | **Railway deploy health** | After the code change in K3, set the health check path on the Railway service (or in `railway.json`) so a failing deploy is not promoted and rollback works |
@@ -305,10 +319,10 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 
 | # | Change | Why |
 |---|--------|-----|
-| K1 | **Fix `trust proxy`.** `app.set("trust proxy", 1)` in `server/src/app.ts` assumes one proxy. With Cloudflare then Railway there are two hops | Otherwise `req.ip` is a Cloudflare address and the auth, register and failed-login rate limiters share a bucket across all users. Use the real client IP (`CF-Connecting-IP`, trusted only when the origin secret header is valid) as the limiter key, or raise the hop count. Add a test |
-| K2 | **Schema runner repeatability: no change needed.** All 21 tables use `CREATE TABLE IF NOT EXISTS` and the roles seed uses `ON DUPLICATE KEY UPDATE`, so the pre-deploy command is safe on every deploy | Keep it that way. Any future schema change must be additive and idempotent, or it will block every deploy |
+| K1 | **Fix `trust proxy`** (also keep the Square webhook out of the shared limiter buckets). `app.set("trust proxy", 1)` in `server/src/app.ts` assumes one proxy. With Cloudflare then Railway there are two hops | Otherwise `req.ip` is a Cloudflare address and the auth, register and failed-login rate limiters share a bucket across all users. Use the real client IP (`CF-Connecting-IP`, trusted only when the origin secret header is valid) as the limiter key, or raise the hop count. Add a test |
+| K2 | **Schema runner repeatability: no change needed.** All 24 tables use `CREATE TABLE IF NOT EXISTS` and the roles seed uses `ON DUPLICATE KEY UPDATE`, so the pre-deploy command is safe on every deploy | Keep it that way. Any future schema change must be additive and idempotent, or it will block every deploy |
 | K3 | **Add a health endpoint** (for example `GET /health` that checks the DB with `SELECT 1`) | Needed for C5. Keep it out of the rate limiters and the auth |
-| K4 | **Origin secret header middleware** (reject `api.*` requests without the Cloudflare-set `X-CF-Secret`, value from a Railway variable) | Section 7. Exempt `/health` so Railway's checks pass |
+| K4 | **Origin secret header middleware** (reject `api.*` requests without the Cloudflare-set `X-CF-Secret`, value from a Railway variable) | Section 7. Exempt `/health` so Railway's checks pass, and the Square webhook paths (`/api/payments/webhook`, `/api/v2/payments/webhook`), which carry no secret header |
 | K5 | **Startup guard for the DB host** (log host only, never the password; refuse to start in non-production if the host is the Railway MySQL host) | Section 8. Prevents local use of the production DB |
 | K6 | **Remove or replace the `/api` rewrite in `client/vercel.json`** and move to per-environment `REACT_APP_API_URL` | Sections 7 and 8. Previews must not call the production API |
 | K7 | **MinIO storage adapter** replacing disk writes in `image-upload.ts` / `upload-images-directory.ts`, plus an image-path migration for existing rows | Section 6. Larger piece of work, do it as its own PR |
@@ -325,10 +339,14 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 ## 10. Checklist
 - [ ] Railway project created from the repo with no Root Directory and Dockerfile path `server/Dockerfile`
 - [ ] Railway MySQL created
-- [ ] Schema script applied, 21 `_v2` tables present
+- [ ] Schema script applied, 24 `_v2` tables present
 - [ ] `roles_v2` has `admin` and `customer`
 - [ ] First admin user created
 - [ ] API variables set
+- [ ] Payment variables set (`PAYMENTS_PROVIDER=square`, `SQUARE_ENVIRONMENT=sandbox`, `SQUARE_SANDBOX_*`, `SQUARE_WEBHOOK_URL`, `CLIENT_URL`)
+- [ ] Square webhook URL still matches `SQUARE_WEBHOOK_URL` after the move; a sandbox payment flips the invoice to paid on Railway
+- [ ] No pending Square payment links at the cutover freeze
+- [ ] Square webhook exempted from the origin-secret check and WAF rules
 - [ ] Image volume attached and files copied
 - [ ] Client points at the new API and CORS matches
 - [ ] Login, registration, shop, basket, checkout and blog checked on the new environment
