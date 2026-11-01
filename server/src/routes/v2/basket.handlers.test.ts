@@ -278,6 +278,8 @@ describe('v2 basket routes', () => {
           placed_at: '2026-08-15 09:00:00',
           invoice_id: 90,
           invoice_number: 'INV-123-40',
+          tracking_info: 'RM123',
+          has_changes: 1,
         },
       ],
     ]);
@@ -295,9 +297,85 @@ describe('v2 basket routes', () => {
         grand_total: 30,
         invoice_id: 90,
         invoice_number: 'INV-123-40',
+        tracking_info: 'RM123',
+        has_changes: true,
         placed_at: '2026-08-15 09:00:00',
       },
     ]);
+  });
+
+  it('lists every customers orders for an admin', async () => {
+    mockConnection.query.mockResolvedValueOnce([
+      [
+        {
+          id: 41,
+          user_id: 9,
+          order_status: 'placed',
+          grand_total: '12.50',
+          placed_at: '2026-08-16 10:00:00',
+          invoice_id: 91,
+          invoice_number: 'INV-123-41',
+          invoice_status: 'unpaid',
+          first_name: 'Ada',
+          last_name: 'Lovelace',
+          customer_email: 'ada@example.com',
+          has_changes: 1,
+        },
+      ],
+    ]);
+
+    const response = await request(app)
+      .get('/api/v2/basket/orders/all')
+      .set('Cookie', authCookie(1, 'admin'));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([
+      {
+        id: 41,
+        user_id: 9,
+        order_status: 'placed',
+        grand_total: 12.5,
+        invoice_id: 91,
+        invoice_number: 'INV-123-41',
+        invoice_status: 'unpaid',
+        tracking_info: null,
+        has_changes: true,
+        customer_name: 'Ada Lovelace',
+        customer_email: 'ada@example.com',
+        placed_at: '2026-08-16 10:00:00',
+      },
+    ]);
+  });
+
+  it('only flags orders for the requesting user based on their own views', async () => {
+    mockConnection.query.mockResolvedValueOnce([[]]);
+
+    await request(app).get('/api/v2/basket/orders').set('Cookie', authCookie(7, 'customer'));
+
+    const [sql, params] = mockConnection.query.mock.calls[0];
+    expect(String(sql)).toContain('LEFT JOIN invoice_views_v2 v ON v.invoice_id = i.id AND v.user_id = ?');
+    expect(String(sql)).toContain('i.updated_at > i.created_at');
+    expect(params).toEqual([7, 7]);
+  });
+
+  it('flags new orders for an admin using that admins own views', async () => {
+    mockConnection.query.mockResolvedValueOnce([[]]);
+
+    await request(app).get('/api/v2/basket/orders/all').set('Cookie', authCookie(1, 'admin'));
+
+    const [sql, params] = mockConnection.query.mock.calls[0];
+    expect(String(sql)).toContain('v.viewed_at IS NULL');
+    expect(String(sql)).toContain('INTERVAL 30 DAY');
+    expect(params).toEqual([1]);
+  });
+
+  it('blocks customers from listing all orders', async () => {
+    const response = await request(app)
+      .get('/api/v2/basket/orders/all')
+      .set('Cookie', authCookie(7, 'customer'));
+
+    expect(response.status).toBe(403);
+    expect(mockConnection.query).not.toHaveBeenCalled();
   });
 
   it('includes invoice items and totals when fetching an invoice', async () => {
@@ -387,6 +465,28 @@ describe('v2 basket routes', () => {
     });
   });
 
+  it('records that the user has viewed an invoice when they open it', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 90, order_id: 40, invoice_number: 'INV-1', invoice_status: 'unpaid', total_due: '5.00', user_id: 7 }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+    const response = await request(app).get('/api/v2/basket/invoices/90').set('Cookie', authCookie(7, 'customer'));
+
+    expect(response.status).toBe(200);
+    const [sql, params] = mockConnection.query.mock.calls[1];
+    expect(String(sql)).toContain('INSERT INTO invoice_views_v2');
+    expect(params).toEqual([90, 7]);
+  });
+
+  it('does not record a view when access is forbidden', async () => {
+    mockConnection.query.mockResolvedValueOnce([[{ id: 90, order_id: 40, invoice_number: 'INV-1', invoice_status: 'unpaid', total_due: '5.00', user_id: 99 }]]);
+
+    const response = await request(app).get('/api/v2/basket/invoices/90').set('Cookie', authCookie(7, 'customer'));
+
+    expect(response.status).toBe(403);
+    expect(mockConnection.query).toHaveBeenCalledTimes(1);
+  });
+
   it('blocks a customer from viewing another users invoice', async () => {
     mockConnection.query.mockResolvedValueOnce([
       [
@@ -455,6 +555,23 @@ describe('v2 basket routes', () => {
     expect(response.body).toEqual({
       error: 'Invalid invoice_status',
     });
+  });
+
+  it('updates status and tracking together in one request', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ order_id: 40, invoice_status: 'unpaid', tracking_info: null, invoice_number: 'INV-1', user_id: 7 }]])
+      .mockResolvedValue([{ affectedRows: 1, insertId: 1 }]);
+
+    const response = await request(app)
+      .put('/api/v2/basket/invoices/90')
+      .set('Cookie', authCookie(1, 'admin'))
+      .send({ invoice_status: 'paid', tracking_info: 'RM999' });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ message: 'Invoice updated', affectedRows: 1, statusChanged: true, trackingUpdated: true });
+    const sqls = mockConnection.query.mock.calls.map(([sql]) => String(sql));
+    expect(sqls.some((sql) => sql.includes('SET invoice_status = ?'))).toBe(true);
+    expect(sqls.some((sql) => sql.includes('SET tracking_info = ?'))).toBe(true);
   });
 
   it('updates the linked order when an invoice is marked paid', async () => {

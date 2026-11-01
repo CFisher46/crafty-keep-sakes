@@ -18,20 +18,28 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Features
 
--   [WIP] CKS-2-006 : Introduction of  User Notifications (Next Priority)
+-   [x] CKS-2-006 : Introduction of  User Notifications (Next Priority)
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
     -   AS an POST Author, I WANT a notification, WHEN a post has been reacted to OR when a comment has been added that was not by me.
 
--   [WIP] CKS-2-022 : Add, Update, Delete customer reviews
+-   [x] CKS-2-022 : Add, Update, Delete customer reviews
     -   AS a Customer, WHEN viewing the Reviews page, I WANT to see feedback from other clients.
     -   AS an ADMIN, I WANT to add, update and delete feedback gathered from external sources (stored in `reviews_v2`) so it can be shared with customers.
     -   Notes: The admin Reports area was replaced by Reviews. Report export (XLSX/CSV) will be tackled separately with a different approach.
 
--   [ ] CKS-2-023 : "My invoices" page in the profile menu
+-   [x] CKS-2-023 : "My invoices" page in the profile menu
     -   AS a CUSTOMER, WHEN I open the profile menu, I WANT a "My invoices" option that takes me to a dedicated invoices page.
     -   AS a CUSTOMER, WHEN viewing my profile, I WANT it to focus on my account details, with the invoice table no longer shown there.
-    -   Notes: Add a "My invoices" item to the header account menu (alongside "My profile" and "Log out"). Move the invoice table and invoice details out of the profile view (`features/profile/invoice-history.tsx`, `invoice-details.tsx`) into their own routed page.
+    -   AS an ADMIN, I WANT a "Reporting" page in the main navigation (admins only) with a link to an all-invoices page, so I can see every customer's invoices and update status and tracking.
+    -   Notes: Invoice components now live in `features/invoices/`. Routes: `/invoices` (own invoices), `/Reporting` and `/Reporting/invoices` (admin only). The all-invoices list is served by the admin-only `GET /api/v2/basket/orders/all`. Report export (XLSX/CSV) is still a separate, later piece of work.
+
+-   [ ] CKS-2-024 : Admin reports for monitoring the shop
+    -   AS an ADMIN, I WANT to run product reports (e.g. volumes sold over a period, best and slowest sellers) so I can see what to promote, restock or make.
+    -   AS an ADMIN, I WANT to run user activity reports and see customers who have not logged in for some time, so I can spot dormant accounts.
+    -   AS an ADMIN, I WANT to see blog stats (e.g. views, comments, most engaged posts) so I can see what content works.
+    -   AS an ADMIN, I WANT to filter reports by date range, and export them to XLSX or CSV so the export reflects the filtered view.
+    -   Notes: Lives on the admin-only Reporting page (`/Reporting`), alongside the existing "All invoices" link. Will need the login flow to record `users_v2.last_login_at` (the column exists but nothing writes to it yet), and server-side report endpoints since the data is aggregated across tables. Export was split out of CKS-2-022 and is covered here.
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.

@@ -10,8 +10,7 @@ interface InvoiceDetailsProps {
   userType?: string;
   updateMessage: string | null;
   onClose: () => void;
-  onUpdateStatus: (status: string) => void;
-  onUpdateTracking: (trackingInfo: string) => void;
+  onSave: (changes: { status?: string; trackingInfo?: string }) => void;
 }
 
 const labelStyle: React.CSSProperties = {
@@ -45,8 +44,7 @@ function InvoiceDetailsDialog({
   userType,
   updateMessage,
   onClose,
-  onUpdateStatus,
-  onUpdateTracking,
+  onSave,
 }: InvoiceDetailsProps) {
   const [pendingStatus, setPendingStatus] = useState(invoice.invoice_status);
   const [trackingInfo, setTrackingInfo] = useState(invoice.tracking_info ?? '');
@@ -57,6 +55,15 @@ function InvoiceDetailsDialog({
   }, [invoice.id, invoice.invoice_status, invoice.tracking_info]);
 
   const isAdmin = userType?.toLowerCase() === 'admin';
+  const statusChanged = !!pendingStatus && pendingStatus !== invoice.invoice_status;
+  const trackingChanged = trackingInfo !== (invoice.tracking_info ?? '');
+
+  const handleSave = () => {
+    onSave({
+      ...(statusChanged ? { status: pendingStatus } : {}),
+      ...(trackingChanged ? { trackingInfo } : {}),
+    });
+  };
 
   return (
     <Layer position="center" onEsc={onClose} onClickOutside={onClose} modal responsive={false} style={{ borderRadius: 0 }}>
@@ -151,15 +158,9 @@ function InvoiceDetailsDialog({
               />
               <Box direction="row" gap="small" wrap>
                 <ActionButton
-                  label="Confirm Update"
-                  disabled={!pendingStatus || pendingStatus === invoice.invoice_status}
-                  onClick={() => onUpdateStatus(pendingStatus)}
-                />
-                <ActionButton
-                  label="Update Tracking Info"
-                  secondary
-                  disabled={trackingInfo === (invoice.tracking_info ?? '')}
-                  onClick={() => onUpdateTracking(trackingInfo)}
+                  label="Save Changes"
+                  disabled={!statusChanged && !trackingChanged}
+                  onClick={handleSave}
                 />
               </Box>
               {updateMessage && <Text>{updateMessage}</Text>}

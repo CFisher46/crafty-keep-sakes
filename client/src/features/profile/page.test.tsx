@@ -76,92 +76,16 @@ describe('UsersProfile', () => {
     expect(screen.getByDisplayValue('Doe')).toBeInTheDocument();
   });
 
-  it('shows "No orders yet." when the order history is empty', async () => {
+  it('no longer shows the invoice table on the profile page', async () => {
     render(
       <Provider store={buildStore()}>
         <UsersProfile />
       </Provider>
     );
 
-    await waitFor(() => {
-      expect(screen.getByText('No orders yet.')).toBeInTheDocument();
-    });
-  });
-
-  it('renders order history rows when orders exist', async () => {
-    (global.fetch as jest.Mock).mockResolvedValue({
-      ok: true,
-      json: async () => [
-        {
-          id: 10,
-          user_id: 5,
-          order_status: 'placed',
-          grand_total: 25.5,
-          invoice_id: 90,
-          invoice_number: 'INV-001',
-          placed_at: '2026-08-15 10:00:00',
-        },
-      ],
-    });
-
-    render(
-      <Provider store={buildStore()}>
-        <UsersProfile />
-      </Provider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('INV-001')).toBeInTheDocument();
-    });
-  });
-
-  it('opens an invoice from the extracted invoice feature', async () => {
-    (global.fetch as jest.Mock).mockImplementation((url: string) => {
-      if (String(url).includes('/orders')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => [
-            {
-              id: 10,
-              user_id: 5,
-              order_status: 'placed',
-              grand_total: 25.5,
-              invoice_id: 90,
-              invoice_number: 'INV-001',
-              placed_at: '2026-08-15 10:00:00',
-            },
-          ],
-        });
-      }
-
-      if (String(url).includes('/invoices/90')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => ({
-            id: 90,
-            order_id: 10,
-            invoice_number: 'INV-001',
-            invoice_status: 'unpaid',
-            total_due: 25.5,
-            issued_at: '2026-08-15 10:00:00',
-            user_id: 5,
-          }),
-        });
-      }
-
-      return Promise.resolve({ ok: true, json: async () => [] });
-    });
-
-    render(
-      <Provider store={buildStore()}>
-        <UsersProfile />
-      </Provider>
-    );
-
-    fireEvent.click(await screen.findByText('INV-001'));
-    fireEvent.click(screen.getByText('Open Selected Invoice'));
-
-    expect(await screen.findByText('Invoice id: INV-001')).toBeInTheDocument();
+    expect(screen.queryByText('My Invoices')).not.toBeInTheDocument();
+    expect(screen.queryByText('Open Selected Invoice')).not.toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalledWith(expect.stringContaining('/orders'), expect.anything());
   });
 
   it('requires the current password before verifying', () => {

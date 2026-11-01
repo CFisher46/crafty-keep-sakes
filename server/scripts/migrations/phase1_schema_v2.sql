@@ -192,6 +192,16 @@ CREATE TABLE IF NOT EXISTS invoices_v2 (
   CONSTRAINT fk_invoices_v2_order FOREIGN KEY (order_id) REFERENCES orders_v2(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS invoice_views_v2 (
+  invoice_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (invoice_id, user_id),
+  KEY idx_invoice_views_v2_user (user_id),
+  CONSTRAINT fk_invoice_views_v2_invoice FOREIGN KEY (invoice_id) REFERENCES invoices_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_invoice_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS invoice_items_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   invoice_id BIGINT UNSIGNED NOT NULL,

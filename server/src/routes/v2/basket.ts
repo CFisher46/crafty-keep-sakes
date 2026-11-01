@@ -31,6 +31,9 @@ const getRequestUser = (req: express.Request): AuthenticatedUser => {
   return user;
 };
 
+// Orders older than this are never flagged as new for admins (avoids flagging the whole backlog)
+const NEW_ORDER_WINDOW_DAYS = 30;
+
 const getUserId = (req: express.Request): number => {
   const user = getRequestUser(req);
   const parsed = Number(user.id);
@@ -232,11 +235,14 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
     const userId = getUserId(req);
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-              i.id AS invoice_id, i.invoice_number
+              i.id AS invoice_id, i.invoice_number, i.tracking_info, i.updated_at AS invoice_updated_at,
+              (i.id IS NOT NULL AND i.updated_at > i.created_at
+                AND (v.viewed_at IS NULL OR v.viewed_at < i.updated_at)) AS has_changes
        FROM orders_v2 o
        LEFT JOIN invoices_v2 i ON i.order_id = o.id
+       LEFT JOIN invoice_views_v2 v ON v.invoice_id = i.id AND v.user_id = ?
        WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
-      [userId]
+      [userId, userId]
     );
 
     res.json(
@@ -247,6 +253,9 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
         grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
         invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
         invoice_number: row.invoice_number || null,
+        tracking_info: row.tracking_info || null,
+        has_changes: Boolean(Number(row.has_changes)),
+        invoice_updated_at: row.invoice_updated_at,
         placed_at: row.placed_at,
       }))
     );
@@ -257,6 +266,53 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
       return;
     }
 
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.get('/orders/all', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log('GET /api/v2/basket/orders/all');
+
+  const connection = await db.getConnection();
+
+  try {
+    const adminId = getUserId(req);
+    const [rows] = await connection.query<RowDataPacket[]>(
+      `SELECT o.id, o.user_id, o.order_status, o.grand_total, o.placed_at,
+              i.id AS invoice_id, i.invoice_number, i.invoice_status, i.tracking_info,
+              i.updated_at AS invoice_updated_at, u.email AS customer_email, cp.first_name, cp.last_name,
+              (i.id IS NOT NULL AND v.viewed_at IS NULL
+                AND i.created_at >= (NOW() - INTERVAL ${NEW_ORDER_WINDOW_DAYS} DAY)) AS has_changes
+       FROM orders_v2 o
+       LEFT JOIN invoices_v2 i ON i.order_id = o.id
+       LEFT JOIN invoice_views_v2 v ON v.invoice_id = i.id AND v.user_id = ?
+       LEFT JOIN users_v2 u ON u.id = o.user_id
+       LEFT JOIN customer_profiles_v2 cp ON cp.user_id = o.user_id
+       ORDER BY o.placed_at DESC`,
+      [adminId]
+    );
+
+    res.json(
+      (Array.isArray(rows) ? rows : []).map((row) => ({
+        id: Number(row.id),
+        user_id: Number(row.user_id),
+        order_status: row.order_status,
+        grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
+        invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
+        invoice_number: row.invoice_number || null,
+        tracking_info: row.tracking_info || null,
+        has_changes: Boolean(Number(row.has_changes)),
+        invoice_updated_at: row.invoice_updated_at,
+        invoice_status: row.invoice_status || null,
+        customer_name: [row.first_name, row.last_name].filter(Boolean).join(' ') || null,
+        customer_email: row.customer_email || null,
+        placed_at: row.placed_at,
+      }))
+    );
+  } catch (err) {
+    console.error('List V2 All Orders Error:', err);
     res.status(500).json({ error: 'Database error' });
   } finally {
     connection.release();
@@ -342,6 +398,16 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
     if (!isAdmin && Number(invoice.user_id) !== userId) {
       res.status(403).json({ error: 'Forbidden' });
       return;
+    }
+
+    try {
+      await connection.query(
+        `INSERT INTO invoice_views_v2 (invoice_id, user_id) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP`,
+        [invoiceId, userId]
+      );
+    } catch (viewError) {
+      console.error('Record invoice view error:', viewError);
     }
 
     const items = (Array.isArray(rows) ? rows : []).map((row) => ({

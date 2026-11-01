@@ -52,6 +52,7 @@ describe('NavigationBar', () => {
     );
 
     expect(screen.queryByText('Admin Tools')).not.toBeInTheDocument();
+    expect(screen.queryByText('Reporting')).not.toBeInTheDocument();
   });
 
   it('shows the Admin Tools link for logged-in admins', () => {
@@ -66,6 +67,7 @@ describe('NavigationBar', () => {
     );
 
     expect(screen.getByText('Admin Tools')).toBeInTheDocument();
+    expect(screen.getByText('Reporting')).toBeInTheDocument();
   });
 
   it('navigates and calls the onNavigate/resetActive callbacks when a link is clicked', () => {

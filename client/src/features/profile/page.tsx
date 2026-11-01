@@ -12,7 +12,6 @@ import { useAppDispatch } from '../../store/hooks';
 import { useParams } from 'react-router-dom';
 import { ui } from '../../helpers/theme';
 import { ActionButton } from '../landingPage/components/ActionButton';
-import Invoices from './invoices';
 
 interface InputFieldProps {
   label: string;
@@ -356,11 +355,6 @@ function UsersProfile() {
             </Box>
           </Box>
         </div>
-        <Invoices
-          userId={userId}
-          userType={selectedUser?.type}
-          billingAddress={userData}
-        />
       </Box>
     </Form>
   );

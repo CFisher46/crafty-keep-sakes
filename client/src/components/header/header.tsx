@@ -253,6 +253,13 @@ function PageHeader() {
                   navigate(`/profile/${userId}`);
                 },
               },
+              {
+                label: "My invoices",
+                onClick: () => {
+                  setAccountMenuOpen(false);
+                  navigate("/invoices");
+                },
+              },
               { label: "Log out", onClick: handleLogout },
             ].map((item) => (
               <Button

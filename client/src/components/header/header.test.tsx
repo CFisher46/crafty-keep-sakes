@@ -113,6 +113,25 @@ describe('PageHeader', () => {
     expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument();
   });
 
+  it('navigates to the invoices page from the account menu', () => {
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '42' } },
+      basket: { items: [], totalItems: 0 },
+    });
+
+    render(
+      <Provider store={store}>
+        <PageHeader />
+      </Provider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'My invoices' }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/invoices');
+    expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument();
+  });
+
   it('logs the user out from the account menu', async () => {
     const store = buildStore({
       auth: { isLoggedIn: true, user: { id: '42' } },
