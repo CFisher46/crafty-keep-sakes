@@ -16,6 +16,17 @@ export type User = {
   password: string;
 };
 
+export type Review = {
+  id: number;
+  reviewer_name: string;
+  star_count: number;
+  source: string;
+  comment: string;
+  submit_date: string;
+};
+
+export type ReviewInput = Omit<Review, 'id'>;
+
 export type Product = {
   id: string;
   category: string;
@@ -71,6 +82,12 @@ export interface InvoiceOrder {
   grand_total: number;
   invoice_id?: number | null;
   invoice_number?: string | null;
+  invoice_status?: string | null;
+  tracking_info?: string | null;
+  has_changes?: boolean;
+  invoice_updated_at?: string | null;
+  customer_name?: string | null;
+  customer_email?: string | null;
   placed_at: string;
 }
 

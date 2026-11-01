@@ -18,9 +18,39 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Features
 
--   [ ] CKS-2-006 : Introduction of  User Notifications (Next Priority)
+-   [x] CKS-2-006 : Introduction of  User Notifications (Next Priority)
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
+    -   AS an POST Author, I WANT a notification, WHEN a post has been reacted to OR when a comment has been added that was not by me.
+
+-   [x] CKS-2-022 : Add, Update, Delete customer reviews
+    -   AS a Customer, WHEN viewing the Reviews page, I WANT to see feedback from other clients.
+    -   AS an ADMIN, I WANT to add, update and delete feedback gathered from external sources (stored in `reviews_v2`) so it can be shared with customers.
+    -   Notes: The admin Reports area was replaced by Reviews. Report export (XLSX/CSV) will be tackled separately with a different approach.
+
+-   [x] CKS-2-023 : "My invoices" page in the profile menu
+    -   AS a CUSTOMER, WHEN I open the profile menu, I WANT a "My invoices" option that takes me to a dedicated invoices page.
+    -   AS a CUSTOMER, WHEN viewing my profile, I WANT it to focus on my account details, with the invoice table no longer shown there.
+    -   AS an ADMIN, I WANT a "Reporting" page in the main navigation (admins only) with a link to an all-invoices page, so I can see every customer's invoices and update status and tracking.
+    -   Notes: Invoice components now live in `features/invoices/`. Routes: `/invoices` (own invoices), `/Reporting` and `/Reporting/invoices` (admin only). The all-invoices list is served by the admin-only `GET /api/v2/basket/orders/all`. Report export (XLSX/CSV) is still a separate, later piece of work.
+
+-   [x] CKS-2-024 : Admin reports for monitoring the shop
+    -   AS an ADMIN, I WANT to run product reports (e.g. volumes sold over a period, best and slowest sellers) so I can see what to promote, restock or make.
+    -   AS an ADMIN, I WANT to run user activity reports and see customers who have not logged in for some time, so I can spot dormant accounts.
+    -   AS an ADMIN, I WANT to see blog stats (e.g. views, comments, most engaged posts) so I can see what content works.
+    -   AS an ADMIN, I WANT to filter reports by date range, and export them to XLSX or CSV so the export reflects the filtered view.
+    -   Notes: Lives on the admin-only Reporting page (`/Reporting`), alongside the existing "All invoices" link. Will need the login flow to record `users_v2.last_login_at` (the column exists but nothing writes to it yet), and server-side report endpoints since the data is aggregated across tables. Export was split out of CKS-2-022 and is covered here.
+    -   Built: admin-only `GET /api/v2/reports/{products,users,blog}` with `from`/`to` (YYYY-MM-DD, inclusive) filters, and `inactiveDays` for users. Client pages at `/Reporting/products`, `/Reporting/users` and `/Reporting/blog`, each with date filters and CSV export of the filtered view. Login now writes `users_v2.last_login_at`; accounts with no login recorded are measured from their registration date. XLSX export is not built yet (CSV opens in Excel); it would need a spreadsheet library.
+
+-   [ ] CKS-2-025 : IMPORTANT - Integrate a payments vendor
+    -   AS a CUSTOMER, WHEN I check out, I WANT to pay securely online so that my order is confirmed once payment is taken.
+    -   AS an ADMIN, WHEN a payment is taken, I WANT the invoice to be marked as paid automatically, so I don't have to update it by hand.
+    -   Notes: High priority. Today checkout creates the order and an `unpaid` invoice and an admin sets the status manually, so no money is actually taken. Vendor not chosen yet (e.g. Stripe, PayPal, Square). Things to decide and cover: use the vendor's hosted checkout so card details never touch our servers; confirm payment through a signed webhook rather than trusting the browser; keep orders pending until payment succeeds; handle failed, abandoned and refunded payments; store the vendor's payment reference on the invoice; notify the customer and admins on payment; keep secrets in environment config only; add tests for the webhook (including signature rejection and duplicate events).
+    -   Foundation built (mock provider): `PAYMENTS_PROVIDER=mock` enables a provider-neutral flow in `server/src/payments/`. Checkout returns a `payment_url`, orders stay `pending` until a signed webhook event marks the invoice paid (events de-duplicated, amount checked, audited, customer and admins notified). A simulated payment page lives at `/payments/mock` and a result page at `/payments/result`. Square provider built (Payment Links, `x-square-hmacsha256-signature` verification, `payment.updated` mapping) and verified against the sandbox API; "Pay now" on unpaid invoices exists. Still to do: an end-to-end sandbox payment through the live webhook, refunds (`refund.updated`), going live (see README, "Going live"; production credentials go in `SQUARE_PRODUCTION_*` on the NAS only), and removing the mock path once Square is live.
+
+-   [ ] CKS-2-021 : Low stock notifications for ADMINS
+    -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.
+    -   Notes: Parked. Many products are hand crafted and may be made on an order-by-order basis, so a quantity of 0 is not necessarily a problem. Stock is also not currently reduced at checkout. Needs a per-product "made to order" flag (to exclude those from alerts), stock decrement on checkout, and a de-duplicated alert (once per threshold crossing, not on every order). A previous implementation used a threshold of 5 (and 0 for out of stock) and was removed.
 
 
 ## Enhancements
@@ -51,11 +81,6 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-018 : Move Invoice feature into its own component
     -   AS a DEVELOPER, WHEN I come to make changes to the Invocies feature, I WANT to be able to quickly identify the Invoices component.
 
--   [ ] CKS-2-019 : Add in an ADMIN report for ALL Invoices
-    - AS an ADMIN, WHEN I want to update order tracking, I NEED a report that gives me a list of invoices that need updating
-
--   [ ] CKS-2-020 : Change the blog post table to be card/tiles instead
-    -   AS a CUSTOMER, WHEN I view the Blogs page, I WANT it to be able to easily see individual blog posts.
 
 ## Bugs
 
@@ -73,22 +98,20 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] Button hover and pressed styling was not being applied consistently.
     -   Button state styling is now applied through the Grommet button theme.
 
--   [ ] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
+-   [x] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
 
 ## Adhoc TODOs
 
--   [ ] CKS-2-009 : Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
+-   [ ] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
 
--   [ ] CKS-2-009 : Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
+-   [ ] Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
 
--   [ ] CKS-2-009 : Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
-
--   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
+-   [ ] Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
 
 -   [x] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price?
 
--   [ ] CKS-2-014 : Introduce a change log that is updated with the branch name and title when merging to main
+-   [ ] Introduce a change log that is updated with the branch name and title when merging to main
 
--   [ ] CKS-2-021 : Check to make sure the API's cant be hit externally to scrap for information
+-   [ ] Check to make sure the API's cant be hit externally to scrap for information
 
--   [ ] CKS-2-022 : Revisit Test Coverage
+-   [ ] Revisit Test Coverage

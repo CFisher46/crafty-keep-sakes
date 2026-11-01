@@ -17,6 +17,7 @@ import {
 import type { DeliveryAddress } from "../../types";
 import { ui } from "../../helpers/theme";
 import { ActionButton } from "../landingPage/components/ActionButton";
+import { notifyNotificationsChanged } from "../notifications/events";
 
 function Basket() {
   const dispatch = useDispatch<any>();
@@ -115,13 +116,25 @@ function Basket() {
       const payload = resultAction.payload as {
         invoice_id?: number;
         invoice_number?: string;
+        payment_url?: string | null;
+        payment_error?: boolean;
       };
 
       dispatch(clearBasket());
+      notifyNotificationsChanged();
       localStorage.removeItem('basket');
       setInvoiceId(String(payload.invoice_id ?? payload.invoice_number ?? 'N/A'));
-      setCheckoutMessage(`Checkout successful! Invoice ${payload.invoice_number ?? 'N/A'} has been created.`);
+      setCheckoutMessage(
+        payload.payment_error
+          ? `Invoice ${payload.invoice_number ?? 'N/A'} has been created, but we could not start the payment. You can pay from My invoices.`
+          : `Checkout successful! Invoice ${payload.invoice_number ?? 'N/A'} has been created.`
+      );
       setShowCheckoutModal(false);
+      if (payload.payment_url) {
+        // Hand over to the payment page; the basket is already cleared and the order is pending until paid
+        window.location.assign(payload.payment_url);
+        return;
+      }
       const refreshed = await dispatch(fetchBasket());
       if (fetchBasket.fulfilled.match(refreshed)) {
         dispatch(hydrateBasketFromServer(refreshed.payload));

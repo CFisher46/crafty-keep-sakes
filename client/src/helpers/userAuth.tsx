@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { RootState } from "../store";
 import { loginSuccess, logout } from "../store/auth/authSlice";
@@ -10,6 +10,7 @@ const useAuth = () => {
     (state: RootState) => state.auth.isLoggedIn
   );
   const user = useAppSelector((state: RootState) => state.auth.user);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -32,6 +33,8 @@ const useAuth = () => {
         dispatch(loginSuccess(userData));
       } catch (error) {
         dispatch(logout());
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -39,6 +42,7 @@ const useAuth = () => {
   }, [dispatch]);
 
   return {
+    loading,
     isAuthenticated: isLoggedIn,
     user,
     userType: user?.type || null

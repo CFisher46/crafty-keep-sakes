@@ -3,6 +3,9 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { verifyAuthToken, requireRole } from '../../ts-common/middleware';
 import { insertAuditEvent } from './audit-events';
+import { notify } from '../../notifications/service';
+import { isPaymentsEnabled } from '../../payments';
+import { createPaymentForInvoice } from '../../payments/service';
 
 const router = express.Router();
 
@@ -29,6 +32,9 @@ const getRequestUser = (req: express.Request): AuthenticatedUser => {
 
   return user;
 };
+
+// Orders older than this are never flagged as new for admins (avoids flagging the whole backlog)
+const NEW_ORDER_WINDOW_DAYS = 30;
 
 const getUserId = (req: express.Request): number => {
   const user = getRequestUser(req);
@@ -231,11 +237,14 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
     const userId = getUserId(req);
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-              i.id AS invoice_id, i.invoice_number
+              i.id AS invoice_id, i.invoice_number, i.tracking_info, i.updated_at AS invoice_updated_at,
+              (i.id IS NOT NULL AND i.updated_at > i.created_at
+                AND (v.viewed_at IS NULL OR v.viewed_at < i.updated_at)) AS has_changes
        FROM orders_v2 o
        LEFT JOIN invoices_v2 i ON i.order_id = o.id
+       LEFT JOIN invoice_views_v2 v ON v.invoice_id = i.id AND v.user_id = ?
        WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
-      [userId]
+      [userId, userId]
     );
 
     res.json(
@@ -246,6 +255,9 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
         grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
         invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
         invoice_number: row.invoice_number || null,
+        tracking_info: row.tracking_info || null,
+        has_changes: Boolean(Number(row.has_changes)),
+        invoice_updated_at: row.invoice_updated_at,
         placed_at: row.placed_at,
       }))
     );
@@ -256,6 +268,53 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
       return;
     }
 
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.get('/orders/all', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  console.log('GET /api/v2/basket/orders/all');
+
+  const connection = await db.getConnection();
+
+  try {
+    const adminId = getUserId(req);
+    const [rows] = await connection.query<RowDataPacket[]>(
+      `SELECT o.id, o.user_id, o.order_status, o.grand_total, o.placed_at,
+              i.id AS invoice_id, i.invoice_number, i.invoice_status, i.tracking_info,
+              i.updated_at AS invoice_updated_at, u.email AS customer_email, cp.first_name, cp.last_name,
+              (i.id IS NOT NULL AND v.viewed_at IS NULL
+                AND i.created_at >= (NOW() - INTERVAL ${NEW_ORDER_WINDOW_DAYS} DAY)) AS has_changes
+       FROM orders_v2 o
+       LEFT JOIN invoices_v2 i ON i.order_id = o.id
+       LEFT JOIN invoice_views_v2 v ON v.invoice_id = i.id AND v.user_id = ?
+       LEFT JOIN users_v2 u ON u.id = o.user_id
+       LEFT JOIN customer_profiles_v2 cp ON cp.user_id = o.user_id
+       ORDER BY o.placed_at DESC`,
+      [adminId]
+    );
+
+    res.json(
+      (Array.isArray(rows) ? rows : []).map((row) => ({
+        id: Number(row.id),
+        user_id: Number(row.user_id),
+        order_status: row.order_status,
+        grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
+        invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
+        invoice_number: row.invoice_number || null,
+        tracking_info: row.tracking_info || null,
+        has_changes: Boolean(Number(row.has_changes)),
+        invoice_updated_at: row.invoice_updated_at,
+        invoice_status: row.invoice_status || null,
+        customer_name: [row.first_name, row.last_name].filter(Boolean).join(' ') || null,
+        customer_email: row.customer_email || null,
+        placed_at: row.placed_at,
+      }))
+    );
+  } catch (err) {
+    console.error('List V2 All Orders Error:', err);
     res.status(500).json({ error: 'Database error' });
   } finally {
     connection.release();
@@ -343,6 +402,16 @@ router.get('/invoices/:id', verifyAuthToken, async (req, res) => {
       return;
     }
 
+    try {
+      await connection.query(
+        `INSERT INTO invoice_views_v2 (invoice_id, user_id) VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE viewed_at = CURRENT_TIMESTAMP`,
+        [invoiceId, userId]
+      );
+    } catch (viewError) {
+      console.error('Record invoice view error:', viewError);
+    }
+
     const items = (Array.isArray(rows) ? rows : []).map((row) => ({
       id: row.invoice_item_id !== undefined && row.invoice_item_id !== null ? Number(row.invoice_item_id) : null,
       description: row.description,
@@ -410,9 +479,10 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
 
     // Get the current invoice details
     const [invoiceRows] = await connection.query<RowDataPacket[]>(
-      `SELECT order_id, invoice_status, tracking_info
-       FROM invoices_v2
-       WHERE id = ?
+      `SELECT i.order_id, i.invoice_status, i.tracking_info, i.invoice_number, o.user_id
+       FROM invoices_v2 i
+       JOIN orders_v2 o ON o.id = i.order_id
+       WHERE i.id = ?
        LIMIT 1`,
       [invoiceId]
     );
@@ -501,6 +571,31 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
           : invoice.tracking_info,
       },
     });
+
+    const customerId = Number(invoice.user_id);
+    const invoiceNumber = String(invoice.invoice_number ?? '');
+
+    if (Number.isFinite(customerId)) {
+      if (statusChanged) {
+        await notify('invoice_status_changed', {
+          userId: customerId,
+          orderId,
+          invoiceId,
+          invoiceNumber,
+          status: status as 'unpaid' | 'paid' | 'void',
+        });
+      }
+
+      if (trackingInfo && trackingInfo !== String(invoice.tracking_info ?? '')) {
+        await notify('tracking_added', {
+          userId: customerId,
+          orderId,
+          invoiceId,
+          invoiceNumber,
+          trackingInfo,
+        });
+      }
+    }
 
     res.json({
       message: 'Invoice updated',
@@ -704,11 +799,13 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
     );
     const taxTotal = toCurrency(subtotal * 0); //set Tax to Zero
     const grandTotal = toCurrency(subtotal + taxTotal);
+    // With payments on, the order stays pending until the payment is confirmed
+    const paymentsEnabled = isPaymentsEnabled();
 
     const [orderResult] = await connection.query<ResultSetHeader>(
       `INSERT INTO orders_v2 (user_id, basket_id, subtotal, discount_total, tax_total, grand_total, order_status)
-       VALUES (?, ?, ?, 0.00, ?, ?, 'placed')`,
-      [userId, basketId, toCurrency(subtotal), taxTotal, grandTotal]
+       VALUES (?, ?, ?, 0.00, ?, ?, ?)`,
+      [userId, basketId, toCurrency(subtotal), taxTotal, grandTotal, paymentsEnabled ? 'pending' : 'placed']
     );
 
     const orderId = orderResult.insertId;
@@ -797,15 +894,37 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         invoice_id: invoiceId,
         invoice_number: invoiceNumber,
         total_due: grandTotal,
-        order_status: 'placed',
+        order_status: paymentsEnabled ? 'pending' : 'placed',
         delivery_address: resolvedDeliveryAddress,
       },
     });
 
     await connection.commit();
 
+    let paymentUrl: string | null = null;
+    let paymentError = false;
+
+    if (paymentsEnabled) {
+      try {
+        paymentUrl = await createPaymentForInvoice({ invoiceId, invoiceNumber, amount: grandTotal });
+      } catch (paymentErr) {
+        // The order and invoice exist, so the customer can retry payment from their invoice
+        console.error('Create Payment Link Error:', paymentErr);
+        paymentError = true;
+      }
+    } else {
+      await notify('order_placed', {
+        orderId,
+        invoiceId,
+        invoiceNumber,
+        totalDue: grandTotal,
+      });
+    }
+
     res.status(201).json({
       message: 'Checkout complete',
+      payment_url: paymentUrl,
+      payment_error: paymentError,
       basket_id: basketId,
       order_id: orderId,
       invoice_id: invoiceId,

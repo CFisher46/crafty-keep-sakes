@@ -11,9 +11,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   element,
   requiredTypes
 }) => {
-  const { isAuthenticated, user, userType } = useAuth();
+  const { isAuthenticated, user, userType, loading } = useAuth();
 
   if (user) return element;
+
+  // After a full page load the session is still being restored, so don't redirect yet
+  if (loading) return null;
 
   if (!isAuthenticated || !userType || !requiredTypes.includes(userType)) {
     return <Navigate to="/home" replace />;

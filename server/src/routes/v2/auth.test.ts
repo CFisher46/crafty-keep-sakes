@@ -262,6 +262,41 @@ describe('v2 auth routes', () => {
       expect(response.headers['set-cookie']).toBeDefined();
     });
 
+    it('records the last login time for V2 users and still logs in if that fails', async () => {
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      const row = {
+        id: 1,
+        email: 'user@example.com',
+        password_hash: hashedPassword,
+        status: 'active',
+        first_name: 'John',
+        last_name: 'Doe',
+        role_code: 'customer',
+      };
+
+      mockDb.query.mockResolvedValueOnce([[row]]);
+      mockDb.query.mockResolvedValueOnce([{ affectedRows: 1 }]);
+
+      const response = await request(app)
+        .post('/api/v2/auth/login')
+        .send({ email: 'user@example.com', password: 'password123' });
+
+      expect(response.status).toBe(200);
+      const [sql, params] = mockDb.query.mock.calls[1];
+      expect(String(sql)).toContain('UPDATE users_v2 SET last_login_at');
+      expect(params).toEqual([1]);
+
+      mockDb.query.mockReset();
+      mockDb.query.mockResolvedValueOnce([[row]]);
+      mockDb.query.mockRejectedValueOnce(new Error('write failed'));
+
+      const failing = await request(app)
+        .post('/api/v2/auth/login')
+        .send({ email: 'user@example.com', password: 'password123' });
+
+      expect(failing.status).toBe(200);
+    });
+
     it('sets auth_token cookie on successful login', async () => {
       const hashedPassword = await bcrypt.hash('password123', 10);
 

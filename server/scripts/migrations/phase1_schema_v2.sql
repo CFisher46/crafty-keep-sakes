@@ -191,6 +191,16 @@ CREATE TABLE IF NOT EXISTS invoices_v2 (
   CONSTRAINT fk_invoices_v2_order FOREIGN KEY (order_id) REFERENCES orders_v2(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS invoice_views_v2 (
+  invoice_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (invoice_id, user_id),
+  KEY idx_invoice_views_v2_user (user_id),
+  CONSTRAINT fk_invoice_views_v2_invoice FOREIGN KEY (invoice_id) REFERENCES invoices_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_invoice_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS invoice_items_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   invoice_id BIGINT UNSIGNED NOT NULL,
@@ -240,6 +250,21 @@ CREATE TABLE IF NOT EXISTS audit_events_v2 (
   KEY idx_audit_events_v2_actor (actor_user_id, created_at),
   KEY idx_audit_events_v2_created (created_at),
   CONSTRAINT fk_audit_events_v2_actor FOREIGN KEY (actor_user_id) REFERENCES users_v2(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS notifications_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  user_id BIGINT UNSIGNED NOT NULL,
+  type VARCHAR(64) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  body VARCHAR(1000) NOT NULL,
+  link VARCHAR(255) NULL,
+  data_json JSON NULL,
+  read_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_notifications_v2_user_read (user_id, read_at, created_at),
+  CONSTRAINT fk_notifications_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS blog_posts_v2 (
@@ -310,4 +335,14 @@ VALUES
   ('customer', 'Customer account with self-service access')
 ON DUPLICATE KEY UPDATE
   description = VALUES(description);
+
+CREATE TABLE IF NOT EXISTS reviews_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  reviewer_name VARCHAR(100) NOT NULL DEFAULT '',
+  comment TEXT NOT NULL,
+  source VARCHAR(45) NOT NULL,
+  submit_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  star_count INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

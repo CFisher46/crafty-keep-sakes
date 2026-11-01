@@ -11,6 +11,10 @@ import v2UsersRouter from "./routes/v2/users";
 import v2AuditRouter from "./routes/v2/audit";
 import v2BasketRouter from "./routes/v2/basket";
 import v2BlogRouter from "./routes/v2/blog";
+import v2NotificationsRouter from "./routes/v2/notifications";
+import v2ReviewsRouter from "./routes/v2/reviews";
+import v2ReportsRouter from "./routes/v2/reports";
+import v2PaymentsRouter from "./routes/v2/payments";
 
 dotenv.config();
 
@@ -27,6 +31,9 @@ export function createApp() {
       credentials: true
     })
   );
+  // Webhook signatures are checked against the exact bytes, so keep this body raw (before express.json)
+  app.use("/api/v2/payments/webhook", express.raw({ type: "*/*", limit: "100kb" }));
+  app.use("/api/payments/webhook", express.raw({ type: "*/*", limit: "100kb" }));
   app.use(express.json({ limit: "100kb" }));
 
   const authLimiter = rateLimit({
@@ -80,6 +87,14 @@ export function createApp() {
   app.use("/api/v2/basket", v2BasketRouter);
   app.use("/api/blog", v2BlogRouter);
   app.use("/api/v2/blog", v2BlogRouter);
+  app.use("/api/notifications", v2NotificationsRouter);
+  app.use("/api/v2/notifications", v2NotificationsRouter);
+  app.use("/api/reviews", v2ReviewsRouter);
+  app.use("/api/v2/reviews", v2ReviewsRouter);
+  app.use("/api/reports", v2ReportsRouter);
+  app.use("/api/v2/reports", v2ReportsRouter);
+  app.use("/api/payments", v2PaymentsRouter);
+  app.use("/api/v2/payments", v2PaymentsRouter);
 
   app.use(
     "/images",

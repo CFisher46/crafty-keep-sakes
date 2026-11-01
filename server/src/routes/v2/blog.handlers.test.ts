@@ -125,6 +125,7 @@ describe('blog v2 routes', () => {
   it('allows admins to create a blog post', async () => {
     mockedDbQuery
       .mockResolvedValueOnce([{ insertId: 77 }])
+      .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([[{ id: 77 }]]);
 
     const response = await request(app)
