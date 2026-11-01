@@ -58,13 +58,11 @@ describe('NotificationsPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'New order placed' }));
 
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/notifications/3/read'),
-        expect.objectContaining({ method: 'PUT', credentials: 'include' })
-      );
-      expect(mockNavigate).toHaveBeenCalledWith('/Admin');
-    });
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/Admin'));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/notifications/3/read'),
+      expect.objectContaining({ method: 'PUT', credentials: 'include' })
+    );
     expect(changed).toHaveBeenCalled();
     window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, changed);
   });
@@ -82,13 +80,11 @@ describe('NotificationsPage', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Mark all as read' }));
 
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
-        expect.stringContaining('/notifications/read-all'),
-        expect.objectContaining({ method: 'PUT', credentials: 'include' })
-      );
-      expect(screen.queryByText('Unread')).not.toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.queryByText('Unread')).not.toBeInTheDocument());
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/notifications/read-all'),
+      expect.objectContaining({ method: 'PUT', credentials: 'include' })
+    );
   });
 
   it('shows an empty state when there are no notifications', async () => {
