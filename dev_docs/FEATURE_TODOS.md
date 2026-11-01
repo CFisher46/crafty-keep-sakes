@@ -80,11 +80,6 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-018 : Move Invoice feature into its own component
     -   AS a DEVELOPER, WHEN I come to make changes to the Invocies feature, I WANT to be able to quickly identify the Invoices component.
 
--   [ ] CKS-2-019 : Add in an ADMIN report for ALL Invoices
-    - AS an ADMIN, WHEN I want to update order tracking, I NEED a report that gives me a list of invoices that need updating
-
--   [ ] CKS-2-020 : Change the blog post table to be card/tiles instead
-    -   AS a CUSTOMER, WHEN I view the Blogs page, I WANT it to be able to easily see individual blog posts.
 
 ## Bugs
 
@@ -102,22 +97,20 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] Button hover and pressed styling was not being applied consistently.
     -   Button state styling is now applied through the Grommet button theme.
 
--   [ ] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
+-   [x] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
 
 ## Adhoc TODOs
 
--   [ ] CKS-2-009 : Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
+-   [ ] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
 
--   [ ] CKS-2-009 : Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
+-   [ ] Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
 
--   [ ] CKS-2-009 : Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
-
--   [ ] CKS-2-010 : Improve test coverage, first phase was done under cks-2-004 
+-   [ ] Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
 
 -   [x] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price?
 
--   [ ] CKS-2-014 : Introduce a change log that is updated with the branch name and title when merging to main
+-   [ ] Introduce a change log that is updated with the branch name and title when merging to main
 
--   [ ] CKS-2-021 : Check to make sure the API's cant be hit externally to scrap for information
+-   [ ] Check to make sure the API's cant be hit externally to scrap for information
 
--   [ ] CKS-2-022 : Revisit Test Coverage
+-   [ ] Revisit Test Coverage
