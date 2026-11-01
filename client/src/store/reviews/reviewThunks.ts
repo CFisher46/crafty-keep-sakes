@@ -15,7 +15,7 @@ export const fetchReviews = createAsyncThunk<Review[], void, { rejectValue: stri
   'reviews/fetchReviews',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await fetch(buildApiUrl('reviews', '/'));
+      const response = await fetch(buildApiUrl('reviews'));
       if (!response.ok) {
         return rejectWithValue(await readError(response, 'Failed to load reviews'));
       }
@@ -31,7 +31,7 @@ export const createReview = createAsyncThunk<void, ReviewInput, { rejectValue: s
   'reviews/createReview',
   async (review, { dispatch, rejectWithValue }) => {
     try {
-      const response = await fetch(buildApiUrl('reviews', '/'), {
+      const response = await fetch(buildApiUrl('reviews'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
