@@ -390,7 +390,7 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 - [ ] (Planned) Config: `CORS_ORIGIN` lists apex and `www`; login tested on the real domain (C3, C4)
 - [ ] (Planned) Config: image volume seeded or replaced by MinIO (C8)
 - [ ] (Planned) Code: `trust proxy` / client IP fix for rate limiters (K1)
-- [ ] (Planned) Code: `/health` endpoint, then Railway health check path set (K3, C5)
+- [x] Code: `/health` endpoint (K3), built. It is also set as the Railway health check path in `railway.json` (C5); confirm the dashboard shows `/health` after the first deploy
 - [ ] (Planned) Code: origin secret middleware (K4) and DB host startup guard (K5)
 - [ ] (Planned) Code: MinIO storage adapter and image path migration (K7)
 
@@ -459,7 +459,7 @@ Use a Vercel build or preview that sets `REACT_APP_API_URL=https://api-new.craft
 5. Clean up: re-enable the pre-deploy command, disable the MySQL TCP proxy, remove the stale `*.up.railway.app` domain once K4 is enforced, and delete this section.
 
 ### Gaps found by this plan
-- **No `/health` endpoint** (K3), so Railway cannot health check the API. Currently the healthcheck path must stay blank.
+- **`/health` endpoint** (K3) is built: `GET /health` runs `SELECT 1` (3 s timeout) and returns `{"status":"ok"}` or 503 `{"status":"unavailable"}`, with no auth and no rate limit. Railway's health check path is set to `/health` in `railway.json`.
 - **Rate limiters may see Cloudflare IPs** (K1) until `trust proxy` and `CF-Connecting-IP` are handled.
 - **No origin lock** (K4), so the `*.up.railway.app` host bypasses Cloudflare.
 - **Uploads are not durable** on Railway without a volume or MinIO (C8, K7).
