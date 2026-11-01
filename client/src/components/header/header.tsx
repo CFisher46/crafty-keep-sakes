@@ -10,6 +10,8 @@ import { ui } from "../../helpers/theme";
 import { fetchUnreadNotificationCount } from "../../features/notifications/api";
 import { NOTIFICATIONS_CHANGED_EVENT } from "../../features/notifications/events";
 
+const NOTIFICATION_POLL_MS = 60000;
+
 function PageHeader() {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
   const { totalItems } = useSelector((state: RootState) => state.basket);
@@ -46,9 +48,13 @@ function PageHeader() {
     loadUnreadCount();
     window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount);
     window.addEventListener("focus", loadUnreadCount);
+    const pollTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadUnreadCount();
+    }, NOTIFICATION_POLL_MS);
 
     return () => {
       isMounted = false;
+      window.clearInterval(pollTimer);
       window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, loadUnreadCount);
       window.removeEventListener("focus", loadUnreadCount);
     };

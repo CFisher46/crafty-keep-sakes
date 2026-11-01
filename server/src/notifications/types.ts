@@ -24,6 +24,32 @@ export type NotificationPayloads = {
     invoiceNumber: string;
     status: 'unpaid' | 'paid' | 'void';
   };
+  user_registered: {
+    userId: number;
+    name: string;
+    email: string;
+  };
+  account_created: {
+    userId: number;
+  };
+  account_updated: {
+    userId: number;
+    changes: Array<'status' | 'role' | 'details'>;
+    status?: string;
+  };
+  blog_post_published: {
+    postId: number;
+    postTitle: string;
+    authorId: number;
+  };
+  blog_comment_added: {
+    postId: number;
+    postTitle: string;
+    authorId: number;
+    commenterId: number;
+    commenterName: string;
+    comment: string;
+  };
   tracking_added: {
     userId: number;
     orderId: number;

@@ -22,6 +22,10 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS a Customer, WHEN my order is updated, I WANT to get a notidication advising me of the changes.
     -   AS an ADMIN, WHEN a CUSTOMER places an order, I WANT to get a notification advising me so that i can begin processing.
 
+-   [ ] CKS-2-021 : Low stock notifications for ADMINS
+    -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.
+    -   Notes: Parked. Many products are hand crafted and may be made on an order-by-order basis, so a quantity of 0 is not necessarily a problem. Stock is also not currently reduced at checkout. Needs a per-product "made to order" flag (to exclude those from alerts), stock decrement on checkout, and a de-duplicated alert (once per threshold crossing, not on every order). A previous implementation used a threshold of 5 (and 0 for out of stock) and was removed.
+
 
 ## Enhancements
 

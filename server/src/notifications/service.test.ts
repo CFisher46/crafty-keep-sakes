@@ -71,6 +71,102 @@ describe('notify', () => {
     expect(params[3]).toContain('RM123');
   });
 
+  it('notifies only the post author when they are an active admin', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ user_id: 1 }, { user_id: 2 }]])
+      .mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('blog_comment_added', {
+      postId: 5,
+      postTitle: 'Hello',
+      authorId: 2,
+      commenterId: 9,
+      commenterName: 'Jane',
+      comment: 'Nice post',
+    });
+
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(inserts.map(([, params]) => params[0])).toEqual([2]);
+    expect(inserts[0][1][4]).toBe('/Blog/5');
+    expect(inserts[0][1][3]).toContain('Jane');
+  });
+
+  it('falls back to all admins when the author is not an active admin', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ user_id: 1 }, { user_id: 2 }]])
+      .mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('blog_comment_added', {
+      postId: 5,
+      postTitle: 'Hello',
+      authorId: 99,
+      commenterId: 2,
+      commenterName: 'Admin Two',
+      comment: 'Hi',
+    });
+
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(inserts.map(([, params]) => params[0])).toEqual([1]);
+  });
+
+  it('notifies all admins of a new registration', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ user_id: 1 }, { user_id: 2 }]])
+      .mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('user_registered', { userId: 9, name: 'Jane Doe', email: 'j@x.com' });
+
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(inserts.map(([, params]) => params[0])).toEqual([1, 2]);
+    expect(inserts[0][1][3]).toContain('j@x.com');
+  });
+
+  it('tells a user when an admin deactivates their account', async () => {
+    mockQuery.mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('account_updated', { userId: 7, changes: ['status'], status: 'inactive' });
+
+    const [, params] = mockQuery.mock.calls[0];
+    expect(params[0]).toBe(7);
+    expect(params[2]).toBe('Your account status has changed');
+    expect(params[3]).toContain('inactive');
+  });
+
+  it('notifies engaged customers of a new blog post, excluding the author', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ user_id: 4 }, { user_id: 5 }]])
+      .mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('blog_post_published', { postId: 8, postTitle: 'News', authorId: 1 });
+
+    expect(mockQuery.mock.calls[0][1]).toEqual([1]);
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(inserts.map(([, params]) => params[0])).toEqual([4, 5]);
+    expect(inserts[0][1][4]).toBe('/Blog/8');
+  });
+
+  it('uses a distinct title when an invoice is cancelled', async () => {
+    mockQuery.mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('invoice_status_changed', {
+      userId: 7,
+      orderId: 40,
+      invoiceId: 90,
+      invoiceNumber: 'INV-1-40',
+      status: 'void',
+    });
+
+    expect(mockQuery.mock.calls[0][1][2]).toBe('Your order has been cancelled');
+  });
+
   it('does not throw when delivery fails', async () => {
     mockQuery.mockRejectedValue(new Error('db down'));
 

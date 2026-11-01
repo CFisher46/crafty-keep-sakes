@@ -1,8 +1,10 @@
 import express from 'express';
 import fs from 'fs';
 import jwt from 'jsonwebtoken';
+import type { RowDataPacket } from 'mysql2';
 import multer from 'multer';
 import path from 'path';
+import { notify } from '../../notifications/service';
 import { db } from '../../ts-common/database';
 import { imageFileFilter, IMAGE_UPLOAD_LIMITS } from '../../ts-common/image-upload';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
@@ -198,6 +200,14 @@ router.post('/posts', verifyAuthToken, requireRole('admin'), upload.array('image
 
     const postId = (insertResult as InsertResult | undefined)?.insertId ?? 0;
 
+    if (postId) {
+      await notify('blog_post_published', {
+        postId,
+        postTitle: payload.title,
+        authorId: Number(getRequestUser(req)?.id ?? 0),
+      });
+    }
+
     if (files.length) {
       await Promise.all(
         files.map((file, index) =>
@@ -294,6 +304,31 @@ router.post('/posts/:id/comments', verifyAuthToken, async (req, res) => {
       'INSERT INTO blog_post_comments_v2 (post_id, user_id, comment) VALUES (?, ?, ?)',
       [postId, Number(user?.id ?? 0), message]
     );
+
+    const commenterId = Number(user?.id ?? 0);
+
+    try {
+      const [rows] = await db.query<RowDataPacket[]>(
+        `SELECT bp.title, bp.author_id,
+                (SELECT TRIM(CONCAT(COALESCE(cp.first_name, ''), ' ', COALESCE(cp.last_name, '')))
+                 FROM customer_profiles_v2 cp WHERE cp.user_id = ?) AS commenter_name
+         FROM blog_posts_v2 bp WHERE bp.id = ?`,
+        [commenterId, postId]
+      );
+      const post = rows[0];
+      if (post) {
+        await notify('blog_comment_added', {
+          postId,
+          postTitle: String(post.title),
+          authorId: Number(post.author_id),
+          commenterId,
+          commenterName: String(post.commenter_name ?? ''),
+          comment: message,
+        });
+      }
+    } catch (notifyError) {
+      console.error('Blog comment notification error:', notifyError);
+    }
 
     res.status(201).json({
       message: 'Comment added',
