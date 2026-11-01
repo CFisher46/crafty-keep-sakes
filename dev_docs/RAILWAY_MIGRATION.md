@@ -15,9 +15,20 @@ A search of `server/src` and `server/scripts` finds no references to `users`, `p
 
 ## Progress log
 
-**Last updated 2026-10-13.**
+**Last updated 2026-11-01.**
 
-Status since the last update:
+Current state (2026-11-01):
+- The Railway API service is live at `crafty-keep-sakes-production.up.railway.app`, built with the Dockerfile builder (`server/Dockerfile`) and getting active deployments. It was reported as deploying from `main`.
+- Service source (confirmed in the Railway settings): the correct repo, Root Directory `/`, branch `main`.
+- Build and deploy settings (confirmed in the Railway dashboard): the Dockerfile path is set to `/server/Dockerfile`. A **Pre-deploy Command** of `node scripts/apply-schema.js` was tried on the `main` service and failed with `Cannot find module '/app/server/scripts/apply-schema.js'`, because `main` has neither the script nor the Dockerfile lines that copy it into the image. Both are in this migration branch (`cks-railway-migration`, up to date with `main`, no conflicts). **Re-enable the pre-deploy command only after this PR is merged**, and leave it empty until then. Once merged, check the deploy logs for `Applied phase1_schema_v2.sql: 24 tables`. Only merged schema changes then reach Railway.
+- `railway.json` (Dockerfile builder, same pre-deploy command) is also only on this branch. Until the merge, the dashboard settings are what is in effect.
+- Schema changes must stay additive and idempotent (K2), or a failing script blocks every deploy.
+- The MySQL service is running, and the latest schema (24 tables) has been applied by the schema script.
+- The API can talk to the Railway database.
+- An earlier service created from the Railway Express starter template (Railpack/bun build, `/misc/status` healthcheck) was not our API. Do not use it, and delete it if it still exists.
+- Not yet done: Square payment variables on Railway, a first admin user, image storage, a custom domain, and the data move from the NAS. The NAS stays the live API until cutover.
+
+Earlier status (2026-10-13):
 - A MinIO template has been added to the Railway project. Nothing uses it yet (section 6).
 - Cloudflare, domain, SSL and dev/prod separation are planned and documented (sections 7 and 8). No DNS, `.env` or Vercel changes have been made.
 - An end-to-end review was done. Gaps are in section 9, split into service configuration and code changes.
