@@ -28,10 +28,11 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an ADMIN, I WANT to add, update and delete feedback gathered from external sources (stored in `reviews_v2`) so it can be shared with customers.
     -   Notes: The admin Reports area was replaced by Reviews. Report export (XLSX/CSV) will be tackled separately with a different approach.
 
--   [ ] CKS-2-023 : "My invoices" page in the profile menu
+-   [x] CKS-2-023 : "My invoices" page in the profile menu
     -   AS a CUSTOMER, WHEN I open the profile menu, I WANT a "My invoices" option that takes me to a dedicated invoices page.
     -   AS a CUSTOMER, WHEN viewing my profile, I WANT it to focus on my account details, with the invoice table no longer shown there.
-    -   Notes: Add a "My invoices" item to the header account menu (alongside "My profile" and "Log out"). Move the invoice table and invoice details out of the profile view (`features/profile/invoice-history.tsx`, `invoice-details.tsx`) into their own routed page.
+    -   AS an ADMIN, I WANT a "Reporting" page in the main navigation (admins only) with a link to an all-invoices page, so I can see every customer's invoices and update status and tracking.
+    -   Notes: Invoice components now live in `features/invoices/`. Routes: `/invoices` (own invoices), `/Reporting` and `/Reporting/invoices` (admin only). The all-invoices list is served by the admin-only `GET /api/v2/basket/orders/all`. Report export (XLSX/CSV) is still a separate, later piece of work.
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.

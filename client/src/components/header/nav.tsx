@@ -105,6 +105,7 @@ function NavigationBar({
       route: '/Blog',
     },
     { label: 'Contact Us', route: '/Contact' },
+    isLoggedIn && userType === 'admin' && { label: 'Reporting', route: '/Reporting' },
     isLoggedIn && userType === 'admin' && { label: 'Admin Tools', route: '/Admin' },
   ] as Array<NavItem | false>).filter((item): item is NavItem => Boolean(item));
 

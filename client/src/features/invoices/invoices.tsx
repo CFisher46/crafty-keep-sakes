@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import {
+  fetchAllOrders,
   fetchInvoiceById,
   fetchOrderHistory,
-  updateInvoiceStatus,
-  updateInvoiceTrackingInfo,
+  updateInvoice,
 } from '../../store/basket/basketThunks';
 import type { DeliveryAddress, InvoiceDetails, InvoiceOrder } from '../../types';
 import { useAppDispatch } from '../../store/hooks';
@@ -12,12 +12,22 @@ import InvoiceHistory from './invoice-history';
 import { notifyNotificationsChanged } from '../notifications/events';
 
 interface InvoicesProps {
-  userId?: string;
+  scope: 'mine' | 'all';
   userType?: string;
-  billingAddress: DeliveryAddress;
+  billingAddress?: DeliveryAddress;
 }
 
-function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
+const NO_ADDRESS: DeliveryAddress = {
+  address_line1: '',
+  address_line2: '',
+  address_line3: '',
+  town: '',
+  county: '',
+  postcode: '',
+};
+
+function Invoices({ scope, userType, billingAddress = NO_ADDRESS }: InvoicesProps) {
+  const loadOrdersThunk = scope === 'all' ? fetchAllOrders : fetchOrderHistory;
   const dispatch = useAppDispatch();
   const [orders, setOrders] = useState<InvoiceOrder[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState('');
@@ -26,18 +36,14 @@ function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
 
   useEffect(() => {
     const loadOrders = async () => {
-      if (!userId) {
-        return;
-      }
-
-      const result = await dispatch(fetchOrderHistory());
-      if (fetchOrderHistory.fulfilled.match(result)) {
+      const result = await dispatch(loadOrdersThunk());
+      if (loadOrdersThunk.fulfilled.match(result)) {
         setOrders(result.payload);
       }
     };
 
     loadOrders();
-  }, [dispatch, userId]);
+  }, [dispatch, loadOrdersThunk]);
 
   useEffect(() => {
     const loadInvoice = async () => {
@@ -60,13 +66,13 @@ function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
   const refreshInvoiceData = async () => {
     const [invoiceResult, ordersResult] = await Promise.all([
       selectedInvoiceId ? dispatch(fetchInvoiceById(selectedInvoiceId)) : undefined,
-      userId ? dispatch(fetchOrderHistory()) : undefined,
+      dispatch(loadOrdersThunk()),
     ]);
 
     if (invoiceResult && fetchInvoiceById.fulfilled.match(invoiceResult)) {
       setInvoice(invoiceResult.payload);
     }
-    if (ordersResult && fetchOrderHistory.fulfilled.match(ordersResult)) {
+    if (ordersResult && loadOrdersThunk.fulfilled.match(ordersResult)) {
       setOrders(ordersResult.payload);
     }
   };
@@ -77,40 +83,25 @@ function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
     setInvoiceUpdateMessage(null);
   };
 
-  const updateStatus = async (status: string) => {
+  const saveChanges = async (changes: { status?: string; trackingInfo?: string }) => {
     if (!selectedInvoiceId) {
       return;
     }
 
     const result = await dispatch(
-      updateInvoiceStatus({ invoiceId: selectedInvoiceId, invoiceStatus: status })
+      updateInvoice({
+        invoiceId: selectedInvoiceId,
+        invoiceStatus: changes.status,
+        trackingInfo: changes.trackingInfo,
+      })
     );
 
-    if (!updateInvoiceStatus.fulfilled.match(result)) {
-      setInvoiceUpdateMessage('Unable to update invoice status');
+    if (!updateInvoice.fulfilled.match(result)) {
+      setInvoiceUpdateMessage('Unable to update invoice');
       return;
     }
 
-    setInvoiceUpdateMessage('Invoice status updated');
-    notifyNotificationsChanged();
-    await refreshInvoiceData();
-  };
-
-  const updateTrackingInfo = async (trackingInfo: string) => {
-    if (!selectedInvoiceId) {
-      return;
-    }
-
-    const result = await dispatch(
-      updateInvoiceTrackingInfo({ invoiceId: selectedInvoiceId, trackingInfo })
-    );
-
-    if (!updateInvoiceTrackingInfo.fulfilled.match(result)) {
-      setInvoiceUpdateMessage('Unable to update invoice tracking info');
-      return;
-    }
-
-    setInvoiceUpdateMessage('Invoice tracking info updated');
+    setInvoiceUpdateMessage('Invoice updated');
     notifyNotificationsChanged();
     await refreshInvoiceData();
   };
@@ -124,11 +115,15 @@ function Invoices({ userId, userType, billingAddress }: InvoicesProps) {
           userType={userType}
           updateMessage={invoiceUpdateMessage}
           onClose={closeInvoice}
-          onUpdateStatus={updateStatus}
-          onUpdateTracking={updateTrackingInfo}
+          onSave={saveChanges}
         />
       )}
-      <InvoiceHistory orders={orders} onOpenInvoice={setSelectedInvoiceId} />
+      <InvoiceHistory
+        orders={orders}
+        title={scope === 'all' ? 'All Invoices' : 'My Invoices'}
+        showCustomer={scope === 'all'}
+        onOpenInvoice={setSelectedInvoiceId}
+      />
     </>
   );
 }

@@ -14,6 +14,9 @@ import ProtectedRoute from "../../helpers/protectedRoutes";
 // import ContactUs from '../../pages/contactUs/contactUs';
 import { Box } from "grommet";
 import ReviewsPage from "../../features/reviews/page";
+import MyInvoicesPage from "../../features/invoices/page";
+import ReportingPage from "../../features/reporting/page";
+import AllInvoicesPage from "../../features/reporting/invoices/page";
 // import UserRegistration from '../../pages/registration/registration';
 
 function MainBody() {
@@ -47,6 +50,33 @@ function MainBody() {
               />
             }
           />{" "}
+          <Route
+            path="/invoices"
+            element={
+              <ProtectedRoute
+                element={<MyInvoicesPage />}
+                requiredTypes={["customer", "admin", "Customer", "Admin"]}
+              />
+            }
+          />
+          <Route
+            path="/Reporting"
+            element={
+              <ProtectedRoute
+                element={<ReportingPage />}
+                requiredTypes={["Admin", "admin"]}
+              />
+            }
+          />
+          <Route
+            path="/Reporting/invoices"
+            element={
+              <ProtectedRoute
+                element={<AllInvoicesPage />}
+                requiredTypes={["Admin", "admin"]}
+              />
+            }
+          />
           <Route
             path="/Admin"
             element={

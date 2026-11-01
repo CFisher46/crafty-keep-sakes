@@ -232,7 +232,7 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
     const userId = getUserId(req);
     const [rows] = await connection.query<RowDataPacket[]>(
       `SELECT o.id, o.user_id, o.order_status, o.subtotal, o.discount_total, o.tax_total, o.grand_total, o.placed_at,
-              i.id AS invoice_id, i.invoice_number
+              i.id AS invoice_id, i.invoice_number, i.tracking_info
        FROM orders_v2 o
        LEFT JOIN invoices_v2 i ON i.order_id = o.id
        WHERE o.user_id = ? ORDER BY o.placed_at DESC`,
@@ -247,6 +247,7 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
         grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
         invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
         invoice_number: row.invoice_number || null,
+        tracking_info: row.tracking_info || null,
         placed_at: row.placed_at,
       }))
     );
@@ -257,6 +258,46 @@ router.get('/orders', verifyAuthToken, async (req, res) => {
       return;
     }
 
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    connection.release();
+  }
+});
+
+router.get('/orders/all', verifyAuthToken, requireRole('admin'), async (_req, res) => {
+  console.log('GET /api/v2/basket/orders/all');
+
+  const connection = await db.getConnection();
+
+  try {
+    const [rows] = await connection.query<RowDataPacket[]>(
+      `SELECT o.id, o.user_id, o.order_status, o.grand_total, o.placed_at,
+              i.id AS invoice_id, i.invoice_number, i.invoice_status, i.tracking_info,
+              u.email AS customer_email, cp.first_name, cp.last_name
+       FROM orders_v2 o
+       LEFT JOIN invoices_v2 i ON i.order_id = o.id
+       LEFT JOIN users_v2 u ON u.id = o.user_id
+       LEFT JOIN customer_profiles_v2 cp ON cp.user_id = o.user_id
+       ORDER BY o.placed_at DESC`
+    );
+
+    res.json(
+      (Array.isArray(rows) ? rows : []).map((row) => ({
+        id: Number(row.id),
+        user_id: Number(row.user_id),
+        order_status: row.order_status,
+        grand_total: Number(Number(row.grand_total || 0).toFixed(2)),
+        invoice_id: row.invoice_id !== undefined && row.invoice_id !== null ? Number(row.invoice_id) : null,
+        invoice_number: row.invoice_number || null,
+        tracking_info: row.tracking_info || null,
+        invoice_status: row.invoice_status || null,
+        customer_name: [row.first_name, row.last_name].filter(Boolean).join(' ') || null,
+        customer_email: row.customer_email || null,
+        placed_at: row.placed_at,
+      }))
+    );
+  } catch (err) {
+    console.error('List V2 All Orders Error:', err);
     res.status(500).json({ error: 'Database error' });
   } finally {
     connection.release();

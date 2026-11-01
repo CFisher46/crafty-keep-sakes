@@ -6,6 +6,8 @@ import type { InvoiceOrder } from '../../types';
 
 interface InvoiceHistoryProps {
   orders: InvoiceOrder[];
+  title?: string;
+  showCustomer?: boolean;
   onOpenInvoice: (invoiceId: string) => void;
 }
 
@@ -17,7 +19,7 @@ const cellStyle: React.CSSProperties = {
 
 const headingStyle: React.CSSProperties = {
   textAlign: 'left',
-  width: '20%',
+  width: 'auto',
   padding: '12px',
   fontWeight: 500,
   fontSize: '12px',
@@ -26,7 +28,7 @@ const headingStyle: React.CSSProperties = {
   color: ui.ink,
 };
 
-function InvoiceHistory({ orders, onOpenInvoice }: InvoiceHistoryProps) {
+function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, onOpenInvoice }: InvoiceHistoryProps) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
@@ -36,11 +38,12 @@ function InvoiceHistory({ orders, onOpenInvoice }: InvoiceHistoryProps) {
       orders.filter((order) => {
         const matchesStatus =
           statusFilter === 'all' || order.order_status === statusFilter;
+        const needle = invoiceSearch.toLowerCase();
         const matchesInvoice =
-          !invoiceSearch ||
-          (order.invoice_number ?? '')
-            .toLowerCase()
-            .includes(invoiceSearch.toLowerCase());
+          !needle ||
+          [order.invoice_number, order.customer_name, order.customer_email]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(needle));
 
         return matchesStatus && matchesInvoice;
       }),
@@ -57,7 +60,7 @@ function InvoiceHistory({ orders, onOpenInvoice }: InvoiceHistoryProps) {
   return (
     <Box border={{ color: ui.line }} pad="medium" gap="small" background="white">
       <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '22px', fontWeight: 400, color: ui.ink }}>
-        My Invoices
+        {title}
       </Text>
       {orders.length === 0 ? (
         <Text>No orders yet.</Text>
@@ -73,7 +76,7 @@ function InvoiceHistory({ orders, onOpenInvoice }: InvoiceHistoryProps) {
             </Box>
             <Box flex="grow" width="220px">
               <TextInput
-                placeholder="Search invoice number"
+                placeholder={showCustomer ? 'Search invoice number, customer or email' : 'Search invoice number'}
                 value={invoiceSearch}
                 onChange={(event) => setInvoiceSearch(event.target.value)}
               />
@@ -100,14 +103,14 @@ function InvoiceHistory({ orders, onOpenInvoice }: InvoiceHistoryProps) {
               <table
                 style={{
                   width: '100%',
-                  minWidth: '720px',
+                  minWidth: '800px',
                   borderCollapse: 'collapse',
                   fontSize: '0.9rem',
                 }}
               >
                 <thead>
                   <tr style={{ background: ui.page, borderBottom: `1px solid ${ui.line}` }}>
-                    {['Order', 'Invoice', 'Status', 'Total', 'Date'].map((heading) => (
+                    {['Order', 'Invoice', ...(showCustomer ? ['Customer'] : []), 'Status', 'Tracking', 'Total', 'Date'].map((heading) => (
                       <th key={heading} style={headingStyle}>{heading}</th>
                     ))}
                   </tr>
@@ -142,7 +145,11 @@ function InvoiceHistory({ orders, onOpenInvoice }: InvoiceHistoryProps) {
                       >
                         <td style={cellStyle}>{order.id}</td>
                         <td style={cellStyle}>{order.invoice_number ?? '—'}</td>
+                        {showCustomer && (
+                          <td style={cellStyle}>{order.customer_name || order.customer_email || `User ${order.user_id}`}</td>
+                        )}
                         <td style={cellStyle}>{order.order_status}</td>
+                        <td style={cellStyle}>{order.tracking_info || '—'}</td>
                         <td style={cellStyle}>£{Number(order.grand_total).toFixed(2)}</td>
                         <td style={cellStyle}>
                           {new Date(order.placed_at).toLocaleDateString()}
