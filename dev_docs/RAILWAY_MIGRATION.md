@@ -435,6 +435,8 @@ The client owns `craftykeepsakestorbay.co.uk`, which currently serves their exis
 3. Leave their MX/TXT (email) records alone.
 4. Rollback: restore the old apex and `www` records (`103.169.142.6`). Keep the old hosting running until sign-off.
 
+**Registrar:** the client's domain is with names.co.uk, whose panel supports A, CNAME and TXT records plus service records, so the Vercel record approach above works without moving nameservers. Before relying on it, confirm in the panel which nameservers the domain uses (currently `ns0/1/2.phase8.net`) and that the DNS panel is the authoritative one. After a change, check with `dig +short A craftykeepsakestorbay.co.uk`. If the DNS is hosted elsewhere, make the change there.
+
 **To confirm with the client before relying on this:**
 - They agree customers will see `craftykeepsakes.uk` as the address, rather than their own domain.
 - The phase8 provider can change the apex and `www` records to point at Vercel (an apex needs an A or ALIAS/ANAME record, and some providers cannot do that), or can do a redirect another way (for example a URL forward to `https://craftykeepsakes.uk`, which is simpler but does not keep paths).
