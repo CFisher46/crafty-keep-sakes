@@ -150,11 +150,24 @@ All routes are under `/api/v2` and use the auth cookie. Unless noted, they need 
 | Reports | `/reports` | Admin only: `overview`, `products`, `users`, `blog`, with `from` and `to` (`YYYY-MM-DD`) filters |
 | Audit | `/audit` | Admin only |
 
-Security notes: requests are limited to 100kb, login and registration are rate limited, CORS is limited to `CORS_ORIGIN` (defaults to `http://localhost:3000`), and personal user fields are encrypted at rest.
+Security notes: requests are limited to 100kb, login and registration are rate limited, CORS is limited to `CORS_ORIGIN` (defaults to `http://localhost:3000`).
 
 ## Deployment
 
-The API runs as a Docker image (`server/Dockerfile`) on a NAS, reachable only through a Cloudflare Tunnel (`docker-compose.nas.yml`). The compose file's header lists the build, push and `docker compose up` commands. Required environment values are the database settings, `ENCRYPTION_KEY`, `JWT_SECRET`, `CORS_ORIGIN` and `TUNNEL_TOKEN`. Product images are kept in a persistent volume.
+The API is moving from a NAS to Railway. The full plan, status and cutover steps are in [dev_docs/RAILWAY_MIGRATION.md](dev_docs/RAILWAY_MIGRATION.md).
+
+| Part | Where it runs |
+| --- | --- |
+| Client | Vercel (`main` is Production, the `dev` branch is `dev.craftykeepsakes.uk`) |
+| API | Railway (`api-prd.craftykeepsakes.uk`) behind Cloudflare. The NAS is still the live API until cutover and stays as the fallback (`api-dev`) |
+| Database | Railway MySQL (private network). The schema is applied on every deploy by `server/scripts/apply-schema.js` |
+| Images | MinIO bucket on Railway, served from `files.craftykeepsakes.uk` |
+
+- **Railway:** built from `server/Dockerfile` with `railway.json` (pre-deploy schema script, health check at `/health`). It deploys manually from `main`. Set `ORIGIN_SECRET` and a matching Cloudflare Transform Rule that adds the `X-Origin-Secret` header, so the API only accepts traffic that came through Cloudflare. `/health` and the Square webhook paths are exempt.
+- **Environment:** see `server/.env.example` for the variables (database, `JWT_SECRET`, `CORS_ORIGIN`, `CLIENT_URL`, `MINIO_*`, `ORIGIN_SECRET`, `SQUARE_*`). `CORS_ORIGIN` takes a comma-separated list with no trailing slashes.
+- **Local development:** `npm run dev` uses `server/.env`. `npm run dev:railway` loads `server/.env.railway` (copy `server/.env.railway.example`) to test against Railway. The server refuses a non-local `DB_HOST` outside production unless `ALLOW_REMOTE_DB=1`.
+- **Release flow:** build on a feature branch, merge it into `dev` to test on `dev.craftykeepsakes.uk` (a Preview build that calls Railway directly), then merge the feature branch into `main` by PR. Do not merge `dev` into `main`, and merge `main` back into `dev` afterwards. The login cookie is `SameSite=Strict`, so test sites must sit under `craftykeepsakes.uk`, not `*.vercel.app`.
+- **NAS (until cutover):** the API runs as a Docker image behind a Cloudflare Tunnel (`docker-compose.nas.yml`, whose header lists the build, push and `docker compose up` commands). It needs the database settings, `JWT_SECRET`, `CORS_ORIGIN` and `TUNNEL_TOKEN`.
 
 ## Database schema recovery
 
@@ -194,7 +207,7 @@ Payments sit behind a provider interface in `server/src/payments/`. Checkout cre
 **Going live:**
 1. In Square, create a production application and note its access token and location ID.
 2. Create a production webhook subscription for `payment.updated` at `SQUARE_WEBHOOK_URL` and copy its signature key.
-3. On the NAS, set the three `SQUARE_PRODUCTION_*` values and `SQUARE_ENVIRONMENT=production`, then restart the API. Make one small real payment to check it, and refund it from the Square dashboard.
+3. On the host running the API (Railway, or the NAS), set the three `SQUARE_PRODUCTION_*` values, `SQUARE_ENVIRONMENT=production` and `NODE_ENV=production`, then restart or redeploy the API. Make one small real payment and one real declined card to check it, and refund the payment from the Square dashboard.
 
 The webhook URL must match the subscription exactly. Square sends customers back to `CLIENT_URL/payments/result` after paying.
 

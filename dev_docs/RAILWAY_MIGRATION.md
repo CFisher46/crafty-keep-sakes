@@ -15,20 +15,44 @@ A search of `server/src` and `server/scripts` finds no references to `users`, `p
 
 ## Progress log
 
-**Last updated 2026-11-01.**
+**Last updated 2026-11-02.**
 
-Current state (2026-11-01):
-- The Railway API service is live at `crafty-keep-sakes-production.up.railway.app`, built with the Dockerfile builder (`server/Dockerfile`) and getting active deployments. It was reported as deploying from `main`.
-- Service source (confirmed in the Railway settings): the correct repo, Root Directory `/`, branch `main`.
-- Build and deploy settings (confirmed in the Railway dashboard): the Dockerfile path is set to `/server/Dockerfile`. A **Pre-deploy Command** of `node scripts/apply-schema.js` was tried on the `main` service and failed with `Cannot find module '/app/server/scripts/apply-schema.js'`, because `main` has neither the script nor the Dockerfile lines that copy it into the image. Both are in this migration branch (`cks-railway-migration`, up to date with `main`, no conflicts). **Re-enable the pre-deploy command only after this PR is merged**, and leave it empty until then. Once merged, check the deploy logs for `Applied phase1_schema_v2.sql: 24 tables`. Only merged schema changes then reach Railway.
-- `railway.json` (Dockerfile builder, same pre-deploy command) is also only on this branch. Until the merge, the dashboard settings are what is in effect.
-- Schema changes must stay additive and idempotent (K2), or a failing script blocks every deploy.
-- The MySQL service is running, and the latest schema (24 tables) has been applied by the schema script.
-- The API can talk to the Railway database.
-- An earlier service created from the Railway Express starter template (Railpack/bun build, `/misc/status` healthcheck) was not our API. Do not use it, and delete it if it still exists.
-- Verified (2026-11-01) with the local app run via `npm run dev:railway` (loads `server/.env.railway`, sets `ALLOW_REMOTE_DB=1`) against the Railway DB and MinIO bucket: admin login, creating a product with an image upload (stored in the bucket, served from the public URL), and updating and deleting a user. The server prints `Database target: ...` on start, and refuses a non-local `DB_HOST` outside production unless `ALLOW_REMOTE_DB=1`.
-- Also fixed: the login handler never wrote `users_v2.last_login_at` (stale `source` check), which was behind the 3 failing server tests. The redundant client `POST /api/v2/audit` was removed because the server writes audit events itself.
-- Not yet done: `MINIO_*` variables on the Railway API (it runs `main`, which lacks the adapter), Square payment variables on Railway, a custom domain, K1/K3/K4, curl checks against the Railway URL (Phase B), Cloudflare and browser tests (Phases C and D), the existing-image migration, and the data move from the NAS. The NAS stays the live API until cutover.
+Update (2026-11-02): Phases B, C, D and E pass on Railway through `api-prd.craftykeepsakes.uk` and `dev.craftykeepsakes.uk`.
+- `CORS_ORIGIN` on Railway includes `https://dev.craftykeepsakes.uk`.
+- Vercel: a `dev` Git branch builds a Preview with `REACT_APP_API_URL=https://api-prd.craftykeepsakes.uk` (Preview scope only), and `dev.craftykeepsakes.uk` is assigned to that branch (grey-cloud CNAME in Cloudflare). Production still uses the `/api` rewrite to the NAS. Vercel standard protection redirects `manifest.json` to SSO on previews, a harmless console error.
+- Tested in the browser: login, session refresh, logout (the `auth_token` cookie is set for `api-prd`), product create and edit with a MinIO image, basket and checkout, admin pages, notifications.
+- Square sandbox on Railway: `PAYMENTS_PROVIDER=square` with a second sandbox webhook subscription for `api-prd`. Checkout redirected to Square, and the invoice flipped to paid with a notification. A 401 `UNAUTHORIZED` from Square means a mistyped access token. The declined-card path is covered by server tests (the hosted sandbox page would not decline), so repeat it with a real declined card at go-live.
+- Cloudflare Events show only inbound scanner traffic blocked, nothing on the webhook.
+- Remaining: client agreement on the domain, secret rotation, the section 12 wipe, cutover (Phase F), the client-domain redirect.
+
+Release flow: build on a feature branch, merge it into `dev` to test on `dev.craftykeepsakes.uk`, then merge the feature branch into `main` by PR (never `dev` into `main`). Afterwards merge `main` into `dev`. Railway deploys manually from `main`.
+
+Earlier state (2026-11-01, end of day):
+
+Working on Railway (all verified with curl or the local app):
+- The API runs from `main` with the Dockerfile builder (`/server/Dockerfile`) at `crafty-keep-sakes-production.up.railway.app`. The pre-deploy `node scripts/apply-schema.js` runs on every deploy (`Applied phase1_schema_v2.sql: 24 tables`, `Roles: admin, customer`), and the health check path is `/health` (K3, C5).
+- The API reaches the Railway MySQL over the private network (`mysql.railway.internal`). An admin user is seeded and `POST /api/v2/auth/login` works (cookie `HttpOnly; Secure; SameSite=Strict`).
+- MinIO: the `MINIO_*` variables are set on the Railway API. Uploads go to the `images` bucket, are public-read, and the stored URL is the bucket public URL. `files.craftykeepsakes.uk` works for the image URLs.
+- Cloudflare: `api-prd.craftykeepsakes.uk` (Railway, proxied, SSL Full (strict)) returns 200 for `/health` and `/api/v2/products` with `server: cloudflare`.
+- Origin lock (K1, K4): a Cloudflare Transform Rule sets `X-Origin-Secret` on `api-prd`, and `ORIGIN_SECRET` is set on Railway. The direct `*.up.railway.app` URL now returns 403 except for `/health`, and the Square webhook paths are exempt (the webhook returns 404 `Payments are not enabled` until the Square variables are set, which proves it passes the guard). Cloudflare reserves header names starting with `x-cf-`.
+- Local development: `npm run dev` uses `server/.env` (NAS). `npm run dev:railway` loads `server/.env.railway` (gitignored, template `.env.railway.example`) and sets `ALLOW_REMOTE_DB=1`. The server logs `Database target: ...`, and refuses a non-local `DB_HOST` outside production without `ALLOW_REMOTE_DB=1` (K5). Verified: login, product create with image upload, and user update and delete against Railway.
+- Fixes made on the way: the login handler never wrote `users_v2.last_login_at` (behind the 3 failing server tests, now all pass), and the redundant client `POST /api/v2/audit` was removed because the server writes audit events itself.
+
+NAS (still the live API):
+- `api.craftykeepsakes.uk` and `api-dev.craftykeepsakes.uk` are two published routes on the same Cloudflare tunnel (`cks-api`), both verified returning 200. `api-dev` is the fallback and test-data API. The Vercel client still reaches the NAS through the `/api` rewrite in `client/vercel.json`, so nothing the client uses has changed.
+- The NAS runs the old build: no `/health`, no origin guard, uploads on local disk. Before rebuilding it, run `npm run db:apply-schema` against its DB (it needs `invoice_views_v2`, `notifications_v2`, `reviews_v2`), and check its `DB_HOST` passes the K5 guard or set `NODE_ENV=production`.
+- The tunnel shows 530 for both hostnames whenever the NAS or its `cloudflared` container is off.
+
+Not yet done, in suggested order:
+1. Done: `CORS_ORIGIN` on Railway (every origin that calls the API, comma-separated, no spaces, no trailing slash).
+2. **Client domain.** Plan: keep the app and API on `craftykeepsakes.uk`, and redirect `craftykeepsakestorbay.co.uk` to it at go-live (section 11 "Client domain"). Confirm with the client that they agree, and that their DNS provider (phase8) supports pointing the apex and `www` at Vercel or a redirect.
+3. Done (2026-11-02), Phase D: browser test from `dev.craftykeepsakes.uk` (or another `craftykeepsakes.uk` subdomain) against `api-prd`. More testing is planned, so the clean-up wipe (below) is the last step before go-live.
+4. Done (2026-11-02), Phase E: Square sandbox on Railway (second webhook subscription, `SQUARE_WEBHOOK_URL` on `api-prd`).
+5. Set `MINIO_PUBLIC_URL=https://files.craftykeepsakes.uk/images` on Railway before any real product is added, because full URLs are stored in the DB.
+6. **No data move.** Everything in the NAS and Railway databases so far is mock data, so Railway starts clean. No image migration is needed either.
+7. **Wipe the Railway test data, as the very last step before go-live** (section 12): the test products, product images, audit events and anything else created while testing, plus the test files in the `images` bucket. Keep the admin user and the roles.
+8. Cutover (Phase F): repoint `api` to Railway, keep `api-dev` on the NAS as the fallback, then remove the `up.railway.app` domain, the Vercel `/api` rewrite and the unused TCP proxy.
+9. Housekeeping: rotate the secrets that were exposed during setup (`JWT_SECRET`, the NAS DB password, `ENCRYPTION_KEY`, the Cloudflare tunnel token, the Square sandbox keys, the MinIO access key), delete the `CHANGELOG_PAT` secret, remove the test product and its image, and keep real secret values out of chat and logs.
 
 Earlier status (2026-10-13):
 - A MinIO template has been added to the Railway project. Nothing uses it yet (section 6).
@@ -180,7 +204,7 @@ Product and blog images are stored on disk, not in the database. Only the paths 
 - Blog uploads go to `client/public/images/blog`, and product images go under `client/public/images`.
 - The NAS compose file mounts a volume at `/app/client/public/images`.
 - On Railway, attach a volume at the same path. Without it, uploaded images disappear on every deploy.
-- Copy the existing image files from the NAS volume into the new one so existing products and posts keep their pictures.
+- Existing NAS images are mock data and are not copied.
 
 ## 4. Client
 
@@ -188,7 +212,9 @@ Product and blog images are stored on disk, not in the database. Only the paths 
 - Make sure the API's `CORS_ORIGIN` matches the client's URL, because auth uses cookies (`credentials: include`).
 - In production the auth cookie is `secure`, so both sides must be served over HTTPS.
 
-## 5. Data move (if keeping existing data)
+## 5. Data move (not needed: only mock data exists, see section 12)
+
+Skip this section. It is kept for reference in case real data ever needs moving.
 Export from the NAS database and import into Railway after the schema is created. Do it in this order so foreign keys are satisfied:
 
 1. `roles_v2`, `users_v2`, `user_roles_v2`, `customer_profiles_v2`
@@ -334,8 +360,8 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 
 | # | Gap | Action |
 |---|-----|--------|
-| C1 | **No backups for the Railway MySQL.** The NAS is the only safe copy until the move | Enable Railway volume backups on the MySQL service if the plan supports it, and take a manual `mysqldump` of the NAS before the data move and of Railway right after it. Record where dumps are kept and test one restore |
-| C2 | **No cutover window or write freeze** | Pick a quiet time. Put the site in maintenance or stop NAS writes, take the final export, import into Railway (section 5), verify row counts per table, switch `REACT_APP_API_URL`/DNS, then re-enable. Orders placed on the NAS after the export are lost, so the freeze must cover the export, import and switch. **Payments:** before the final export, wait until no invoice is `unpaid` with a recent `payment_link_created` row in `payments_v2`. A Square webhook that reaches Railway for an invoice that only exists on the NAS finds no invoice, so the customer pays but the invoice stays unpaid. If the webhook URL changes, update `SQUARE_WEBHOOK_URL` and the Square subscription together |
+| C1 | **No backups for the Railway MySQL.** Once real orders exist it is the only copy | Enable Railway volume backups on the MySQL service if the plan supports it, and take a manual `mysqldump` right after the clean-up wipe and before launch. Record where dumps are kept and test one restore |
+| C2 | **Cutover timing** | There is no data to move, so no write freeze is needed for a data import. Still pick a quiet time, switch DNS and `REACT_APP_API_URL`, and keep the NAS as the rollback. **Payments:** if the NAS has any real unpaid invoices with a recent `payment_link_created` row in `payments_v2`, let them settle first. A Square webhook that reaches Railway for an invoice that only exists on the NAS finds no invoice. If the webhook URL changes, update `SQUARE_WEBHOOK_URL` and the Square subscription together |
 | C3 | **`CORS_ORIGIN` is a comma-separated list** (`app.ts` splits on `,`) | Set it to every real origin, for example `https://craftykeepsakes.uk,https://www.craftykeepsakes.uk`, not a single URL. Set separately per Railway environment |
 | C4 | **Cookie behaviour once the browser calls `api.` directly.** The auth cookie is `httpOnly`, `secure` in production and `sameSite: 'strict'` with no `domain` (`routes/v2/auth.ts`). `api.craftykeepsakes.uk` and `www.craftykeepsakes.uk` are same-site, so this works | It will **not** work from `*.vercel.app` preview URLs, because they are cross-site to the API and the cookie is dropped. Test logins on the real domain only, or give previews a subdomain of `craftykeepsakes.uk` (for example `dev.`) |
 | C5 | **Railway deploy health** | After the code change in K3, set the health check path on the Railway service (or in `railway.json`) so a failing deploy is not promoted and rollback works |
@@ -365,44 +391,73 @@ Found in an end-to-end review. Split into **service configuration** (dashboards,
 5. K7 (MinIO) separately, after the move is stable.
 
 ## 10. Checklist
-- [ ] Railway project created from the repo with no Root Directory and Dockerfile path `server/Dockerfile`
-- [ ] Railway MySQL created
-- [ ] Schema script applied, 24 `_v2` tables present
-- [ ] `roles_v2` has `admin` and `customer`
-- [ ] First admin user created
-- [ ] API variables set
+- [x] Railway project created from the repo with Dockerfile path `/server/Dockerfile`
+- [x] Railway MySQL created
+- [x] Schema script applied, 24 `_v2` tables present (pre-deploy runs it every deploy)
+- [x] `roles_v2` has `admin` and `customer`
+- [x] First admin user created
+- [x] API variables set
 - [ ] Payment variables set (`PAYMENTS_PROVIDER=square`, `SQUARE_ENVIRONMENT=sandbox`, `SQUARE_SANDBOX_*`, `SQUARE_WEBHOOK_URL`, `CLIENT_URL`)
 - [ ] Square webhook URL still matches `SQUARE_WEBHOOK_URL` after the move; a sandbox payment flips the invoice to paid on Railway
-- [ ] No pending Square payment links at the cutover freeze
+- [ ] No pending Square payment links on the NAS at cutover (only matters if the NAS has real invoices)
 - [ ] Square webhook exempted from the origin-secret check and WAF rules
 - [ ] Image volume attached and files copied
 - [ ] Client points at the new API and CORS matches
 - [ ] Login, registration, shop, basket, checkout and blog checked on the new environment
 - [ ] TCP proxy (if enabled) disabled once setup and data import are done
 - [ ] NAS left running until Railway is verified
-- [ ] (Planned) MinIO bucket, scoped access key and private-network connection set up; image path migration decided
-- [ ] (Planned) Railway custom domain verified with proxy off, then proxied with SSL mode Full (strict)
+- [x] MinIO bucket, access key and private-network connection set up (no image migration needed, mock data only)
+- [x] Railway custom domain (`api-prd`, `files`) verified, then proxied with SSL mode Full (strict)
 - [ ] (Planned) Vercel domains added; `REACT_APP_API_URL` and `CORS_ORIGIN` updated; `/api` rewrite removed
-- [ ] (Planned) Origin secret header enforced; `*.up.railway.app` bypass closed
+- [x] Origin secret header enforced; `*.up.railway.app` bypass closed (domain can now be removed)
 - [ ] (Planned) WAF baseline and rate limits applied
 - [ ] (Planned) Local `server/.env` confirmed to point at the NAS DB with a separate `JWT_SECRET`, and Railway credentials absent from local files
 - [ ] (Planned) Vercel `REACT_APP_API_URL` scoped per environment (Production vs Preview/Development)
 - [ ] (Planned) Dev/prod split reviewed across domains, environments, buckets and credentials
-- [ ] (Planned) Config: Railway MySQL backups enabled, NAS dump taken, restore tested (C1)
-- [ ] (Planned) Config: cutover window and write freeze agreed, row counts verified after import (C2)
+- [ ] (Planned) Config: Railway MySQL backups enabled, a dump taken after the clean-up wipe, restore tested (C1)
+- [ ] (Planned) Config: cutover time agreed (C2)
+- [ ] (Planned) Last step before go-live: Railway test data wiped (section 12)
 - [ ] (Planned) Config: `CORS_ORIGIN` lists apex and `www`; login tested on the real domain (C3, C4)
 - [ ] (Planned) Config: image volume seeded or replaced by MinIO (C8)
 - [x] Code: `trust proxy` / client IP fix for rate limiters (K1) and origin secret middleware (K4), built and inactive until `ORIGIN_SECRET` is set (section 7)
 - [x] Code: DB host startup guard (K5), built (`ts-common/db-target.ts`, `ALLOW_REMOTE_DB=1` set by `npm run dev:railway`)
 - [x] Code: `/health` endpoint (K3), built. It is also set as the Railway health check path in `railway.json` (C5); confirm the dashboard shows `/health` after the first deploy
-- [ ] (Planned) Code: MinIO storage adapter and image path migration (K7)
+- [x] Code: MinIO storage adapter (K7). Image path migration is not needed
 
 ## 11. Switchover test plan (temporary)
 
-Temporary runbook for proving Railway works end to end before `api.craftykeepsakes.uk` is repointed. Remove or fold into section 10 once the cutover is done. The NAS stays the live API throughout. Test against a temporary hostname such as `api-new.craftykeepsakes.uk`, never the live `api.` name, until phase E.
+Temporary runbook for proving Railway works end to end before `api.craftykeepsakes.uk` is repointed. Remove or fold into section 10 once the cutover is done. The NAS stays the live API throughout. Test against a temporary hostname such as `api-prd.craftykeepsakes.uk`, never the live `api.` name, until phase E.
 
 ### Is MinIO needed now?
-No. The API still writes and serves images from disk (`/images` static route in `server/src/app.ts`), and nothing reads MinIO. Product images baked into the Docker image are served as-is, but uploads on Railway vanish on redeploy unless a volume is attached (C8). For switchover testing either attach a volume at `/app/client/public/images` or accept that uploads are throwaway. Connecting MinIO is code change K7 and should be its own PR after the move.
+Yes, and it is connected. Uploads on Railway go to the `images` bucket (adapter in `ts-common/image-storage.ts`, `MINIO_*` variables set). Existing NAS images are mock data and will not be migrated.
+
+### Client domain (plan, to confirm with the client)
+The client owns `craftykeepsakestorbay.co.uk`, which currently serves their existing site from `103.169.142.6` (DNS at `ns0/1/2.phase8.net`, with something Cloudflare-like in front of the site). We do not control that DNS.
+
+**Plan:** run the app and API on `craftykeepsakes.uk`, which we control, and redirect the client's domain to it at go-live.
+- App: `craftykeepsakes.uk` and `www` on Vercel. API: `api.craftykeepsakes.uk` (`api-prd` until cutover). Images: `files.craftykeepsakes.uk`. All same-site, so the `sameSite: strict` cookie works with no code change, and Cloudflare, the origin lock and the WAF already apply.
+- Test hostname for Phase D: a subdomain of `craftykeepsakes.uk` such as `dev.craftykeepsakes.uk`, pointed at a Vercel build with `REACT_APP_API_URL=https://api-prd.craftykeepsakes.uk`.
+- The client's current site is untouched until go-live.
+
+**Redirect at go-live (needs the client's DNS provider):**
+1. Add `craftykeepsakestorbay.co.uk` and `www` as domains on the Vercel project, set to redirect (301) to `craftykeepsakes.uk`. Vercel then shows the DNS records needed.
+2. The provider at phase8 changes the apex and `www` records to those values (no nameserver move). Lower the TTL a day before.
+3. Leave their MX/TXT (email) records alone.
+4. Rollback: restore the old apex and `www` records (`103.169.142.6`). Keep the old hosting running until sign-off.
+
+**Registrar:** the client's domain is with names.co.uk, whose panel supports A, CNAME and TXT records plus service records, so the Vercel record approach above works without moving nameservers. Before relying on it, confirm in the panel which nameservers the domain uses (currently `ns0/1/2.phase8.net`) and that the DNS panel is the authoritative one. After a change, check with `dig +short A craftykeepsakestorbay.co.uk`. If the DNS is hosted elsewhere, make the change there.
+
+**Findings (2026-11-02):** the panel shows no nameserver setting, and the live NS records are `ns0/1/2.phase8.net`, which looks like names.co.uk's own DNS (MX is `fwd0/1/2.hosts.co.uk`, their mail forwarding), so the panel's records are probably authoritative. Prove it before go-live by adding a harmless TXT record (for example `cks-test`) and checking `dig +short TXT cks-test.craftykeepsakestorbay.co.uk`, then delete it. The domain also has a `canva-domain-verify` TXT record, so the current site is probably hosted on Canva: keep that TXT and the MX records, change only the apex and `www` records, note the old values first, and unlink the domain in Canva once the new records are live.
+
+**To confirm with the client before relying on this:**
+- They agree customers will see `craftykeepsakes.uk` as the address, rather than their own domain.
+- The phase8 provider can change the apex and `www` records to point at Vercel (an apex needs an A or ALIAS/ANAME record, and some providers cannot do that), or can do a redirect another way (for example a URL forward to `https://craftykeepsakes.uk`, which is simpler but does not keep paths).
+- Who is allowed to request DNS changes, and the lead time.
+- SEO: the 301 passes most ranking over but the old results take time to update. Consider adding the new domain in Google Search Console.
+
+**Phase 2 (after go-live): make the client domain the main address.** names.co.uk appears to support external nameservers. Once the site is live on `craftykeepsakes.uk`, redirecting and working, move the client domain's nameservers to a Cloudflare zone and switch the public address to `craftykeepsakestorbay.co.uk`. Steps: confirm names.co.uk allows custom nameservers; add the zone in Cloudflare and copy every existing record first (MX, the Canva TXT, anything else) so email is not interrupted; change the nameservers at names.co.uk; create `api`, `files` and the app records on the new zone (Railway custom domains, grey cloud first, then proxied) and re-create the `X-Origin-Secret` rule, SSL Full (strict) and WAF rules; update `CORS_ORIGIN`, `CLIENT_URL`, `SQUARE_WEBHOOK_URL`, `MINIO_PUBLIC_URL`, `REACT_APP_API_URL` and the Square subscription; add the apex and `www` in Vercel; then reverse the redirect so `craftykeepsakes.uk` forwards to the client domain. Stored image URLs embed the files hostname, so decide the `files` hostname before real products are added, or plan a rewrite of `product_images_v2.image_path` and `blog_post_images_v2.image_url`. No code change is expected.
+
+**If this is redesigned later** (client domain as the main address): put the API on a subdomain of that domain behind Cloudflare, then change `REACT_APP_API_URL`, `CORS_ORIGIN`, `CLIENT_URL`, `SQUARE_WEBHOOK_URL`, the Cloudflare secret-header rule and the Vercel domains together. A nameserver move to Cloudflare would be needed for the WAF to cover it.
 
 ### Phase A: seed the admin on Railway
 1. On your laptop, in `server/`, generate the SQL (needs no database): `npm run user:generate-insert -- --email <admin email> --password '<strong temporary password>' --firstName <first> --lastName <last> --role admin`. Do not paste the password into chat or commit it.
@@ -412,54 +467,59 @@ No. The API still writes and serves images from disk (`/images` static route in 
 
 ### Phase B: API on Railway (no Cloudflare yet)
 Run against `https://crafty-keep-sakes-production.up.railway.app` with curl or Postman, since cookies from the Vercel site will not stick to a cross-site host (C4).
-- [ ] `GET /api/v2/products` returns 200
-- [ ] Log in as the admin: `POST /api/v2/auth/login` returns 200 and sets the auth cookie
+- [x] `GET /api/v2/products` returns 200
+- [x] Log in as the admin: `POST /api/v2/auth/login` returns 200 and sets the auth cookie
 - [ ] An authenticated admin call works (for example users or audit list), and an unauthenticated one returns 401
 - [ ] Register a test customer, then log in as them
 - [ ] Add to basket and check out. With `PAYMENTS_PROVIDER` unset the order is placed without payment
 - [ ] Check the server logs for errors and for the schema line once the pre-deploy command is re-enabled
 
 ### Phase C: Cloudflare in front of the temporary hostname
-1. In Railway, add custom domain `api-new.craftykeepsakes.uk` to the API service. In Cloudflare add the CNAME and the verification TXT as **DNS only**.
+1. In Railway, add custom domain `api-prd.craftykeepsakes.uk` to the API service. In Cloudflare add the CNAME and the verification TXT as **DNS only**.
 2. Wait for Railway to show the domain valid with a certificate, then switch to **Proxied** and confirm SSL/TLS is **Full (strict)**.
 3. Checks:
-- [ ] `curl -i https://api-new.craftykeepsakes.uk/api/v2/products` returns 200 and the response has `cf-ray` and `server: cloudflare` (traffic is passing through Cloudflare)
+- [x] `curl -i https://api-prd.craftykeepsakes.uk/api/v2/products` returns 200 and the response has `cf-ray` and `server: cloudflare` (traffic is passing through Cloudflare)
 - [ ] No redirect loop, and no certificate warning
-- [ ] The direct `*.up.railway.app` URL still works (expected until K4 is in place; record it as a known bypass)
+- [x] The direct `*.up.railway.app` URL is blocked (403) now that K4 is enforced
 - [ ] Cloudflare **Security > Events** shows the test requests
 - [ ] A WAF custom rule or rate limit rule for `/api/v2/auth/login` can be hit deliberately, and shows as blocked or challenged in Events
 - [ ] Bot fight mode and managed rules are on, and do not block normal curl or browser calls to the API
-- [ ] Caching: `api-new` responses are not cached (`cf-cache-status: DYNAMIC` or `BYPASS`)
+- [ ] Caching: `api-prd` responses are not cached (`cf-cache-status: DYNAMIC` or `BYPASS`)
 - [ ] Client IP: confirm in the server logs which address is seen. If it is a Cloudflare IP, K1 (`trust proxy` and `CF-Connecting-IP`) is needed before rate limits are meaningful
-- [ ] Secret header (K4), once built: requests without `X-Origin-Secret` to `api-new` are rejected, `/health` and the Square webhook paths are exempt
+- [x] Secret header (K4): requests without `X-Origin-Secret` are rejected (403), `/health` and the Square webhook paths are exempt
 
 ### Phase D: browser and Vercel test
-Use a Vercel build or preview that sets `REACT_APP_API_URL=https://api-new.craftykeepsakes.uk`, served from a hostname under `craftykeepsakes.uk` (for example `dev.craftykeepsakes.uk`). A `*.vercel.app` preview is cross-site and will drop the `sameSite: strict` auth cookie (C4).
-- [ ] Add the origin to Railway `CORS_ORIGIN` (comma-separated, apex and `www` as needed)
-- [ ] Log in, refresh the page (session restore), log out
-- [ ] Browse products, add to basket, check out (the logged-in checkout redirect works)
-- [ ] Admin pages: invoices, users, reporting, notifications and their links
-- [ ] Image loading (baked-in images, then an upload, and whether it survives a redeploy)
-- [ ] Blog posts, comments and reviews
-- [ ] Check the browser console and Network tab for CORS or cookie errors
+Use a Vercel build or preview that sets `REACT_APP_API_URL` to the API hostname, served from a hostname that is same-site with it (see "Client domain" above, `dev.craftykeepsakes.uk`). A `*.vercel.app` preview is cross-site and will drop the `sameSite: strict` auth cookie (C4).
+- [x] Add the origin to Railway `CORS_ORIGIN` (comma-separated, apex and `www` as needed)
+- [x] Log in, refresh the page (session restore), log out
+- [x] Browse products, add to basket, check out (the logged-in checkout redirect works)
+- [x] Admin pages: invoices, users, reporting, notifications and their links
+- [x] Image loading (an upload is served from `files.craftykeepsakes.uk`)
+- [x] Blog posts, comments and reviews
+- [x] Check the browser console and Network tab for CORS or cookie errors
 
 ### Phase E: Square on Railway (sandbox)
-1. Set on Railway: `PAYMENTS_PROVIDER=square`, `SQUARE_ENVIRONMENT=sandbox`, the `SQUARE_SANDBOX_*` values, `CLIENT_URL`, and `SQUARE_WEBHOOK_URL=https://api-new.craftykeepsakes.uk/api/v2/payments/webhook`.
+1. Set on Railway: `PAYMENTS_PROVIDER=square`, `SQUARE_ENVIRONMENT=sandbox`, the `SQUARE_SANDBOX_*` values, `CLIENT_URL`, and `SQUARE_WEBHOOK_URL=https://api-prd.craftykeepsakes.uk/api/v2/payments/webhook`.
 2. In the Square sandbox console add a **second** webhook subscription for that URL (events `payment.created` and `payment.updated`) and use its signature key. Keep the NAS subscription as it is.
 3. Check:
-- [ ] Checkout redirects to the Square sandbox page, and a test card payment returns to `/payments/result`
-- [ ] Square shows webhook deliveries with status 200 (not 401, 403 or 404)
-- [ ] The invoice flips to `paid`, and admin and customer notifications are created
-- [ ] A declined test card leaves the invoice unpaid and creates a `payment_failed` notification
-- [ ] Cloudflare Events show no blocks or challenges on `POST /api/v2/payments/webhook`
-- [ ] The webhook is not affected by rate limits or the secret header
+- [x] Checkout redirects to the Square sandbox page, and a test card payment returns to `/payments/result`
+- [x] Square shows webhook deliveries with status 200 (not 401, 403 or 404)
+- [x] The invoice flips to `paid`, and admin and customer notifications are created
+- [x] A declined test card leaves the invoice unpaid and creates a `payment_failed` notification (server tests only; repeat with a real declined card at go-live)
+- [x] Cloudflare Events show no blocks or challenges on `POST /api/v2/payments/webhook` (only inbound scanner traffic is blocked)
+- [x] The webhook is not affected by rate limits or the secret header
 
 ### Phase F: cutover and rollback
-1. Pre-cutover: take a NAS `mysqldump` and a Railway backup, wait for no unpaid invoices with recent payment links, and agree the write freeze (C2).
-2. Export from the NAS and import into Railway in the section 5 order, then compare row counts per table.
-3. Repoint `api.craftykeepsakes.uk` to Railway (DNS only, then proxied), set the Vercel `REACT_APP_API_URL`, update `SQUARE_WEBHOOK_URL` and the Square subscription if the hostname changed, then repeat Phases B to E on the live name.
-4. Rollback: repoint `api` back to the NAS tunnel and keep the NAS running until sign-off.
-5. Clean up: re-enable the pre-deploy command, disable the MySQL TCP proxy, remove the stale `*.up.railway.app` domain once K4 is enforced, and delete this section.
+Do these in order, and keep the NAS running until sign-off.
+1. Before: rotate the exposed secrets (see the housekeeping item in the progress log), finish testing, take a Railway backup, and check there are no real unpaid NAS invoices with recent payment links (C2). Confirm the client agrees to the `craftykeepsakes.uk` address.
+2. Wipe the test data (section 12). Railway then holds the schema, roles and admin user only. There is no data or image import.
+3. API: repoint `api.craftykeepsakes.uk` from the NAS tunnel to Railway (DNS only first, then proxied, SSL Full strict). Extend the Transform Rule that adds `X-Origin-Secret` to cover the `api` hostname. Keep `api-dev` on the NAS as the fallback.
+4. Client: in Vercel set `REACT_APP_API_URL` for Production to the API hostname, remove the `/api` rewrite from `client/vercel.json`, add `craftykeepsakes.uk` and `www` as Production domains, and put the final origins in Railway `CORS_ORIGIN`. Redeploy.
+5. Square production: set `SQUARE_ENVIRONMENT=production`, the three `SQUARE_PRODUCTION_*` values, `NODE_ENV=production`, `CLIENT_URL` and `SQUARE_WEBHOOK_URL` on Railway, and create the production webhook subscription (`payment.created`, `payment.updated`) for the same URL. Make one small real payment and one real declined card, then refund the payment.
+6. Verify the live site (Phases B to E on the live names, including the Cloudflare Events check).
+7. Rollback: repoint `api` back to the NAS tunnel and restore the Vercel rewrite.
+8. Client domain redirect: ask the client's DNS provider to point `craftykeepsakestorbay.co.uk` and `www` at the redirect (section 11 "Client domain").
+9. Clean up: disable the MySQL TCP proxy, remove the `*.up.railway.app` domain, re-enable backups, rebuild the NAS (run `npm run db:apply-schema` first), and delete this section.
 
 ### Gaps found by this plan
 - **`/health` endpoint** (K3) is built: `GET /health` runs `SELECT 1` (3 s timeout) and returns `{"status":"ok"}` or 503 `{"status":"unavailable"}`, with no auth and no rate limit. Railway's health check path is set to `/health` in `railway.json`.
@@ -467,3 +527,21 @@ Use a Vercel build or preview that sets `REACT_APP_API_URL=https://api-new.craft
 - **No origin lock** (K4), so the `*.up.railway.app` host bypasses Cloudflare.
 - **Uploads are not durable** on Railway without a volume or MinIO (C8, K7).
 - **Pre-deploy schema step is off** until this PR merges.
+
+## 12. Clean-up wipe before go-live (last step)
+
+All data so far, on the NAS and on Railway, is mock or test data, so nothing is migrated. Do this only after all testing is finished, because it removes the test data the checks rely on. Keep `roles_v2` and the admin user (`users_v2`, `user_roles_v2`, `customer_profiles_v2` rows for that user).
+
+1. Take a Railway backup first, in case something needed is removed.
+2. Check what exists: `SELECT COUNT(*) FROM <table>` for each table below.
+3. Delete in this order so foreign keys are satisfied (RESTRICT constraints block parent deletes). Run each statement separately in the Railway MySQL query tab:
+   - Orders and payments: `payments_v2`, `invoice_items_v2`, `invoice_views_v2`, `invoices_v2`, `order_items_v2`, `orders_v2`, `basket_items_v2`, `baskets_v2`
+   - Products: `product_images_v2`, `product_categories_v2`, `products_v2`, and `categories_v2` if the test categories should go
+   - Content: `blog_post_reactions_v2`, `blog_post_comments_v2`, `blog_post_images_v2`, `blog_post_views_v2`, `blog_posts_v2`, `reviews_v2`
+   - Other: `notifications_v2`, `audit_events_v2`
+   - Test users: delete any test customer users other than the admin, from `users_v2` (`user_roles_v2` and `customer_profiles_v2` rows cascade)
+   Use `DELETE FROM`, not `TRUNCATE`, because `TRUNCATE` fails on tables that are referenced by foreign keys.
+4. Delete the test files from the `images` bucket (the MinIO console, or the S3 API with the access key). Product images from the DB rows are no longer referenced once the rows are gone.
+5. Delete the test product's leftover local file `client/public/images/1793563700578-test_button.jpg` if it exists in a working copy.
+6. Verify: row counts are zero, the admin can log in, and `GET /api/v2/products` returns an empty list with `total_count: 0`. Add a first real product and check its image loads from `files.craftykeepsakes.uk`.
+7. Take a final Railway backup or dump. Disable the MySQL TCP proxy and remove the `up.railway.app` domain if not already done.
