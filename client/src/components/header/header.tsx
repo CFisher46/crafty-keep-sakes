@@ -93,6 +93,7 @@ function PageHeader() {
   const iconColor = ui.ink;
 
   return (
+
     <Box
       as="header"
       background="white"
@@ -103,6 +104,7 @@ function PageHeader() {
         borderBottom: `1px solid ${ui.line}`,
       }}
     >
+      {/* Announcement bar */}
       <Box
         background={ui.ink}
         align="center"
@@ -117,6 +119,7 @@ function PageHeader() {
         </Text>
       </Box>
 
+      {/* Logo row */}
       <Box
         direction="row"
         align="center"
@@ -129,14 +132,29 @@ function PageHeader() {
               plain
               a11yTitle={menuOpen ? "Close menu" : "Open menu"}
               aria-expanded={menuOpen}
-              icon={menuOpen ? <Close color={iconColor} /> : <Menu color={iconColor} />}
+              icon={
+                menuOpen
+                  ? <Close color={iconColor} />
+                  : <Menu color={iconColor} />
+              }
               onClick={() => setMenuOpen((open) => !open)}
               style={{ padding: "8px" }}
             />
           ) : null}
         </Box>
 
-        <Box flex={false}>
+        <Box
+          flex={false}
+          style={
+            !isMobile
+              ? {
+                position: "absolute",
+                left: "50%",
+                transform: "translateX(-50%)",
+              }
+              : undefined
+          }
+        >
           <Button
             onClick={() => {
               closeMenu();
@@ -147,88 +165,212 @@ function PageHeader() {
             <Image
               src="/images/Logo/Logo.PNG"
               alt="Logo"
-              style={{ height: isMobile ? "104px" : "128px", width: "auto" }}
+              style={{
+                height: isMobile ? "104px" : "128px",
+                width: "auto",
+              }}
             />
           </Button>
         </Box>
 
-        <Box flex basis="0" direction="row" gap="medium" align="center" justify="end">
-          <Box style={{ position: "relative" }}>
+        {/* Mobile icons remain alongside the logo */}
+        {isMobile && (
+          <Box
+            flex
+            basis="0"
+            direction="row"
+            gap="medium"
+            align="center"
+            justify="end"
+          >
+            {/* Notifications */}
+            <Box style={{ position: "relative" }}>
+              <Button
+                a11yTitle="Notifications"
+                onClick={() => {
+                  closeMenu();
+                  navigate("/notifications");
+                }}
+                icon={<Notification color={iconColor} size="20px" />}
+                plain
+                disabled={!userId}
+              />
+              {unreadCount > 0 && (
+                <Box
+                  background={ui.accent}
+                  pad={{ horizontal: "xsmall" }}
+                  round
+                  aria-label={`${unreadCount} unread notifications`}
+                  style={{ position: "absolute", top: "-8px", right: "-10px" }}
+                >
+                  <Text size="xsmall" color="white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+
+            {/* Basket */}
+            <Box style={{ position: "relative" }}>
+              <Button
+                a11yTitle="Basket"
+                icon={<Basket color={iconColor} size="20px" />}
+                onClick={() => {
+                  closeMenu();
+                  navigate("/Basket");
+                }}
+                plain
+              />
+              {totalItems > 0 && (
+                <Box
+                  background={ui.accent}
+                  pad={{ horizontal: "xsmall" }}
+                  round
+                  style={{ position: "absolute", top: "-8px", right: "-10px" }}
+                >
+                  <Text size="xsmall" color="white">
+                    {totalItems}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+
+            {/* Profile */}
             <Button
-              a11yTitle="Notifications"
+              a11yTitle="Profile"
+              aria-expanded={userId ? accountMenuOpen : authOpen}
+              aria-haspopup={userId ? "menu" : undefined}
               onClick={() => {
                 closeMenu();
-                navigate("/notifications");
+                if (userId) {
+                  setAccountMenuOpen((open) => !open);
+                } else if (location.pathname.toLowerCase() === "/home") {
+                  setAuthOpen(false);
+                  window.dispatchEvent(new Event("cks:focus-login"));
+                } else {
+                  setAuthOpen((open) => !open);
+                }
               }}
-              icon={<Notification color={iconColor} size="20px" />}
-              plain
-              disabled={!userId}
-            />
-            {unreadCount > 0 && (
-              <Box
-                background={ui.accent}
-                pad={{ horizontal: "xsmall" }}
-                round
-                aria-label={`${unreadCount} unread notifications`}
-                style={{ position: "absolute", top: "-8px", right: "-10px" }}
-              >
-                <Text size="xsmall" color="white">
-                  {unreadCount > 99 ? "99+" : unreadCount}
-                </Text>
-              </Box>
-            )}
-          </Box>
-          <Box style={{ position: "relative" }}>
-            <Button
-              a11yTitle="Basket"
-              icon={<Basket color={iconColor} size="20px" />}
-              onClick={() => {
-                closeMenu();
-                navigate("/Basket");
-              }}
+              icon={<User color={iconColor} size="20px" />}
               plain
             />
-            {totalItems > 0 && (
-              <Box
-                background={ui.accent}
-                pad={{ horizontal: "xsmall" }}
-                round
-                style={{ position: "absolute", top: "-8px", right: "-10px" }}
-              >
-                <Text size="xsmall" color="white">
-                  {totalItems}
-                </Text>
-              </Box>
-            )}
           </Box>
-          <Button
-            a11yTitle="Profile"
-            aria-expanded={userId ? accountMenuOpen : authOpen}
-            aria-haspopup={userId ? "menu" : undefined}
-            onClick={() => {
-              closeMenu();
-              if (userId) {
-                setAccountMenuOpen((open) => !open);
-              } else if (location.pathname.toLowerCase() === "/home") {
-                // The landing page has its own sign-in panel
-                setAuthOpen(false);
-                window.dispatchEvent(new Event("cks:focus-login"));
-              } else {
-                setAuthOpen((open) => !open);
-              }
-            }}
-            icon={<User color={iconColor} size="20px" />}
-            plain
-          />
-        </Box>
+        )}
       </Box>
 
+      {/* Desktop navigation and icons */}
+      {!isMobile && (
+        <Box
+          direction="row"
+          align="center"
+          justify="between"
+          pad={{ horizontal: "medium", bottom: "xsmall" }}
+          gap="medium"
+          style={{ minHeight: "48px" }}
+        >
+          {/* Navigation */}
+          <Box
+            flex={{ grow: 1, shrink: 1 }}
+            style={{ minWidth: 0 }}
+          >
+            <Box style={{ overflowX: "auto" }}>
+              <NavigationBar
+                onNavigate={() => undefined}
+                resetActive={() => undefined}
+              />
+            </Box>
+          </Box>
+
+          {/* Desktop account icons */}
+          <Box
+            flex={false}
+            direction="row"
+            gap="medium"
+            align="center"
+            justify="end"
+          >
+            {/* Notifications */}
+            <Box style={{ position: "relative" }}>
+              <Button
+                a11yTitle="Notifications"
+                onClick={() => {
+                  closeMenu();
+                  navigate("/notifications");
+                }}
+                icon={<Notification color={iconColor} size="20px" />}
+                plain
+                disabled={!userId}
+              />
+              {unreadCount > 0 && (
+                <Box
+                  background={ui.accent}
+                  pad={{ horizontal: "xsmall" }}
+                  round
+                  aria-label={`${unreadCount} unread notifications`}
+                  style={{ position: "absolute", top: "-8px", right: "-10px" }}
+                >
+                  <Text size="xsmall" color="white">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+
+            {/* Basket */}
+            <Box style={{ position: "relative" }}>
+              <Button
+                a11yTitle="Basket"
+                icon={<Basket color={iconColor} size="20px" />}
+                onClick={() => {
+                  closeMenu();
+                  navigate("/Basket");
+                }}
+                plain
+              />
+              {totalItems > 0 && (
+                <Box
+                  background={ui.accent}
+                  pad={{ horizontal: "xsmall" }}
+                  round
+                  style={{ position: "absolute", top: "-8px", right: "-10px" }}
+                >
+                  <Text size="xsmall" color="white">
+                    {totalItems}
+                  </Text>
+                </Box>
+              )}
+            </Box>
+
+            {/* Profile */}
+            <Button
+              a11yTitle="Profile"
+              aria-expanded={userId ? accountMenuOpen : authOpen}
+              aria-haspopup={userId ? "menu" : undefined}
+              onClick={() => {
+                closeMenu();
+                if (userId) {
+                  setAccountMenuOpen((open) => !open);
+                } else if (location.pathname.toLowerCase() === "/home") {
+                  setAuthOpen(false);
+                  window.dispatchEvent(new Event("cks:focus-login"));
+                } else {
+                  setAuthOpen((open) => !open);
+                }
+              }}
+              icon={<User color={iconColor} size="20px" />}
+              plain
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Account dropdown */}
       {accountMenuOpen && userId && (
         <>
           <div
             data-testid="account-menu-backdrop"
             onClick={() => setAccountMenuOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: -1 }}
+            style={{ position: "fixed", inset: 0, zIndex: 101 }}
           />
           <Box
             background="white"
@@ -241,6 +383,7 @@ function PageHeader() {
               right: "16px",
               minWidth: "180px",
               boxShadow: "0 12px 32px rgba(43, 38, 35, 0.14)",
+              zIndex: 102,
             }}
           >
             {[
@@ -282,12 +425,13 @@ function PageHeader() {
         </>
       )}
 
+      {/* Sign in panel */}
       {authOpen && !userId && (
         <>
           <div
             data-testid="auth-backdrop"
             onClick={() => setAuthOpen(false)}
-            style={{ position: "fixed", inset: 0, zIndex: -1 }}
+            style={{ position: "fixed", inset: 0, zIndex: 101 }}
           />
           <Box
             background="white"
@@ -303,6 +447,7 @@ function PageHeader() {
               maxHeight: "calc(100vh - 160px)",
               overflowY: "auto",
               boxShadow: "0 12px 32px rgba(43, 38, 35, 0.14)",
+              zIndex: 102,
             }}
           >
             <AuthPanel onBack={() => setAuthOpen(false)} />
@@ -310,22 +455,21 @@ function PageHeader() {
         </>
       )}
 
-      {!isMobile && (
-        <Box
-          align="start"
-          pad={{ horizontal: "medium", bottom: "xsmall" }}
-          style={{ overflowX: "auto" }}
-        >
-          <NavigationBar onNavigate={() => undefined} resetActive={() => undefined} />
-        </Box>
-      )}
-
+      {/* Mobile navigation */}
       {isMobile && menuOpen && (
-        <Box pad={{ horizontal: "medium", vertical: "xsmall" }} border={{ color: ui.line, side: "top" }}>
-          <NavigationBar vertical onNavigate={closeMenu} resetActive={closeMenu} />
+        <Box
+          pad={{ horizontal: "medium", vertical: "xsmall" }}
+          border={{ color: ui.line, side: "top" }}
+        >
+          <NavigationBar
+            vertical
+            onNavigate={closeMenu}
+            resetActive={closeMenu}
+          />
         </Box>
       )}
     </Box>
+
   );
 }
 

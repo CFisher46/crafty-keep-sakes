@@ -292,14 +292,14 @@ function Shop() {
                         {product.on_sale ? (
                           <Box direction="row" gap="small" align="baseline" wrap>
                             <Text size="small" style={{ textDecoration: 'line-through', color: ui.muted }}>
-                              RRP:£{product.price}
+                              RRP:£{Number(product.price).toFixed(2)}
                             </Text>
                             <Text size="small" weight="bold" color="status-critical">
                               £{salePrice(product).toFixed(2)}
                             </Text>
                           </Box>
                         ) : (
-                          <Text size="small" style={{ color: ui.muted }}>RRP: £{product.price}</Text>
+                          <Text size="small" style={{ color: ui.muted }}>RRP: £{Number(product.price).toFixed(2)}</Text>
                         )}
                       </Box>
                     </div>
