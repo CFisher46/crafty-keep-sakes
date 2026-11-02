@@ -102,6 +102,8 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [x] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
 
+-   [ ] Basket isnt showing the images for the products
+
 ## Adhoc TODOs
 
 -   [ ] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
