@@ -115,7 +115,7 @@ describe('Shop (products page)', () => {
     );
 
     expect(await screen.findByText('Tea Mug')).toBeInTheDocument();
-    expect(await screen.findByText('RRP: £10')).toBeInTheDocument();
+    expect(await screen.findByText('RRP: £10.00')).toBeInTheDocument();
   });
 
   it('filters out products missing an id or name', async () => {
