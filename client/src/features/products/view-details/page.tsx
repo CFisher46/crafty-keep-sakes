@@ -131,11 +131,11 @@ function ProductModal({
                   £{salePrice(product).toFixed(2)} ({product.sale_percent}% off)
                 </Text>
                 <Text size="small" color={ui.muted} style={{ textDecoration: 'line-through' }}>
-                  RRP:£{product.price}
+                  RRP:£{Number(product.price).toFixed(2)}
                 </Text>
               </Box>
             ) : (
-              <Text size="large" color={ui.ink}>RRP: £{product.price}</Text>
+              <Text size="large" color={ui.ink}>RRP: £{Number(product.price).toFixed(2)}</Text>
             )}
             <Box style={{ borderTop: `1px solid ${ui.line}` }} margin={{ vertical: 'xsmall' }} />
             <Text color={ui.muted} style={{ lineHeight: 1.6 }}>
