@@ -437,6 +437,8 @@ The client owns `craftykeepsakestorbay.co.uk`, which currently serves their exis
 
 **Registrar:** the client's domain is with names.co.uk, whose panel supports A, CNAME and TXT records plus service records, so the Vercel record approach above works without moving nameservers. Before relying on it, confirm in the panel which nameservers the domain uses (currently `ns0/1/2.phase8.net`) and that the DNS panel is the authoritative one. After a change, check with `dig +short A craftykeepsakestorbay.co.uk`. If the DNS is hosted elsewhere, make the change there.
 
+**Findings (2026-11-02):** the panel shows no nameserver setting, and the live NS records are `ns0/1/2.phase8.net`, which looks like names.co.uk's own DNS (MX is `fwd0/1/2.hosts.co.uk`, their mail forwarding), so the panel's records are probably authoritative. Prove it before go-live by adding a harmless TXT record (for example `cks-test`) and checking `dig +short TXT cks-test.craftykeepsakestorbay.co.uk`, then delete it. The domain also has a `canva-domain-verify` TXT record, so the current site is probably hosted on Canva: keep that TXT and the MX records, change only the apex and `www` records, note the old values first, and unlink the domain in Canva once the new records are live.
+
 **To confirm with the client before relying on this:**
 - They agree customers will see `craftykeepsakes.uk` as the address, rather than their own domain.
 - The phase8 provider can change the apex and `www` records to point at Vercel (an apex needs an A or ALIAS/ANAME record, and some providers cannot do that), or can do a redirect another way (for example a URL forward to `https://craftykeepsakes.uk`, which is simpler but does not keep paths).
