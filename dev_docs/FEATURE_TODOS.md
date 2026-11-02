@@ -81,6 +81,8 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-018 : Move Invoice feature into its own component
     -   AS a DEVELOPER, WHEN I come to make changes to the Invocies feature, I WANT to be able to quickly identify the Invoices component.
 
+-   [ ] CKS-2-026 : Update User profile actions panel
+
 
 ## Bugs
 
