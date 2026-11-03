@@ -6,6 +6,9 @@ import { db } from '../../ts-common/database';
 import { notify } from '../../notifications/service';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
+import { sendEmail } from '../../email/service/emailService';
+import VerifyEmail from '../../email/templates/VerifyEmail';
+import { generateVerificationToken } from '../../email/utils/verifyToken';
 
 const router = express.Router();
 
@@ -89,6 +92,7 @@ const findAuthUserByEmail = queryV2UserByEmail;
 const findAuthUserById = queryV2UserById;
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('not-a-real-password', 10);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type LoginRequestBody = {
   email?: string;
@@ -260,7 +264,7 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+  if (!EMAIL_PATTERN.test(String(email))) {
     res.status(400).json({ error: 'Please enter a valid email address' });
     return;
   }
@@ -323,9 +327,42 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
   }
 };
 
+// Temporary send-only path: builds a verification link and emails it.
+// The token is not stored, so the link cannot confirm an account yet.
+const verifyEmailHandler: RequestHandler = async (req, res): Promise<void> => {
+  const { email, name } = req.body as { email?: string; name?: string };
+  const recipient = String(email ?? '').trim();
+
+  if (!recipient || !EMAIL_PATTERN.test(recipient)) {
+    res.status(400).json({ error: 'Please enter a valid email address' });
+    return;
+  }
+
+  const recipientName = String(name ?? '').trim() || 'there';
+  const { token } = generateVerificationToken();
+  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+
+  try {
+    await sendEmail({
+      from: 'verify',
+      email: recipient,
+      subject: 'Verify your Crafty Keepsakes email',
+      template: VerifyEmail({ name: recipientName, verificationUrl }),
+    });
+
+    res.status(200).json({ message: 'Verification email sent' })
+    console.log('Verification email sent to:', recipient);
+  } catch (err) {
+    console.error('Verify email send error:', err);
+    res.status(500).json({ error: 'Unable to send email' });
+  }
+};
+
 router.post('/login', loginHandler);
 router.post('/register', registerHandler);
 router.get('/me', meHandler);
+router.post('/verify-email', verifyEmailHandler);
 router.post('/verify-password', verifyAuthToken, verifyPasswordHandler);
 router.post('/logout', logoutHandler);
 
