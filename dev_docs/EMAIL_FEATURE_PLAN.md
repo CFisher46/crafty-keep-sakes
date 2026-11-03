@@ -21,24 +21,24 @@ templates 5. React frontend implementation 6. Testing and deployment
 
 ### 1.1 Set up Resend
 
--   [ ] Create a [Resend account](https://resend.com).
--   [ ] Add `craftykeepsakes.uk` as a sending domain.
--   [ ] Generate an API key for the production application.
--   [ ] Store the API key securely; never expose it in the Vercel
+-   [-] Create a [Resend account](https://resend.com).
+-   [-] Add `craftykeepsakes.uk` as a sending domain.
+-   [-] Generate an API key for the production application.
+-   [-] Store the API key securely; never expose it in the Vercel
     frontend.
--   [ ] Choose the sending address: `accounts@craftykeepsakes.uk`.
+-   [-] Choose the sending address: `verify@craftykeepsakes.uk`.
 
 ### 1.2 Configure Cloudflare DNS
 
--   [ ] Open Cloudflare DNS settings for `craftykeepsakes.uk`.
--   [ ] Add the DKIM records supplied by Resend.
--   [ ] Add the SPF record supplied by Resend, ensuring it does not
+-   [-] Open Cloudflare DNS settings for `craftykeepsakes.uk`.
+-   [-] Add the DKIM records supplied by Resend.
+-   [-] Add the SPF record supplied by Resend, ensuring it does not
     conflict with any existing SPF record.
--   [ ] Add a DMARC record.
--   [ ] Ensure email-authentication DNS records are configured as
+-   [-] Add a DMARC record.
+-   [-] Ensure email-authentication DNS records are configured as
     DNS-only, not proxied.
--   [ ] Verify the domain in Resend.
--   [ ] Send test emails to Gmail and Outlook.
+-   [-] Verify the domain in Resend.
+-   [-] Send test emails to Gmail and Outlook.
 -   [ ] Initially monitor DMARC using a non-enforcing policy such as
     `p=none`; tighten it once all legitimate sending sources are
     authenticated.
@@ -53,10 +53,10 @@ RESEND_FROM_EMAIL=accounts@craftykeepsakes.uk
 FRONTEND_URL=https://craftykeepsakes.uk
 ```
 
--   [ ] Confirm the variables are accessible to Express.
--   [ ] Ensure the Resend API key is not exposed through frontend
+-   [-] Confirm the variables are accessible to Express.
+-   [-] Ensure the Resend API key is not exposed through frontend
     environment variables.
--   [ ] Confirm the production frontend URL is correct.
+-   [-] Confirm the production frontend URL is correct.
 -   [ ] Keep separate credentials/configuration for development and
     production where appropriate.
 
