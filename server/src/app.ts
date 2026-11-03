@@ -78,6 +78,8 @@ export function createApp() {
   app.use("/api/v2/auth/login", authLimiter);
   app.use("/api/auth/verify-password", authLimiter);
   app.use("/api/v2/auth/verify-password", authLimiter);
+  app.use("/api/auth/verify-email", authLimiter);
+  app.use("/api/v2/auth/verify-email", authLimiter);
 
   app.use("/api/products", v2ProductsRouter);
   app.use("/api/v2/products", v2ProductsRouter);
