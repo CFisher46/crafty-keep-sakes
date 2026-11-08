@@ -103,7 +103,13 @@ describe('payments v2 routes', () => {
       expect(sql.some((q) => q.includes("UPDATE invoices_v2 SET invoice_status = 'paid'"))).toBe(true);
       expect(sql.some((q) => q.includes('UPDATE orders_v2 SET order_status'))).toBe(true);
       expect(mockConnection.commit).toHaveBeenCalledTimes(1);
-      expect(sqlOf(mockedDbQuery).some((q) => q.includes('INSERT INTO notifications_v2'))).toBe(true);
+      const notifications = mockedDbQuery.mock.calls.filter(([sql]) =>
+        String(sql).includes('INSERT INTO notifications_v2')
+      );
+      expect(notifications.map(([, params]) => [params[0], params[1], params[4]])).toEqual([
+        [1, 'order_payment_received', '/Reporting/invoices?invoice=90'],
+        [7, 'invoice_status_changed', '/invoices?invoice=90'],
+      ]);
     });
 
     it('ignores a duplicate event', async () => {
@@ -114,6 +120,7 @@ describe('payments v2 routes', () => {
       expect(response.body).toEqual({ received: true, outcome: 'duplicate' });
       expect(sqlOf(mockConnection.query).some((q) => q.includes('INSERT INTO payments_v2'))).toBe(false);
       expect(mockConnection.rollback).toHaveBeenCalled();
+      expect(mockedDbQuery).not.toHaveBeenCalled();
     });
 
     it('does not mark the invoice paid when the amount differs', async () => {
@@ -126,6 +133,7 @@ describe('payments v2 routes', () => {
 
       expect(response.body.outcome).toBe('amount_mismatch');
       expect(sqlOf(mockConnection.query).some((q) => q.includes("SET invoice_status = 'paid'"))).toBe(false);
+      expect(mockedDbQuery).not.toHaveBeenCalled();
     });
 
     it('records a failed payment, leaves the invoice unpaid and notifies the customer', async () => {
@@ -138,6 +146,21 @@ describe('payments v2 routes', () => {
 
       expect(response.body.outcome).toBe('failed');
       expect(sqlOf(mockConnection.query).some((q) => q.includes('UPDATE invoices_v2'))).toBe(false);
+      expect(mockedDbQuery.mock.calls.map(([, params]) => [params[0], params[1]])).toEqual([
+        [7, 'payment_failed'],
+      ]);
+    });
+
+    it('does not send payment notifications for a new event on an already paid invoice', async () => {
+      mockConnection.query
+        .mockResolvedValueOnce([[{ ...linkRow, invoice_status: 'paid' }]])
+        .mockResolvedValueOnce([[]])
+        .mockResolvedValue([{ affectedRows: 1 }]);
+
+      const response = await postWebhook(signedEvent({ eventId: 'evt_2' }));
+
+      expect(response.body.outcome).toBe('recorded');
+      expect(mockedDbQuery).not.toHaveBeenCalled();
     });
 
     it('acknowledges events for an unknown payment', async () => {

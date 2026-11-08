@@ -17,6 +17,11 @@ export type NotificationPayloads = {
     invoiceNumber: string;
     totalDue: number;
   };
+  order_payment_received: {
+    orderId: number;
+    invoiceId: number;
+    invoiceNumber: string;
+  };
   invoice_status_changed: {
     userId: number;
     orderId: number;

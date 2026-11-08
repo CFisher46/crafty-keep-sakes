@@ -38,6 +38,8 @@ describe('v2 basket routes', () => {
     mockConnection.rollback.mockReset();
     mockConnection.release.mockReset();
     mockConnection.query.mockReset();
+    (db.query as jest.Mock).mockReset();
+    (db.query as jest.Mock).mockResolvedValue([[]]);
   });
 
   it('returns 401 for a basket request without auth', async () => {
@@ -148,6 +150,9 @@ describe('v2 basket routes', () => {
   });
 
   it('creates order, invoice, and marks basket checked out on successful checkout', async () => {
+    (db.query as jest.Mock)
+      .mockResolvedValueOnce([[{ user_id: 1 }]])
+      .mockResolvedValueOnce([{ insertId: 1 }]);
     mockConnection.query
       .mockResolvedValueOnce([[]])
       .mockResolvedValueOnce([{ insertId: 12 }])
@@ -211,6 +216,13 @@ describe('v2 basket routes', () => {
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(true);
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('SHOW COLUMNS FROM invoices_v2'))).toBe(true);
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO invoices_v2'))).toBe(true);
+    const notification = (db.query as jest.Mock).mock.calls.find(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(notification?.[1]).toEqual([
+      1, 'order_placed', 'New order placed', expect.stringContaining('awaiting payment'),
+      '/Reporting/invoices?invoice=90', expect.any(String),
+    ]);
 
     const auditInsertCall = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO audit_events_v2'));
     expect(auditInsertCall).toBeDefined();
@@ -228,8 +240,9 @@ describe('v2 basket routes', () => {
     });
   });
 
-  it('keeps the order pending and returns a payment link when payments are enabled', async () => {
+  it.each([false, true])('notifies admins when payment link creation fails: %s', async (paymentLinkFails) => {
     process.env.PAYMENTS_PROVIDER = 'mock';
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       mockConnection.query
         .mockResolvedValueOnce([[]])
@@ -243,7 +256,15 @@ describe('v2 basket routes', () => {
         .mockResolvedValueOnce([{ affectedRows: 1 }])
         .mockResolvedValueOnce([{ insertId: 999 }]);
       (db.query as jest.Mock).mockReset();
-      (db.query as jest.Mock).mockResolvedValue([{ insertId: 1 }]);
+      const paymentInsert = (db.query as jest.Mock);
+      paymentInsert
+        .mockResolvedValueOnce([[{ user_id: 1 }]])
+        .mockResolvedValueOnce([{ insertId: 2 }]);
+      if (paymentLinkFails) {
+        paymentInsert.mockRejectedValueOnce(new Error('Payment link could not be saved'));
+      } else {
+        paymentInsert.mockResolvedValueOnce([{ insertId: 1 }]);
+      }
 
       const response = await request(app)
         .post('/api/v2/basket/checkout')
@@ -251,17 +272,37 @@ describe('v2 basket routes', () => {
         .send({ delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
 
       expect(response.status).toBe(201);
-      expect(response.body.payment_error).toBe(false);
-      expect(response.body.payment_url).toMatch(/\/payments\/mock\?ref=mock_[a-f0-9]+&invoice=90$/);
+      expect(response.body.payment_error).toBe(paymentLinkFails);
+      if (paymentLinkFails) {
+        expect(response.body.payment_url).toBeNull();
+        expect(errorSpy).toHaveBeenCalledWith('Create Payment Link Error:', expect.any(Error));
+      } else {
+        expect(response.body.payment_url).toMatch(/\/payments\/mock\?ref=mock_[a-f0-9]+&invoice=90$/);
+      }
 
       const orderInsert = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders_v2'));
       expect(orderInsert?.[1]).toContain('pending');
 
       const queries = (db.query as jest.Mock).mock.calls.map(([sql]) => String(sql));
       expect(queries.some((sql) => sql.includes('INSERT INTO payments_v2'))).toBe(true);
-      expect(queries.some((sql) => sql.includes('INSERT INTO notifications_v2'))).toBe(false);
+      expect(mockConnection.commit.mock.invocationCallOrder[0]).toBeLessThan(
+        (db.query as jest.Mock).mock.invocationCallOrder[0]
+      );
+      expect(queries.findIndex((sql) => sql.includes('INSERT INTO notifications_v2'))).toBeLessThan(
+        queries.findIndex((sql) => sql.includes('INSERT INTO payments_v2'))
+      );
+      const notification = (db.query as jest.Mock).mock.calls.find(([sql]) =>
+        String(sql).includes('INSERT INTO notifications_v2')
+      );
+      expect(notification?.[1]).toEqual([
+        1, 'order_placed', 'New order placed',
+        expect.stringContaining('awaiting payment'),
+        '/Reporting/invoices?invoice=90',
+        expect.any(String),
+      ]);
     } finally {
       delete process.env.PAYMENTS_PROVIDER;
+      errorSpy.mockRestore();
     }
   });
 
@@ -600,6 +641,9 @@ describe('v2 basket routes', () => {
   });
 
   it('updates status and tracking together in one request', async () => {
+    (db.query as jest.Mock)
+      .mockResolvedValueOnce([[{ user_id: 1 }]])
+      .mockResolvedValue([{ insertId: 1 }]);
     mockConnection.query
       .mockResolvedValueOnce([[{ order_id: 40, invoice_status: 'unpaid', tracking_info: null, invoice_number: 'INV-1', user_id: 7 }]])
       .mockResolvedValue([{ affectedRows: 1, insertId: 1 }]);
@@ -614,6 +658,29 @@ describe('v2 basket routes', () => {
     const sqls = mockConnection.query.mock.calls.map(([sql]) => String(sql));
     expect(sqls.some((sql) => sql.includes('SET invoice_status = ?'))).toBe(true);
     expect(sqls.some((sql) => sql.includes('SET tracking_info = ?'))).toBe(true);
+    const notifications = (db.query as jest.Mock).mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(notifications.map(([, params]) => [params[0], params[1]])).toEqual([
+      [1, 'order_payment_received'],
+      [7, 'invoice_status_changed'],
+      [7, 'tracking_added'],
+    ]);
+  });
+
+  it('does not send payment notifications when an invoice is already paid', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ order_id: 40, invoice_status: 'paid', tracking_info: null, invoice_number: 'INV-1', user_id: 7 }]])
+      .mockResolvedValue([{ affectedRows: 1, insertId: 1 }]);
+
+    const response = await request(app)
+      .put('/api/v2/basket/invoices/90')
+      .set('Cookie', authCookie(1, 'admin'))
+      .send({ invoice_status: 'paid' });
+
+    expect(response.status).toBe(200);
+    expect(response.body.statusChanged).toBe(false);
+    expect(db.query).not.toHaveBeenCalled();
   });
 
   it('updates the linked order when an invoice is marked paid', async () => {

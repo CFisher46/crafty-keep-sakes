@@ -575,6 +575,10 @@ router.put('/invoices/:id', verifyAuthToken, requireRole('admin'), async (req, r
     const customerId = Number(invoice.user_id);
     const invoiceNumber = String(invoice.invoice_number ?? '');
 
+    if (statusChanged && status === 'paid') {
+      await notify('order_payment_received', { orderId, invoiceId, invoiceNumber });
+    }
+
     if (Number.isFinite(customerId)) {
       if (statusChanged) {
         await notify('invoice_status_changed', {
@@ -901,6 +905,13 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
 
     await connection.commit();
 
+    await notify('order_placed', {
+      orderId,
+      invoiceId,
+      invoiceNumber,
+      totalDue: grandTotal,
+    });
+
     let paymentUrl: string | null = null;
     let paymentError = false;
 
@@ -912,13 +923,6 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         console.error('Create Payment Link Error:', paymentErr);
         paymentError = true;
       }
-    } else {
-      await notify('order_placed', {
-        orderId,
-        invoiceId,
-        invoiceNumber,
-        totalDue: grandTotal,
-      });
     }
 
     res.status(201).json({

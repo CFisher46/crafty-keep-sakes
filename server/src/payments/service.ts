@@ -136,7 +136,7 @@ export async function processPaymentEvent(providerName: string, event: PaymentEv
     await connection.commit();
 
     if (outcome === 'paid') {
-      await notify('order_placed', { orderId, invoiceId, invoiceNumber, totalDue });
+      await notify('order_payment_received', { orderId, invoiceId, invoiceNumber });
       await notify('invoice_status_changed', {
         userId: customerId,
         orderId,

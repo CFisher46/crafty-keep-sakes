@@ -35,6 +35,27 @@ describe('notify', () => {
     expect(inserts.map(([, params]) => params[0])).toEqual([1, 2]);
     expect(inserts[0][1][1]).toBe('order_placed');
     expect(inserts[0][1][3]).toContain('£30.00');
+    expect(inserts[0][1][3]).toContain('awaiting payment');
+  });
+
+  it('notifies active admins when payment is received', async () => {
+    mockQuery
+      .mockResolvedValueOnce([[{ user_id: 1 }, { user_id: 2 }]])
+      .mockResolvedValue([{ insertId: 1 }]);
+
+    await notify('order_payment_received', {
+      orderId: 40,
+      invoiceId: 90,
+      invoiceNumber: 'INV-1-40',
+    });
+
+    const inserts = mockQuery.mock.calls.filter(([sql]) =>
+      String(sql).includes('INSERT INTO notifications_v2')
+    );
+    expect(inserts.map(([, params]) => [params[0], params[1], params[4]])).toEqual([
+      [1, 'order_payment_received', '/Reporting/invoices?invoice=90'],
+      [2, 'order_payment_received', '/Reporting/invoices?invoice=90'],
+    ]);
   });
 
   it('notifies only the customer when an invoice status changes', async () => {

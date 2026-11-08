@@ -43,7 +43,7 @@ All customer features, plus:
 - **Reporting** (`/Reporting`):
   - **Dashboard** (`/Reporting/dashboard`): orders, revenue, units sold, customers and new accounts, with charts for a chosen date range (the last 30 days by default).
   - **Product sales**, **User activity** (including dormant accounts) and **Blog stats** reports, each with date filters, charts, pagination (10, 20, 50, 100 or All rows) and CSV export of the full filtered table.
-- **Notifications**: new orders, new registrations, blog comments, account changes and published posts. A registration notification opens the new user's details in Admin tools; if the user was deleted, the page displays an error instead.
+- **Notifications**: new orders, new registrations, blog comments, account changes and published posts. Admins receive an order notification when checkout creates an unpaid invoice, and a separate notification when payment is confirmed or the invoice is marked paid. Both open the relevant invoice. A registration notification opens the new user's details in Admin tools; if the user was deleted, the page displays an error instead.
 - **Audit trail**: write actions are recorded server-side.
 
 ### Roles
