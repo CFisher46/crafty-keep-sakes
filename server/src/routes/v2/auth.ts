@@ -3,12 +3,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
-import { notify } from '../../notifications/service';
+//import { notify } from '../../notifications/service';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
 import { sendEmail } from '../../email/service/emailService';
 import VerifyEmail from '../../email/templates/VerifyEmail';
 import { generateVerificationToken } from '../../email/utils/verifyToken';
+//import { verify } from 'crypto';
 
 const router = express.Router();
 
@@ -28,6 +29,7 @@ interface V2UserPayload extends RowDataPacket {
   county?: string;
   postcode?: string;
   telephone_number?: string;
+  email_verified: boolean;
 }
 
 const V2_USER_BY_EMAIL_SQL = `
@@ -45,6 +47,7 @@ const V2_USER_BY_EMAIL_SQL = `
     cp.county,
     cp.postcode,
     cp.telephone AS telephone_number,
+    u.email_verified,
     COALESCE(r.code, 'customer') AS role_code
   FROM users_v2 u
   LEFT JOIN customer_profiles_v2 cp ON cp.user_id = u.id
@@ -74,6 +77,7 @@ const V2_USER_BY_ID_SQL = `
     cp.county,
     cp.postcode,
     cp.telephone AS telephone_number,
+    u.email_verified,
     COALESCE(r.code, 'customer') AS role_code
   FROM users_v2 u
   LEFT JOIN customer_profiles_v2 cp ON cp.user_id = u.id
@@ -146,12 +150,20 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
       county: user.county || '',
       postcode: user.postcode || '',
       telephone_number: user.telephone_number || '',
+      email_verified: user.email_verified || false,
     };
+
+    if (!(user.email_verified)) {
+      res.status(403).json({ error: 'Email not verified' });
+      return;
+    }
+    console.log('Email verified status:', user.email_verified);
 
     console.info('Auth login success', {
       user_id: user.id,
       type: roleType,
     });
+
 
     try {
       await db.query('UPDATE users_v2 SET last_login_at = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
@@ -241,7 +253,7 @@ const logoutHandler: RequestHandler = (_req, res): void => {
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
-const registerHandler: RequestHandler = async (req, res): Promise<void> => {
+const registerHandler: RequestHandler = async (req, res, next): Promise<void> => {
   const { email, password, first_name, last_name, website, started_at } = req.body as {
     website?: string;
     started_at?: number;
@@ -304,14 +316,19 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
       [userId, roleId]
     );
 
+
     await connection.commit();
     res.status(201).json({ message: 'Account created' });
 
-    await notify('user_registered', {
-      userId,
-      name: `${String(first_name).trim()} ${String(last_name).trim()}`.trim(),
-      email: String(email).trim(),
-    });
+
+    await verifyEmailHandler({
+      body: {
+        userId: userId,
+        email: String(email).trim(),
+        name: `${String(first_name).trim()} ${String(last_name).trim()}`.trim(),
+      }
+    } as any, res, next)
+
   } catch (err) {
     await connection.rollback();
 
@@ -325,12 +342,13 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
   } finally {
     connection.release();
   }
+
 };
 
 // Temporary send-only path: builds a verification link and emails it.
 // The token is not stored, so the link cannot confirm an account yet.
-const verifyEmailHandler: RequestHandler = async (req, res): Promise<void> => {
-  const { email, name } = req.body as { email?: string; name?: string };
+const verifyEmailHandler: RequestHandler = async (req, res, next): Promise<void> => {
+  const { email, name, userId } = req.body as { email?: string; name?: string; userId?: number };
   const recipient = String(email ?? '').trim();
 
   if (!recipient || !EMAIL_PATTERN.test(recipient)) {
@@ -338,10 +356,21 @@ const verifyEmailHandler: RequestHandler = async (req, res): Promise<void> => {
     return;
   }
 
+  if (!userId) {
+    res.status(400).json({ error: 'User ID is required' });
+    return;
+  }
+
   const recipientName = String(name ?? '').trim() || 'there';
   const { token } = generateVerificationToken();
   const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
   const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+  const connection = await db.getConnection();
+
+  await connection.query(
+    'INSERT INTO email_verification_tokens_v2 (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
+    [userId, token, new Date(Date.now() + 3600 * 1000), new Date()]
+  );
 
   try {
     await sendEmail({
@@ -359,10 +388,47 @@ const verifyEmailHandler: RequestHandler = async (req, res): Promise<void> => {
   }
 };
 
+
+const verifyEmailTokenHandler: RequestHandler = async (req, res, next): Promise<void> => {
+  const { token } = req.query as { token: string }
+  console.log('Verifying email token:', token);
+
+  const connection = await db.getConnection();
+
+  if (!token) {
+    res.status(400).json({ error: 'Token is required' });
+    return;
+  }
+
+  // Implement token verification logic here
+  const [rows] = await connection.query(
+    'SELECT * FROM email_verification_tokens_v2 WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?',
+    [token, new Date()]
+  );
+
+  if ((rows as any[]).length === 0) {
+    res.status(400).json({ error: 'Invalid or expired token' });
+    return;
+  }
+
+  await connection.query(
+    'UPDATE email_verification_tokens_v2 SET used_at = ? WHERE token_hash = ?',
+    [new Date(), token]
+  );
+
+  await connection.query(
+    'UPDATE users_v2 SET email_verified_at = ?, email_verified = ? WHERE id = ?',
+    [new Date(), '1', (rows as any[])[0].user_id]
+  );
+  res.status(200).json({ message: 'Token verified' });
+  console.log('Email verified for user:', (rows as any[])[0].user_id);
+  await connection.release();
+};
+
 router.post('/login', loginHandler);
 router.post('/register', registerHandler);
 router.get('/me', meHandler);
-router.post('/verify-email', verifyEmailHandler);
+router.post('/verify-email', verifyEmailTokenHandler);
 router.post('/verify-password', verifyAuthToken, verifyPasswordHandler);
 router.post('/logout', logoutHandler);
 

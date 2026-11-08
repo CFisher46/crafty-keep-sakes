@@ -16,6 +16,10 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 # Decision Log
 
+# Annoying issues
+
+-   because the dev branch is always open any new branches inherit the first 7 commits, so the history looks a bit messy - is there a way to address this?
+
 ## Features
 
 -   [x] CKS-2-006 : Introduction of  User Notifications (Next Priority)
