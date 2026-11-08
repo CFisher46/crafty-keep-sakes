@@ -390,7 +390,7 @@ const verifyEmailHandler: RequestHandler = async (req, res, next): Promise<void>
 
 
 const verifyEmailTokenHandler: RequestHandler = async (req, res, next): Promise<void> => {
-  const { token } = req.query as { token: string }
+  const { token } = req.body as { token?: string };
   console.log('Verifying email token:', token);
 
   const connection = await db.getConnection();

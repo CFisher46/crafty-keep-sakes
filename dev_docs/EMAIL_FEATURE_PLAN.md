@@ -124,8 +124,8 @@ CREATE TABLE email_verification_tokens (
 > primary key exactly. If the user ID is not a `BIGINT`, use the
 > matching type.
 
--   [ ] Create the table.
--   [ ] Add the foreign key and indexes.
+-   [-] Create the table.
+-   [-] Add the foreign key and indexes.
 -   [ ] Confirm deleting a user removes associated verification tokens.
 -   [ ] Test inserting and retrieving a token record.
 -   [ ] Test expiry and used-token handling.
@@ -136,10 +136,10 @@ CREATE TABLE email_verification_tokens (
 
 ### 3.1 Install dependencies
 
--   [ ] Install `resend`.
--   [ ] Install the React Email package(s) needed for components and
+-   [-] Install `resend`.
+-   [-] Install the React Email package(s) needed for components and
     rendering.
--   [ ] Configure the backend TypeScript build to support `.tsx` email
+-   [-] Configure the backend TypeScript build to support `.tsx` email
     templates.
 -   [ ] Confirm the production build includes the email templates
     correctly.
@@ -158,11 +158,11 @@ different major versions.
 
 Suggested file: `src/services/emailService.tsx`
 
--   [ ] Initialise the Resend SDK using `RESEND_API_KEY`.
--   [ ] Create a reusable `sendVerificationEmail()` function.
--   [ ] Accept recipient email, recipient name and verification URL as
+-   [-] Initialise the Resend SDK using `RESEND_API_KEY`.
+-   [-] Create a reusable `sendVerificationEmail()` function.
+-   [-] Accept recipient email, recipient name and verification URL as
     parameters.
--   [ ] Send using `accounts@craftykeepsakes.uk`.
+-   [-] Send using `verify@craftykeepsakes.uk`.
 -   [ ] Handle and log provider errors safely without logging tokens or
     sensitive data.
 -   [ ] Keep email delivery separate from authentication controllers.
@@ -171,27 +171,27 @@ Suggested file: `src/services/emailService.tsx`
 
 Suggested file: `src/services/verificationService.ts`
 
--   [ ] Generate secure random tokens using Node.js
+-   [-] Generate secure random tokens using Node.js
     `crypto.randomBytes(32)`.
 -   [ ] Hash tokens using SHA-256.
 -   [ ] Store only the hash in MySQL; never store the raw token.
--   [ ] Set token expiry to 24 hours.
+-   [-] Set token expiry to 24 hours.
 -   [ ] Invalidate previous outstanding tokens when generating a
     replacement.
--   [ ] Construct the verification URL using `FRONTEND_URL`.
+-   [-] Construct the verification URL using `FRONTEND_URL`.
 -   [ ] Keep token creation and persistence logic reusable.
 
 ### 3.4 Update the registration API
 
 Existing endpoint: `POST /api/v2/auth/register`
 
--   [ ] Extend the existing registration controller.
--   [ ] Create new users with `email_verified = 0`.
--   [ ] Create the user and initial verification-token record in a
+-   [-] Extend the existing registration controller.
+-   [-] Create new users with `email_verified = 0`.
+-   [-] Create the user and initial verification-token record in a
     database transaction where appropriate.
 -   [ ] Generate and store the verification token hash.
--   [ ] Construct the verification URL.
--   [ ] Send the verification email.
+-   [-] Construct the verification URL.
+-   [-] Send the verification email.
 -   [ ] Handle email delivery failures so a temporary provider outage
     does not leave the user unable to retry.
 -   [ ] Return a suitable response telling the user to check their
@@ -208,12 +208,12 @@ Endpoint: `POST /api/v2/auth/verify-email`
 -   [ ] Accept the raw token from the frontend.
 -   [ ] Validate that the token is present and correctly formatted.
 -   [ ] Hash the submitted token using SHA-256.
--   [ ] Find the matching token record.
+-   [-] Find the matching token record.
 -   [ ] Check that it has not expired.
 -   [ ] Check that it has not already been used.
--   [ ] Update `users.email_verified` to `1`.
--   [ ] Set `users.email_verified_at` to the current timestamp.
--   [ ] Set `email_verification_tokens.used_at` to the current
+-   [-] Update `users.email_verified` to `1`.
+-   [-] Set `users.email_verified_at` to the current timestamp.
+-   [-] Set `email_verification_tokens.used_at` to the current
     timestamp.
 -   [ ] Perform the verification and token-use updates in one database
     transaction.
@@ -222,13 +222,13 @@ Endpoint: `POST /api/v2/auth/verify-email`
 
 ### 3.6 Create the resend-verification API
 
-Endpoint: `POST /api/v2/auth/resend-verification`
+Endpoint: `POST /api/v2/auth/verify-email`
 
--   [ ] Accept the user's email address.
+-   [-] Accept the user's email address.
 -   [ ] Check whether the account is already verified.
 -   [ ] Generate a replacement token and hash.
 -   [ ] Invalidate previous outstanding tokens.
--   [ ] Store the new token record.
+-   [-] Store the new token record.
 -   [ ] Send a replacement email.
 -   [ ] Add rate limiting and a resend cooldown (for example, 60
     seconds).
@@ -270,14 +270,14 @@ emails/
 
 -   [ ] Create a shared email layout.
 -   [ ] Incorporate Crafty Keepsakes branding, logo and brand colours.
--   [ ] Create `VerifyEmail.tsx`.
--   [ ] Include a personalised greeting.
--   [ ] Include a prominent verification button using the supplied
+-   [-] Create `VerifyEmail.tsx`.
+-   [-] Include a personalised greeting.
+-   [-] Include a prominent verification button using the supplied
     verification URL.
--   [ ] Include the 24-hour expiry information.
+-   [-] Include the 24-hour expiry information.
 -   [ ] Explain what to do if the recipient did not create an account.
 -   [ ] Ensure the email has a useful plain-text alternative.
--   [ ] Test rendering and delivery in Gmail and Outlook, on desktop and
+-   [-] Test rendering and delivery in Gmail and Outlook, on desktop and
     mobile.
 
 Keep email templates in the backend or a shared package. Do not bundle
@@ -454,7 +454,7 @@ registration.
   ----------------------------- -----------------------------------------
   Email provider                Resend
   Sending domain                `craftykeepsakes.uk`
-  Sending address               `accounts@craftykeepsakes.uk`
+  Sending address               `verify@craftykeepsakes.uk`
   Email templates               React Email
   Email delivery                Resend HTTPS API called by Express
   Token generation              Node.js `crypto.randomBytes(32)`

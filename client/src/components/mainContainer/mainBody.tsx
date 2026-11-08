@@ -1,5 +1,6 @@
-import { useLocation } from "react-router-dom";
-import { Routes, Route, Navigate } from "react-router-dom";
+
+import VerifyEmailPage from '../../features/verification/verifyEmail/page';
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import LandingPage from "../../features/landingPage/page";
 import Shop from "../../features/products/page";
 import ShoppingBasket from "../../features/basket/page";
@@ -150,6 +151,7 @@ function MainBody() {
           <Route path="/Login" element={<Login />} />
           <Route path="/Register" element={<Register />} />
           <Route path="/Reviews" element={<ReviewsPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
         </Routes>
       </Box>
     </Box>

@@ -16,6 +16,14 @@ export type User = {
   password: string;
 };
 
+export type Verification = {
+  id: number;
+  email: string;
+  token: string;
+  status: string;
+  created_at: string;
+};
+
 export type Review = {
   id: number;
   reviewer_name: string;

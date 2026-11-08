@@ -25,6 +25,7 @@ const normalizeUserRecord = (user: RawUserRecord): User => ({
   password: String(user.password ?? ''),
 });
 
+
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
   const res = await fetch(buildApiUrl('users'), {
     credentials: 'include',

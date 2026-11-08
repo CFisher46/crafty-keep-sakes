@@ -1,7 +1,7 @@
 import { ApiVersion, resolveApiVersion } from './apiVersion';
 import { getDomainFlag } from './domainFlags';
 
-export type ApiDomain = 'auth' | 'products' | 'users' | 'audit' | 'basket' | 'blog' | 'notifications' | 'reviews' | 'reports' | 'payments';
+export type ApiDomain = 'auth' | 'products' | 'users' | 'audit' | 'basket' | 'blog' | 'notifications' | 'reviews' | 'reports' | 'payments' | 'verify-email';
 
 const DOMAIN_PATHS: Record<ApiDomain, Record<ApiVersion, string>> = {
   auth: {
@@ -43,6 +43,10 @@ const DOMAIN_PATHS: Record<ApiDomain, Record<ApiVersion, string>> = {
   payments: {
     v1: '/api/payments',
     v2: '/api/v2/payments',
+  },
+  'verify-email': {
+    v1: '/api/verify-email',
+    v2: '/api/v2/verify-email',
   },
 };
 
