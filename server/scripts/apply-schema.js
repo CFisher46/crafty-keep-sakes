@@ -28,13 +28,21 @@ async function ensureEmailVerificationSchema(connection) {
   }
 
   const [foreignKeys] = await connection.query(
-    `SELECT CONSTRAINT_NAME, REFERENCED_TABLE_NAME
-     FROM information_schema.KEY_COLUMN_USAGE
-     WHERE TABLE_SCHEMA = DATABASE()
-       AND TABLE_NAME = 'email_verification_tokens_v2'
-       AND REFERENCED_TABLE_NAME IS NOT NULL`
+    `SELECT kcu.CONSTRAINT_NAME, kcu.REFERENCED_TABLE_NAME, rc.DELETE_RULE
+     FROM information_schema.KEY_COLUMN_USAGE kcu
+     LEFT JOIN information_schema.REFERENTIAL_CONSTRAINTS rc
+       ON rc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+       AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+     WHERE kcu.TABLE_SCHEMA = DATABASE()
+       AND kcu.TABLE_NAME = 'email_verification_tokens_v2'
+       AND kcu.REFERENCED_TABLE_NAME IS NOT NULL`
   );
-  if (!foreignKeys.some((key) => key.REFERENCED_TABLE_NAME === 'users_v2')) {
+  if (
+    !foreignKeys.some(
+      (key) =>
+        key.REFERENCED_TABLE_NAME === 'users_v2' && key.DELETE_RULE === 'CASCADE'
+    )
+  ) {
     await connection.query('DELETE FROM email_verification_tokens_v2');
     for (const key of foreignKeys) {
       const constraint = String(key.CONSTRAINT_NAME).replace(/`/g, '``');
@@ -62,6 +70,62 @@ async function ensureEmailVerificationSchema(connection) {
   );
 }
 
+async function ensureAnonymousBlogActivitySchema(connection) {
+  const tables = [
+    'blog_post_comments_v2',
+    'blog_post_views_v2',
+    'blog_post_reactions_v2',
+  ];
+
+  for (const table of tables) {
+    const [columns] = await connection.query(`SHOW COLUMNS FROM \`${table}\``);
+    const userIdColumn = columns.find((column) => column.Field === 'user_id');
+    if (!userIdColumn) {
+      throw new Error(`Missing user_id column on ${table}`);
+    }
+    if (userIdColumn.Null !== 'YES') {
+      await connection.query(
+        `ALTER TABLE \`${table}\` MODIFY user_id BIGINT UNSIGNED NULL`
+      );
+    }
+
+    const [foreignKeys] = await connection.query(
+      `SELECT kcu.CONSTRAINT_NAME, kcu.REFERENCED_TABLE_NAME, rc.DELETE_RULE
+       FROM information_schema.KEY_COLUMN_USAGE kcu
+       LEFT JOIN information_schema.REFERENTIAL_CONSTRAINTS rc
+         ON rc.CONSTRAINT_SCHEMA = kcu.CONSTRAINT_SCHEMA
+         AND rc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+       WHERE kcu.TABLE_SCHEMA = DATABASE()
+         AND kcu.TABLE_NAME = ?
+         AND kcu.REFERENCED_TABLE_NAME IS NOT NULL`,
+      [table]
+    );
+    const userForeignKeys = foreignKeys.filter(
+      (key) => key.REFERENCED_TABLE_NAME === 'users_v2'
+    );
+    if (
+      userForeignKeys.length === 1 &&
+      userForeignKeys[0].DELETE_RULE === 'SET NULL'
+    ) {
+      continue;
+    }
+
+    for (const key of userForeignKeys) {
+      const constraint = String(key.CONSTRAINT_NAME).replace(/`/g, '``');
+      await connection.query(
+        `ALTER TABLE \`${table}\` DROP FOREIGN KEY \`${constraint}\``
+      );
+    }
+
+    const constraint = `fk_${table}_user`;
+    await connection.query(
+      `ALTER TABLE \`${table}\`
+       ADD CONSTRAINT \`${constraint}\`
+       FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL`
+    );
+  }
+}
+
 async function main() {
   const file = path.resolve(
     __dirname,
@@ -80,6 +144,7 @@ async function main() {
     await connection.query(fs.readFileSync(file, 'utf8'));
     if (path.basename(file) === 'phase1_schema_v2.sql') {
       await ensureEmailVerificationSchema(connection);
+      await ensureAnonymousBlogActivitySchema(connection);
     }
     const [tables] = await connection.query('SHOW TABLES');
     const [roles] = await connection.query('SELECT code FROM roles_v2');

@@ -266,6 +266,10 @@ describe('v2 users write routes', () => {
   it('deletes a v2 user as admin', async () => {
     mockConnection.query
       .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 88 }]);
 
     const response = await request(app)
@@ -274,7 +278,55 @@ describe('v2 users write routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ affectedRows: 1 });
-    expect(String(mockConnection.query.mock.calls[0][0])).toContain('DELETE FROM users_v2');
-    expect(String(mockConnection.query.mock.calls[1][0])).toContain('INSERT INTO audit_events_v2');
+    expect(String(mockConnection.query.mock.calls[0][0])).toContain(
+      'UPDATE blog_post_comments_v2 SET user_id = NULL WHERE user_id = ?'
+    );
+    expect(mockConnection.query.mock.calls[0][1]).toEqual(['42']);
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain(
+      'UPDATE blog_post_views_v2 SET user_id = NULL'
+    );
+    expect(String(mockConnection.query.mock.calls[2][0])).toContain(
+      'UPDATE blog_post_reactions_v2 SET user_id = NULL'
+    );
+    expect(String(mockConnection.query.mock.calls[3][0])).toContain(
+      'DELETE FROM email_verification_tokens_v2 WHERE user_id = ?'
+    );
+    expect(String(mockConnection.query.mock.calls[4][0])).toContain('DELETE FROM users_v2');
+    expect(String(mockConnection.query.mock.calls[5][0])).toContain('INSERT INTO audit_events_v2');
+  });
+
+  it('rolls back token deletion when the user does not exist', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 0 }]);
+
+    const response = await request(app)
+      .delete('/api/v2/users/999')
+      .set('Cookie', authCookie(1, 'admin'));
+
+    expect(response.status).toBe(404);
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.commit).not.toHaveBeenCalled();
+  });
+
+  it('returns a clear conflict when historical records prevent user deletion', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockRejectedValueOnce({ code: 'ER_ROW_IS_REFERENCED_2' });
+
+    const response = await request(app)
+      .delete('/api/v2/users/42')
+      .set('Cookie', authCookie(1, 'admin'));
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toMatch(/orders or authored blog posts/);
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.commit).not.toHaveBeenCalled();
   });
 });

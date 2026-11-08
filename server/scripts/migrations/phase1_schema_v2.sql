@@ -303,13 +303,13 @@ CREATE TABLE IF NOT EXISTS blog_posts_v2 (
 CREATE TABLE IF NOT EXISTS blog_post_views_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_blog_post_views_v2_post_user (post_id, user_id),
   KEY idx_blog_post_views_v2_user (user_id, viewed_at),
   CONSTRAINT fk_blog_post_views_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
-  CONSTRAINT fk_blog_post_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+  CONSTRAINT fk_blog_post_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS blog_post_images_v2 (
@@ -326,27 +326,27 @@ CREATE TABLE IF NOT EXISTS blog_post_images_v2 (
 CREATE TABLE IF NOT EXISTS blog_post_comments_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   comment TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_blog_post_comments_v2_post (post_id, created_at),
   KEY idx_blog_post_comments_v2_user (user_id),
   CONSTRAINT fk_blog_post_comments_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
-  CONSTRAINT fk_blog_post_comments_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+  CONSTRAINT fk_blog_post_comments_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS blog_post_reactions_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   reaction_type ENUM('like', 'dislike') NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_blog_post_reactions_v2_post_user (post_id, user_id),
   KEY idx_blog_post_reactions_v2_post (post_id, reaction_type),
   CONSTRAINT fk_blog_post_reactions_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
-  CONSTRAINT fk_blog_post_reactions_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+  CONSTRAINT fk_blog_post_reactions_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO roles_v2 (code, description)

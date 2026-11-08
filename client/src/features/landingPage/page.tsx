@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Text, Box, Card } from 'grommet';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchAllProducts } from '../../store/products/productsThunks';
 import { checkAuth, performLogout } from '../../store/auth/authThunks';
@@ -25,6 +25,7 @@ import BlogSummarySection, { HomepageBlogItem } from './components/BlogSummarySe
 function Home() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const userDetails = useAppSelector((state) => state.auth.user);
@@ -91,6 +92,19 @@ function Home() {
     window.addEventListener('cks:focus-login', focusLogin);
     return () => window.removeEventListener('cks:focus-login', focusLogin);
   }, []);
+
+  useEffect(() => {
+    if (location.state?.focusLogin !== true) return;
+
+    setAuthView('login');
+    const timer = window.setTimeout(() => {
+      accountPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      accountPanelRef.current?.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+      navigate(location.pathname, { replace: true, state: null });
+    }, 50);
+
+    return () => window.clearTimeout(timer);
+  }, [location.pathname, location.state, navigate]);
 
   useEffect(() => {
     dispatch(checkAuth());

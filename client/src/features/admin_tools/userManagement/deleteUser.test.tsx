@@ -110,6 +110,9 @@ describe('DeleteExistingUser', () => {
 
     expect(screen.getByText(/Final Confirmation/)).toBeInTheDocument();
     expect(screen.getByText('This action cannot be undone!')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Blog comments, views, and reactions will be retained/)
+    ).toBeInTheDocument();
   });
 
   it('calls the cancel handler without dispatching a delete request', () => {
@@ -147,5 +150,31 @@ describe('DeleteExistingUser', () => {
         expect.objectContaining({ method: 'DELETE' })
       );
     });
+  });
+
+  it('shows the server reason when deletion is blocked by historical records', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({
+        error: 'This user has orders or authored blog posts that must be resolved.',
+      }),
+    });
+
+    render(
+      <Provider store={buildStore('1')}>
+        <DeleteExistingUser {...targetUser} />
+      </Provider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Type confirmation text here'), {
+      target: { value: 'delete jane@example.com' },
+    });
+    fireEvent.click(screen.getByText('Delete User'));
+    screen.getAllByText('Confirm Delete').forEach((button) => fireEvent.click(button));
+
+    expect(
+      await screen.findByText('This user has orders or authored blog posts that must be resolved.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/has been deleted successfully/)).not.toBeInTheDocument();
   });
 });

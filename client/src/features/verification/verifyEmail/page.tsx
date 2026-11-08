@@ -111,7 +111,7 @@ function VerifyEmailPage() {
             </Text>
             <ActionButton
               label="Go to sign in"
-              onClick={() => navigate('/Login')}
+              onClick={() => navigate('/home', { state: { focusLogin: true } })}
             />
           </Box>
         ) : (

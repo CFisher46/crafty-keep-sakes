@@ -45,6 +45,9 @@ describe('VerifyEmailPage', () => {
         body: JSON.stringify({ token: 'a'.repeat(64) }),
       })
     );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Go to sign in' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/home', { state: { focusLogin: true } });
   });
 
   it('shows the server error when the verification link has expired', async () => {
