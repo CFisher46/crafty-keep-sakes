@@ -43,7 +43,7 @@ All customer features, plus:
 - **Reporting** (`/Reporting`):
   - **Dashboard** (`/Reporting/dashboard`): orders, revenue, units sold, customers and new accounts, with charts for a chosen date range (the last 30 days by default).
   - **Product sales**, **User activity** (including dormant accounts) and **Blog stats** reports, each with date filters, charts, pagination (10, 20, 50, 100 or All rows) and CSV export of the full filtered table.
-- **Notifications**: new orders, new registrations, blog comments, account changes and published posts.
+- **Notifications**: new orders, new registrations, blog comments, account changes and published posts. Admins receive an order notification when checkout creates an unpaid invoice, and a separate notification when payment is confirmed or the invoice is marked paid. Both open the relevant invoice. A registration notification opens the new user's details in Admin tools; if the user was deleted, the page displays an error instead.
 - **Audit trail**: write actions are recorded server-side.
 
 ### Roles
@@ -164,6 +164,7 @@ The API is moving from a NAS to Railway. The full plan, status and cutover steps
 | Images | MinIO bucket on Railway, served from `files.craftykeepsakes.uk` |
 
 - **Railway:** built from `server/Dockerfile` with `railway.json` (pre-deploy schema script, health check at `/health`). It deploys manually from `main`. Set `ORIGIN_SECRET` and a matching Cloudflare Transform Rule that adds the `X-Origin-Secret` header, so the API only accepts traffic that came through Cloudflare. `/health` and the Square webhook paths are exempt.
+- **Health diagnostics:** `/health` returns `200` when the database responds and `503` otherwise, without exposing connection details. API logs distinguish `HEALTH_DB_TIMEOUT` from `HEALTH_DB_UNAVAILABLE`. An external check of the public hostname is still needed to detect a tunnel or routing failure; this endpoint does not verify Square webhook delivery.
 - **Environment:** see `server/.env.example` for the variables (database, `JWT_SECRET`, `CORS_ORIGIN`, `CLIENT_URL`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `FRONTEND_URL`, `MINIO_*`, `ORIGIN_SECRET`, `SQUARE_*`). Keep the Resend key on the server only. `CORS_ORIGIN` takes a comma-separated list with no trailing slashes.
 - **Verification links:** `FRONTEND_URL` is the backend's default link destination (local default: `http://localhost:3000`). On a shared backend, set `VERIFICATION_FRONTEND_ORIGINS` to a comma-separated list of trusted frontend origins, such as `https://dev.craftykeepsakes.uk,https://craftykeepsakes.uk`. Registration and resend use the request's `Origin` only when it exactly matches this list; otherwise they use `FRONTEND_URL`. Add those frontend origins to `CORS_ORIGIN` as well. Restart or redeploy the backend after changing variables. Origins can be supplied by non-browser clients, so only allow frontend deployments trusted to handle verification tokens.
 - **Local development:** `npm run dev` uses `server/.env`. `npm run dev:railway` loads `server/.env.railway` (copy `server/.env.railway.example`) to test against Railway. The server refuses a non-local `DB_HOST` outside production unless `ALLOW_REMOTE_DB=1`.
@@ -213,6 +214,10 @@ Payments sit behind a provider interface in `server/src/payments/`. Checkout cre
 The webhook URL must match the subscription exactly. Square sends customers back to `CLIENT_URL/payments/result` after paying.
 
 Set `CLIENT_URL` to the storefront's public URL so payment redirects return to the right place.
+
+**Payment troubleshooting:** Check Square's webhook delivery history and the receiving API's logs. Warnings prefixed `[payments]` include `signature_mismatch` (check the exact subscription URL and its signature key), `unknown_payment` (no matching payment link in this database), and `amount_mismatch` (the invoice remains unpaid). `unknown_payment` can occur when separate local and Railway subscriptions receive each other's sandbox events. These outcomes are acknowledged to Square but do not update the invoice. Never share keys, signatures or raw payloads.
+
+If Square cannot reach a Cloudflare Tunnel, the API cannot log that request. Check the tunnel's connector is healthy, its published route points to the correct running API, and `https://<webhook-host>/health` responds. A healthy tunnel with a 502 response can indicate that the connector cannot reach its configured origin; a 530 can indicate a tunnel or DNS routing issue. Check Square's delivery status and Cloudflare's error details rather than assuming a specific cause. If a payment cannot be confirmed, check Square and the invoice before trying payment again.
 
 ## Further documentation
 

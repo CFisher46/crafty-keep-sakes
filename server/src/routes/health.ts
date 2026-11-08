@@ -11,16 +11,17 @@ router.get("/", async (_req, res) => {
   res.set("Cache-Control", "no-store");
 
   let timer: NodeJS.Timeout | undefined;
+  const timeoutError = new Error("DB health check timed out");
   try {
     await Promise.race([
       db.query("SELECT 1"),
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error("DB health check timed out")), DB_CHECK_TIMEOUT_MS);
+        timer = setTimeout(() => reject(timeoutError), DB_CHECK_TIMEOUT_MS);
       }),
     ]);
     res.status(200).json({ status: "ok" });
   } catch (err) {
-    console.error("Health check failed:", err instanceof Error ? err.message : err);
+    console.error(err === timeoutError ? "HEALTH_DB_TIMEOUT" : "HEALTH_DB_UNAVAILABLE");
     res.status(503).json({ status: "unavailable" });
   } finally {
     if (timer) clearTimeout(timer);

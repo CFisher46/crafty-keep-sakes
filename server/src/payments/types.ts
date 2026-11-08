@@ -29,6 +29,6 @@ export type PaymentLink = {
 export interface PaymentProvider {
   readonly name: string;
   createPaymentLink(input: CreatePaymentLinkInput): Promise<PaymentLink>;
-  // Returns the event, or null when the signature is missing or invalid.
+  // Returns the event, or null when the signature or payload is invalid.
   parseWebhook(rawBody: Buffer, headers: IncomingHttpHeaders): PaymentEvent | null;
 }

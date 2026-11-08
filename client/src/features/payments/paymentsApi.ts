@@ -10,11 +10,19 @@ export type PaymentStatus = {
 };
 
 const request = async <T,>(path: string, init?: RequestInit): Promise<T> => {
-  const response = await fetch(buildApiUrl('payments', path), {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
-    ...init,
-  });
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl('payments', path), {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      ...init,
+    });
+  } catch {
+    throw new Error('The payment service could not be reached. Please check your connection and try again later.');
+  }
+  if ([502, 503, 504, 530].includes(response.status)) {
+    throw new Error('The payment service is temporarily unavailable. Please try again later.');
+  }
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {

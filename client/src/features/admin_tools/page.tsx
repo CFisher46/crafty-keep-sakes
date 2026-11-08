@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Select, Text } from 'grommet';
+import { useLocation } from 'react-router-dom';
 import { AuditLogs } from './audits/page';
 import CreateNewUser from './userManagement/createUser';
 import UpdateUser from './userManagement/updateUser';
@@ -109,7 +110,12 @@ function AdminTools() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | undefined>();
   const [fetchedUser, setFetchedUser] = useState<User | undefined>();
+  const [userError, setUserError] = useState<string | null>(null);
+  const [loadingUser, setLoadingUser] = useState(false);
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const requestedUserId = new URLSearchParams(location.search).get('user');
+  const requestId = useRef(0);
 
   const needsUser = area === 'Users' && (action === 'Update' || action === 'Delete');
 
@@ -122,7 +128,46 @@ function AdminTools() {
     loadUsers();
   }, [dispatch, needsUser, users.length]);
 
+  useEffect(() => {
+    if (requestedUserId === null) {
+      setLoadingUser(false);
+      return undefined;
+    }
+    const currentRequest = ++requestId.current;
+    setArea('Users');
+    setAction('Update');
+    setSelectedUser(undefined);
+    setFetchedUser(undefined);
+
+    if (!/^[1-9]\d*$/.test(requestedUserId)) {
+      setLoadingUser(false);
+      setUserError('Invalid user link. Please select a user.');
+      return undefined;
+    }
+
+    setUserError(null);
+    setLoadingUser(true);
+    dispatch(fetchUserById(requestedUserId)).unwrap()
+      .then((user) => {
+        if (requestId.current !== currentRequest) return;
+        setSelectedUser(user);
+        setFetchedUser(user);
+      })
+      .catch(() => {
+        if (requestId.current !== currentRequest) return;
+        setUserError('Unable to load this user. They may no longer exist; please select another user.');
+      })
+      .finally(() => {
+        if (requestId.current === currentRequest) setLoadingUser(false);
+      });
+
+    return () => { requestId.current += 1; };
+  }, [dispatch, requestedUserId]);
+
   const chooseArea = (next: Area) => {
+    requestId.current += 1;
+    setLoadingUser(false);
+    setUserError(null);
     setArea(next);
     setSelectedUser(undefined);
     setFetchedUser(undefined);
@@ -131,16 +176,30 @@ function AdminTools() {
   };
 
   const chooseAction = (next: Action) => {
+    requestId.current += 1;
+    setLoadingUser(false);
+    setUserError(null);
     setAction(next);
     setSelectedUser(undefined);
     setFetchedUser(undefined);
   };
 
   const chooseUser = async (user: User) => {
+    const currentRequest = ++requestId.current;
     setSelectedUser(user);
     setFetchedUser(undefined);
-    const result = await dispatch(fetchUserById(user.id));
-    setFetchedUser(result.payload as User);
+    setUserError(null);
+    setLoadingUser(true);
+    try {
+      const result = await dispatch(fetchUserById(user.id)).unwrap();
+      if (requestId.current === currentRequest) setFetchedUser(result);
+    } catch {
+      if (requestId.current === currentRequest) {
+        setUserError('Unable to load this user. They may no longer exist; please select another user.');
+      }
+    } finally {
+      if (requestId.current === currentRequest) setLoadingUser(false);
+    }
   };
 
   const renderTool = () => {
@@ -205,6 +264,8 @@ function AdminTools() {
             )}
           </Box>
 
+          {loadingUser && <Text>Loading user details...</Text>}
+          {userError && <Text role="alert" color="status-critical">{userError}</Text>}
           {tool && (
             <Box pad="small" style={panelStyle}>
               {tool}

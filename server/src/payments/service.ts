@@ -3,6 +3,7 @@ import { db } from '../ts-common/database';
 import { insertAuditEvent } from '../routes/v2/audit-events';
 import { notify } from '../notifications/service';
 import { getClientUrl, getPaymentProvider, PAYMENT_CURRENCY } from './index';
+import { warnPayment, paymentReference } from './logging';
 import type { PaymentEvent } from './types';
 
 export type PaymentOutcome =
@@ -66,6 +67,7 @@ export async function processPaymentEvent(providerName: string, event: PaymentEv
     const link = linkRows[0];
     if (!link) {
       await connection.rollback();
+      warnPayment('unknown_payment', { provider: providerName, reference: paymentReference(event.providerRef) });
       return 'unknown_payment';
     }
 
@@ -134,9 +136,12 @@ export async function processPaymentEvent(providerName: string, event: PaymentEv
     }
 
     await connection.commit();
+    if (outcome === 'amount_mismatch') {
+      warnPayment('amount_mismatch', { provider: providerName, invoiceId });
+    }
 
     if (outcome === 'paid') {
-      await notify('order_placed', { orderId, invoiceId, invoiceNumber, totalDue });
+      await notify('order_payment_received', { orderId, invoiceId, invoiceNumber });
       await notify('invoice_status_changed', {
         userId: customerId,
         orderId,

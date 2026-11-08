@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import MockPaymentPage from './mockPaymentPage';
 import PaymentResultPage from './resultPage';
 
@@ -116,5 +116,51 @@ describe('PaymentResultPage', () => {
 
     expect(await screen.findByText('We could not check your payment')).toBeInTheDocument();
     expect(screen.getByText('Invoice not found')).toBeInTheDocument();
+  });
+
+  it('explains when the payment API cannot be reached', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError('Failed to fetch')) as any;
+
+    render(<PaymentResultPage />);
+
+    expect(await screen.findByText(/payment service could not be reached/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try payment again' })).not.toBeInTheDocument();
+  });
+
+  it.each([502, 503, 504, 530])('shows an availability message for HTTP %s', async (code) => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: code }) as any;
+
+    render(<PaymentResultPage />);
+
+    expect(await screen.findByText(/payment service is temporarily unavailable/i)).toBeInTheDocument();
+  });
+
+  it('warns customers to check before paying again if confirmation is delayed', async () => {
+    jest.useFakeTimers();
+    try {
+      global.fetch = jest.fn().mockResolvedValue(respond(status())) as any;
+      render(<PaymentResultPage />);
+      for (let i = 0; i < 5; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(i === 0 ? 0 : 2000);
+          await Promise.resolve();
+        });
+      }
+
+      expect(screen.getByText(/contact us before paying again/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Try payment again' })).toBeInTheDocument();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('does not offer another payment retry after the payment service becomes unreachable', async () => {
+    global.fetch = jest.fn()
+      .mockResolvedValueOnce(respond(status({ payment_status: 'failed' })))
+      .mockRejectedValue(new TypeError('Failed to fetch')) as any;
+    render(<PaymentResultPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Try payment again' }));
+    expect(await screen.findByText(/payment service could not be reached/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Try payment again' })).not.toBeInTheDocument();
   });
 });

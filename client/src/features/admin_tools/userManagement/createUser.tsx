@@ -13,6 +13,7 @@ import { User } from '../../../types';
 import { createUser } from '../../../store/users/usersThunks';
 import { useAppDispatch } from '../../../store/hooks';
 import { useState } from 'react';
+import { isValidEmail, isValidPassword } from '../../../helpers/userValidation';
 
 function CreateNewUser() {
   const dispatch = useAppDispatch();
@@ -42,20 +43,17 @@ function CreateNewUser() {
   ] as const;
 
   const [newUser, setNewUser] = useState<Partial<User>>(requiredDetails);
-  const [passwordMatch, setPasswordMatch] = useState<boolean>(false);
   const [password, setPassword] = useState<string>('');
+  const [confirmPassword, setConfirmPassword] = useState<string>('');
+  const [touched, setTouched] = useState({ email: false, telephone: false, password: false, confirm: false });
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [statusIsError, setStatusIsError] = useState<boolean>(false);
   const [showValidationWarning, setShowValidationWarning] =
     useState<boolean>(false);
 
   const handleCreateUser = async () => {
-    console.log(`Creating user with data:`, newUser);
-
     try {
-      await dispatch(createUser(newUser as User)).unwrap();
-
-      console.log('User created successfully');
+      await dispatch(createUser({ ...newUser, email_address: email, password })).unwrap();
 
       setStatusIsError(false);
       setStatusMessage(
@@ -64,7 +62,8 @@ function CreateNewUser() {
 
       setNewUser(requiredDetails);
       setPassword('');
-      setPasswordMatch(false);
+      setConfirmPassword('');
+      setTouched({ email: false, telephone: false, password: false, confirm: false });
     } catch (error) {
       console.error('Failed to create user:', error);
 
@@ -77,23 +76,15 @@ function CreateNewUser() {
     }
   };
 
-  const validatePassword = (value: string) => {
-    if (password === value && password !== '') {
-      setPasswordMatch(true);
-
-      setNewUser((prev) => ({
-        ...prev,
-        password: value,
-      }));
-    } else {
-      setPasswordMatch(false);
-
-      setNewUser((prev) => ({
-        ...prev,
-        password: '',
-      }));
-    }
-  };
+  const email = (newUser.email_address ?? '').trim();
+  const telephone = (newUser.telephone_number ?? '').trim();
+  const emailError = !isValidEmail(email) ? 'Enter a valid email address.' : '';
+  const phoneDigits = telephone.replace(/\D/g, '');
+  const telephoneError = telephone && (!/^\+?[\d\s().-]+$/.test(telephone) || phoneDigits.length < 7 || phoneDigits.length > 15)
+    ? 'Enter a valid telephone number (7 to 15 digits).' : '';
+  const passwordError = !isValidPassword(password) ? 'Password must be at least 8 characters.' : '';
+  const passwordMatch = password !== '' && password === confirmPassword;
+  const confirmError = !passwordMatch ? 'Passwords must match.' : '';
 
   const getFieldLabel = (field: string) =>
     field
@@ -109,19 +100,19 @@ function CreateNewUser() {
   const handleCreateUserClick = () => {
     const missingFields = getMissingFields();
 
+    setTouched({ email: true, telephone: true, password: true, confirm: true });
     if (missingFields.length > 0 || !passwordMatch) {
       setShowValidationWarning(true);
       return;
     }
 
+    if (emailError || telephoneError || passwordError) return;
     handleCreateUser();
   };
 
   const missingFields = getMissingFields();
 
   return (
-
-    //TODO: Need to add in some inline validations for email, telephone number and password character requirements
 
     <>
       <Card
@@ -162,6 +153,10 @@ function CreateNewUser() {
             <TextInput
               placeholder="Email Address"
               value={newUser.email_address}
+              type="email"
+              aria-invalid={touched.email && !!emailError}
+              aria-describedby={touched.email && emailError ? 'create-user-email-error' : undefined}
+              onBlur={() => setTouched((prev) => ({ ...prev, email: true }))}
               onChange={(event) => {
                 setNewUser({
                   ...newUser,
@@ -169,10 +164,15 @@ function CreateNewUser() {
                 });
               }}
             />
+            {touched.email && emailError && <Text id="create-user-email-error" color="status-critical" size="small">{emailError}</Text>}
 
             <TextInput
               placeholder="Telephone Number"
               value={newUser.telephone_number}
+              type="tel"
+              aria-invalid={touched.telephone && !!telephoneError}
+              aria-describedby={touched.telephone && telephoneError ? 'create-user-phone-error' : undefined}
+              onBlur={() => setTouched((prev) => ({ ...prev, telephone: true }))}
               onChange={(event) => {
                 setNewUser({
                   ...newUser,
@@ -180,6 +180,7 @@ function CreateNewUser() {
                 });
               }}
             />
+            {touched.telephone && telephoneError && <Text id="create-user-phone-error" color="status-critical" size="small">{telephoneError}</Text>}
 
             <TextInput
               placeholder="Address Line 1"
@@ -277,30 +278,28 @@ function CreateNewUser() {
               placeholder="Password"
               type="password"
               value={password}
+              aria-invalid={touched.password && !!passwordError}
+              aria-describedby={touched.password && passwordError ? 'create-user-password-error' : undefined}
+              onBlur={() => setTouched((prev) => ({ ...prev, password: true }))}
               onChange={(event) => {
-                const value = event.target.value;
-
-                setPassword(value);
-
-                // If the password changes, the existing confirmation
-                // is no longer necessarily valid.
-                setPasswordMatch(false);
-
-                setNewUser((prev) => ({
-                  ...prev,
-                  password: '',
-                }));
+                setPassword(event.target.value);
               }}
             />
+            {touched.password && passwordError && <Text id="create-user-password-error" color="status-critical" size="small">{passwordError}</Text>}
 
             <TextInput
               placeholder="Confirm Password"
               type="password"
+              value={confirmPassword}
+              aria-invalid={touched.confirm && !!confirmError}
+              aria-describedby={touched.confirm && confirmError ? 'create-user-confirm-error' : undefined}
+              onBlur={() => setTouched((prev) => ({ ...prev, confirm: true }))}
               onChange={(event) => {
-                validatePassword(event.target.value);
+                setConfirmPassword(event.target.value);
               }}
               disabled={!password}
             />
+            {touched.confirm && confirmError && <Text id="create-user-confirm-error" color="status-critical" size="small">{confirmError}</Text>}
           </Box>
 
           {statusMessage && (
@@ -316,7 +315,8 @@ function CreateNewUser() {
           <ActionButton secondary label="Reset" onClick={() => {
               setNewUser(requiredDetails);
               setPassword('');
-              setPasswordMatch(false);
+              setConfirmPassword('');
+              setTouched({ email: false, telephone: false, password: false, confirm: false });
               setStatusMessage(null);
               setShowValidationWarning(false);
             }} fixed />
@@ -362,4 +362,3 @@ function CreateNewUser() {
 }
 
 export default CreateNewUser;
-

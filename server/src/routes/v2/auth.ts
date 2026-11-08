@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
-//import { notify } from '../../notifications/service';
+import { notify } from '../../notifications/service';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
 import { sendEmail } from '../../email/service/emailService';
@@ -342,6 +342,12 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
   } finally {
     connection.release();
   }
+
+  await notify('user_registered', {
+    userId,
+    name: `${firstName} ${lastName}`.trim(),
+    email: normalizedEmail,
+  });
 
   try {
     await sendEmail({

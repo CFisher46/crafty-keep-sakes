@@ -27,6 +27,14 @@ const signed = (body: Buffer, url = config.webhookUrl, key = config.webhookSigna
 });
 
 describe('square provider', () => {
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('parseWebhook', () => {
     const provider = createSquareProvider(config);
 
@@ -63,6 +71,21 @@ describe('square provider', () => {
     it('rejects a correctly signed event that is not a payment', () => {
       const body = eventBody({ data: { object: {} } });
       expect(provider.parseWebhook(body, signed(body))).toBeNull();
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('"reason":"missing_event_id_or_payment_order_id"'));
+    });
+
+    it('logs signature and payload rejection reasons without logging sensitive values', () => {
+      const body = eventBody();
+      expect(provider.parseWebhook(body, {})).toBeNull();
+      expect(provider.parseWebhook(body, signed(body, config.webhookUrl, 'other-key'))).toBeNull();
+      const invalid = Buffer.from('not json');
+      expect(provider.parseWebhook(invalid, signed(invalid))).toBeNull();
+      const logs = (console.warn as jest.Mock).mock.calls.flat().join('\n');
+      expect(logs).toContain('"reason":"missing_signature"');
+      expect(logs).toContain('"reason":"signature_mismatch"');
+      expect(logs).toContain('"reason":"invalid_json"');
+      expect(logs).not.toContain(config.webhookSignatureKey);
+      expect(logs).not.toContain(body.toString());
     });
   });
 

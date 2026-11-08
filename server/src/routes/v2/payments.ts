@@ -5,6 +5,7 @@ import { verifyAuthToken } from '../../ts-common/middleware';
 import { getPaymentProvider, getPaymentProviderName, isPaymentsEnabled } from '../../payments';
 import { signMockPayload, MOCK_SIGNATURE_HEADER } from '../../payments/mockProvider';
 import { createPaymentForInvoice, processPaymentEvent } from '../../payments/service';
+import { warnPayment } from '../../payments/logging';
 
 const router = express.Router();
 
@@ -36,9 +37,10 @@ const readInvoice = async (invoiceId: number) => {
 // Called by the payment vendor, so there is no login. The signature is the only authentication.
 // app.ts parses this route as a raw body so the signature can be checked against the exact bytes.
 router.post('/webhook', async (req, res) => {
-  console.log('POST /api/v2/payments/webhook');
+  const providerName = getPaymentProviderName();
 
   if (!isPaymentsEnabled()) {
+    warnPayment('payments_disabled');
     res.status(404).json({ error: 'Payments are not enabled' });
     return;
   }
@@ -49,6 +51,9 @@ router.post('/webhook', async (req, res) => {
     const event = provider.parseWebhook(rawBody, req.headers);
 
     if (!event) {
+      if (provider.name !== 'square') {
+        warnPayment('invalid_signature_or_payload', { provider: provider.name });
+      }
       res.status(401).json({ error: 'Invalid signature' });
       return;
     }
@@ -57,14 +62,12 @@ router.post('/webhook', async (req, res) => {
     // Always acknowledge a valid event so the vendor does not keep retrying duplicates.
     res.json({ received: true, outcome });
   } catch (err) {
-    console.error('Payment Webhook Error:', err);
+    console.error('Payment Webhook Error:', providerName, err);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
 router.get('/status/:invoiceId', verifyAuthToken, async (req, res) => {
-  console.log(`GET /api/v2/payments/status/${req.params.invoiceId}`);
-
   try {
     const { id: userId, isAdmin } = getUser(req);
     const invoice = await readInvoice(Number(req.params.invoiceId));
@@ -95,8 +98,6 @@ router.get('/status/:invoiceId', verifyAuthToken, async (req, res) => {
 
 // Starts (or restarts) payment for an unpaid invoice, e.g. after an abandoned or failed attempt.
 router.post('/invoices/:id/pay', verifyAuthToken, async (req, res) => {
-  console.log(`POST /api/v2/payments/invoices/${req.params.id}/pay`);
-
   if (!isPaymentsEnabled()) {
     res.status(400).json({ error: 'Payments are not enabled' });
     return;
@@ -132,8 +133,6 @@ router.post('/invoices/:id/pay', verifyAuthToken, async (req, res) => {
 // Mock provider only: simulates the vendor's hosted page and webhook. It signs an event
 // and runs it through the same verification and processing as a real webhook.
 router.post('/mock/:ref/complete', verifyAuthToken, async (req, res) => {
-  console.log(`POST /api/v2/payments/mock/${req.params.ref}/complete`);
-
   if (getPaymentProviderName() !== 'mock') {
     res.status(404).json({ error: 'Not found' });
     return;

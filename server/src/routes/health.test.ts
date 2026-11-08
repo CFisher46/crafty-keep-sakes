@@ -40,5 +40,17 @@ describe('GET /health', () => {
     expect(response.status).toBe(503);
     expect(response.body).toEqual({ status: 'unavailable' });
     expect(JSON.stringify(response.body)).not.toContain('10.0.0.5');
+    expect(console.error).toHaveBeenCalledWith('HEALTH_DB_UNAVAILABLE');
+  });
+
+  it('returns 503 and logs a timeout code when the database does not respond', async () => {
+    mockDbQuery.mockImplementation(() => new Promise(() => {}));
+
+    const response = await request(app).get('/health');
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ status: 'unavailable' });
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(console.error).toHaveBeenCalledWith('HEALTH_DB_TIMEOUT');
   });
 });
