@@ -1,14 +1,19 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import request from 'supertest';
 
 const mockDb = {
   query: jest.fn(),
   getConnection: jest.fn(),
 };
+const mockSendEmail = jest.fn();
 
 jest.mock('../../ts-common/database', () => ({
   db: mockDb,
+}));
+jest.mock('../../email/service/emailService', () => ({
+  sendEmail: mockSendEmail,
 }));
 
 import app from '../../app';
@@ -18,6 +23,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 describe('v2 auth routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSendEmail.mockResolvedValue({ id: 'email-id' });
   });
 
   describe('POST /api/v2/auth/verify-password', () => {
@@ -76,17 +82,56 @@ describe('v2 auth routes', () => {
           .mockResolvedValueOnce([{ insertId: 9 }])
           .mockResolvedValueOnce([{}])
           .mockResolvedValueOnce([[{ id: 2 }]])
-          .mockResolvedValueOnce([{}]),
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{ insertId: 10 }]),
         commit: jest.fn(),
         rollback: jest.fn(),
         release: jest.fn(),
       };
       mockDb.getConnection.mockResolvedValue(connection);
+      mockDb.query.mockResolvedValue([{ affectedRows: 1 }]);
 
       const response = await request(app).post('/api/v2/auth/register').send(body);
 
       expect(response.status).toBe(201);
+      expect(response.body.verificationEmailSent).toBe(true);
       expect(connection.commit).toHaveBeenCalled();
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ email: body.email, from: 'verify' })
+      );
+      const tokenInsert = connection.query.mock.calls.find(([sql]) =>
+        String(sql).includes('INSERT INTO email_verification_tokens_v2')
+      );
+      expect(tokenInsert).toBeDefined();
+      expect(tokenInsert?.[1][1]).toMatch(/^[a-f0-9]{64}$/);
+      expect(mockDb.query.mock.calls[0][1][0]).toBe(tokenInsert?.[1][1]);
+    });
+
+    it('keeps the account and offers retry when delivery fails', async () => {
+      const connection = {
+        beginTransaction: jest.fn(),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([{ insertId: 9 }])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([[{ id: 2 }]])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{ insertId: 10 }]),
+        commit: jest.fn(),
+        rollback: jest.fn(),
+        release: jest.fn(),
+      };
+      mockDb.getConnection.mockResolvedValue(connection);
+      mockSendEmail.mockRejectedValue(new Error('provider unavailable'));
+
+      const response = await request(app).post('/api/v2/auth/register').send(body);
+
+      expect(response.status).toBe(201);
+      expect(response.body.verificationEmailSent).toBe(false);
+      expect(connection.commit).toHaveBeenCalled();
+      expect(connection.rollback).not.toHaveBeenCalled();
     });
 
     it('returns 409 for duplicate emails', async () => {
@@ -154,6 +199,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'John',
             last_name: 'Doe',
@@ -179,6 +225,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'inactive',
             first_name: 'John',
             last_name: 'Doe',
@@ -204,6 +251,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'locked',
             first_name: 'John',
             last_name: 'Doe',
@@ -229,6 +277,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'John',
             last_name: 'Doe',
@@ -268,6 +317,7 @@ describe('v2 auth routes', () => {
         id: 1,
         email: 'user@example.com',
         password_hash: hashedPassword,
+        email_verified: true,
         status: 'active',
         first_name: 'John',
         last_name: 'Doe',
@@ -306,6 +356,7 @@ describe('v2 auth routes', () => {
             id: 2,
             email: 'admin@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'Admin',
             last_name: 'User',
@@ -342,6 +393,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'John',
             last_name: 'Doe',
@@ -383,6 +435,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'John',
             last_name: 'Doe',
@@ -423,6 +476,7 @@ describe('v2 auth routes', () => {
             id: 99,
             email: 'admin@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'Admin',
             last_name: 'Person',
@@ -454,6 +508,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            email_verified: true,
             status: 'active',
             first_name: 'John',
             last_name: 'Doe',
@@ -474,6 +529,166 @@ describe('v2 auth routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.user.type).toBe('customer');
+    });
+
+    it('blocks unverified users before issuing an authentication cookie', async () => {
+      const hashedPassword = await bcrypt.hash('password123', 10);
+      mockDb.query.mockResolvedValueOnce([[
+        {
+          id: 21,
+          email: 'waiting@example.com',
+          password_hash: hashedPassword,
+          email_verified: false,
+          status: 'active',
+          first_name: 'Waiting',
+          last_name: 'User',
+          role_code: 'customer',
+        },
+      ]]);
+
+      const response = await request(app)
+        .post('/api/v2/auth/login')
+        .send({ email: 'waiting@example.com', password: 'password123' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.code).toBe('EMAIL_NOT_VERIFIED');
+      expect(response.headers['set-cookie']).toBeUndefined();
+    });
+  });
+
+  describe('POST /api/v2/auth/verify-email', () => {
+    const token = 'a'.repeat(64);
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const buildConnection = (rows: object[]) => ({
+      beginTransaction: jest.fn(),
+      query: jest.fn().mockResolvedValueOnce([rows]).mockResolvedValue([{}]),
+      commit: jest.fn(),
+      rollback: jest.fn(),
+      release: jest.fn(),
+    });
+
+    it('rejects malformed tokens without accessing the database', async () => {
+      const response = await request(app)
+        .post('/api/v2/auth/verify-email')
+        .send({ token: 'not-a-token' });
+
+      expect(response.status).toBe(400);
+      expect(mockDb.getConnection).not.toHaveBeenCalled();
+    });
+
+    it('verifies a valid token and marks it used in one transaction', async () => {
+      const connection = buildConnection([
+        { user_id: 7, used_at: null, is_expired: 0, email_verified: 0 },
+      ]);
+      mockDb.getConnection.mockResolvedValue(connection);
+
+      const response = await request(app)
+        .post('/api/v2/auth/verify-email')
+        .send({ token });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('verified');
+      expect(connection.query.mock.calls[0][1]).toEqual([tokenHash]);
+      expect(connection.query.mock.calls[1][0]).toContain(
+        'UPDATE users_v2 SET email_verified = 1'
+      );
+      expect(connection.query.mock.calls[2][0]).toContain(
+        'UPDATE email_verification_tokens_v2 SET used_at'
+      );
+      expect(connection.commit).toHaveBeenCalledTimes(1);
+      expect(connection.release).toHaveBeenCalledTimes(1);
+    });
+
+    it('returns an expired-link response without verifying the account', async () => {
+      const connection = buildConnection([
+        { user_id: 7, used_at: null, is_expired: 1, email_verified: 0 },
+      ]);
+      mockDb.getConnection.mockResolvedValue(connection);
+
+      const response = await request(app)
+        .post('/api/v2/auth/verify-email')
+        .send({ token });
+
+      expect(response.status).toBe(410);
+      expect(response.body.code).toBe('TOKEN_EXPIRED');
+      expect(connection.query).toHaveBeenCalledTimes(1);
+      expect(connection.rollback).toHaveBeenCalledTimes(1);
+    });
+
+    it('handles a link for an already verified account', async () => {
+      const connection = buildConnection([
+        { user_id: 7, used_at: expect.anything(), is_expired: 0, email_verified: 1 },
+      ]);
+      mockDb.getConnection.mockResolvedValue(connection);
+
+      const response = await request(app)
+        .post('/api/v2/auth/verify-email')
+        .send({ token });
+
+      expect(response.status).toBe(200);
+      expect(response.body.status).toBe('already_verified');
+      expect(connection.commit).toHaveBeenCalledTimes(1);
+      expect(connection.query).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('POST /api/v2/auth/resend-verification', () => {
+    const genericMessage =
+      'If an unverified account exists for that address, a verification email will be sent.';
+
+    it('returns the generic response for unknown addresses', async () => {
+      const connection = {
+        beginTransaction: jest.fn(),
+        query: jest.fn().mockResolvedValueOnce([[]]),
+        commit: jest.fn(),
+        rollback: jest.fn(),
+        release: jest.fn(),
+      };
+      mockDb.getConnection.mockResolvedValue(connection);
+
+      const response = await request(app)
+        .post('/api/v2/auth/resend-verification')
+        .send({ email: 'unknown@example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe(genericMessage);
+      expect(mockSendEmail).not.toHaveBeenCalled();
+      expect(connection.commit).toHaveBeenCalledTimes(1);
+    });
+
+    it('creates a replacement token and sends email for unverified users', async () => {
+      const connection = {
+        beginTransaction: jest.fn(),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([[
+            { id: 7, email: 'waiting@example.com', email_verified: 0, first_name: 'Waiting', last_name: 'User' },
+          ]])
+          .mockResolvedValueOnce([[]])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{ insertId: 12 }]),
+        commit: jest.fn(),
+        rollback: jest.fn(),
+        release: jest.fn(),
+      };
+      mockDb.getConnection.mockResolvedValue(connection);
+      mockDb.query.mockResolvedValue([{ affectedRows: 1 }]);
+
+      const response = await request(app)
+        .post('/api/v2/auth/resend-verification')
+        .send({ email: 'WAITING@example.com' });
+
+      expect(response.status).toBe(200);
+      expect(response.body.message).toBe(genericMessage);
+      expect(connection.commit).toHaveBeenCalledTimes(1);
+      await new Promise((resolve) => setImmediate(resolve));
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({ email: 'waiting@example.com', from: 'verify' })
+      );
+      const tokenInsert = connection.query.mock.calls.find(([sql]) =>
+        String(sql).includes('INSERT INTO email_verification_tokens_v2')
+      );
+      expect(tokenInsert?.[1][1]).toMatch(/^[a-f0-9]{64}$/);
     });
   });
 

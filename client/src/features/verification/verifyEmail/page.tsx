@@ -1,9 +1,10 @@
-import { Box, Button, Text, TextInput } from 'grommet';
+import { Box, Text, TextInput } from 'grommet';
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { ui } from '../../../helpers/theme';
 import { useAppDispatch } from '../../../store/hooks';
 import { resendVerificationEmail, verifyEmail } from '../../../store/verification/verificationThunks';
+import ActionButton from '../../landingPage/components/ActionButton';
 
 const cardStyle = {
   width: '100%',
@@ -108,10 +109,9 @@ function VerifyEmailPage() {
             <Text size="small" style={{ color: ui.muted }}>
               Your account is ready. Sign in to continue to Crafty Keepsakes.
             </Text>
-            <Button
+            <ActionButton
               label="Go to sign in"
               onClick={() => navigate('/Login')}
-              style={{ alignSelf: 'flex-start', borderRadius: 0, marginTop: '8px' }}
             />
           </Box>
         ) : (
@@ -139,10 +139,9 @@ function VerifyEmailPage() {
                   : 'The link may have expired or already been used. You can request a fresh verification email below.'}
               </Text>
               {status === 'ready' && (
-                <Button
+                <ActionButton
                   label="Verify email"
                   onClick={handleVerifyEmail}
-                  style={{ alignSelf: 'flex-start', borderRadius: 0, marginTop: '8px' }}
                 />
               )}
               {status === 'loading' && (
@@ -165,11 +164,11 @@ function VerifyEmailPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
               />
-              <Button
+              <ActionButton
                 label={resending ? 'Requesting…' : resendCooldown > 0 ? `Try again in ${resendCooldown}s` : 'Send a new link'}
                 onClick={handleResend}
                 disabled={resending || resendCooldown > 0 || !email.trim()}
-                style={{ alignSelf: 'flex-start', borderRadius: 0, marginTop: '4px' }}
+                fixed
               />
               {resendMessage && <Text size="small" style={{ color: ui.accent }}>{resendMessage}</Text>}
               {resendError && <Text size="small" color="status-critical">{resendError}</Text>}

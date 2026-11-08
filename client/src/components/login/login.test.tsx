@@ -236,6 +236,54 @@ describe('UserLogin', () => {
     });
   });
 
+  it('offers the resend-verification flow after an unverified login is rejected', async () => {
+    (global.fetch as jest.Mock)
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          message: 'If an unverified account exists for that address, a verification email will be sent.',
+        }),
+      });
+
+    renderWithProviders(
+      <Login />,
+      {
+        preloadedState: {
+          auth: { user: null, isLoggedIn: false },
+        },
+      }
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Username'), {
+      target: { value: 'user@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Password'), {
+      target: { value: 'password123' },
+    });
+    fireEvent.click(screen.getByText('Login'));
+
+    const resendButton = await screen.findByRole('button', {
+      name: 'Resend verification email',
+    });
+    fireEvent.click(resendButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('/api/v2/auth/resend-verification'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({ email: 'user@example.com' }),
+        })
+      );
+    });
+    expect(await screen.findByText(/If an unverified account exists/)).toBeInTheDocument();
+  });
+
   it('displays generic error message on network failure', async () => {
     (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 

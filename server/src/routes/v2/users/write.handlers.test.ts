@@ -137,6 +137,7 @@ describe('v2 users write routes', () => {
       .mockResolvedValueOnce([[{ id: 2 }]])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 77 }]);
 
     const response = await request(app)
@@ -156,7 +157,7 @@ describe('v2 users write routes', () => {
       affectedRows: 1,
     });
 
-    const auditValues = mockConnection.query.mock.calls[6][1] as Array<unknown>;
+    const auditValues = mockConnection.query.mock.calls[7][1] as Array<unknown>;
     expect(JSON.parse(String(auditValues[6]))).toMatchObject({
       id: 42,
       email_address: 'old@example.com',
@@ -174,10 +175,13 @@ describe('v2 users write routes', () => {
     });
 
     const updateSql = String(mockConnection.query.mock.calls[1][0]);
-    const auditSql = String(mockConnection.query.mock.calls[6][0]);
+    const auditSql = String(mockConnection.query.mock.calls[7][0]);
     expect(updateSql).toContain('UPDATE users_v2');
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('customer_profiles_v2');
     expect(String(mockConnection.query.mock.calls[3][0])).toContain('roles_v2');
+    expect(String(mockConnection.query.mock.calls[6][0])).toContain(
+      'UPDATE users_v2 SET email_verified = 1'
+    );
     expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 

@@ -358,6 +358,7 @@ describe('endpoint inventory', () => {
             id: 1,
             email: 'admin@example.com',
             password_hash: passwordHash,
+            email_verified: true,
             status: 'active',
             first_name: 'Ada',
             last_name: 'Lovelace',
