@@ -28,6 +28,7 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   const [resendError, setResendError] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
+  const [registering, setRegistering] = useState(false);
   const dispatch = useAppDispatch();
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [verificationEmailSent, setVerificationEmailSent] = useState(false);
@@ -38,6 +39,7 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   const [registering, setRegistering] = useState(false);
   const dispatch = useAppDispatch();
   const startedAt = useRef(Date.now());
+  const registrationInProgress = useRef(false);
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined;
@@ -117,8 +119,18 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
       }
 
       const result = await response.json();
+      if (typeof result.error === "string" && result.error) {
+        console.error("Registration returned an error with a successful status");
+        setError(result.error);
+        return;
+      }
+      if (typeof result.verificationEmailSent !== "boolean") {
+        console.error("Registration returned an unexpected response");
+        setError("Unable to confirm registration. Please try signing in or contact support.");
+        return;
+      }
       setRegisteredEmail(formValues.email.trim());
-      setVerificationEmailSent(result.verificationEmailSent === true);
+      setVerificationEmailSent(result.verificationEmailSent);
       setResendCooldown(60);
       const result = await response.json();
       if (typeof result.error === "string" && result.error) {
@@ -139,6 +151,9 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
     } catch (err) {
       console.error("Registration error:", err);
       setError("Registration failed. Please try again.");
+    } finally {
+      registrationInProgress.current = false;
+      setRegistering(false);
     }
   };
 

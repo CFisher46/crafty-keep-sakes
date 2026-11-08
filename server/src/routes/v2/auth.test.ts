@@ -23,11 +23,10 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 describe('v2 auth routes', () => {
   const originalFrontendUrl = process.env.FRONTEND_URL;
-
   beforeEach(() => {
     jest.clearAllMocks();
     mockSendEmail.mockResolvedValue({ id: 'email-id' });
-    mockSendEmail.mockResolvedValue({ id: 'email-id' });
+   mockSendEmail.mockResolvedValue({ id: 'email-id' });
   });
 
   afterEach(() => {
@@ -87,6 +86,7 @@ describe('v2 auth routes', () => {
     });
 
     it('creates a customer account', async () => {
+      process.env.FRONTEND_URL = 'https://dev.craftykeepsakes.uk/';
       process.env.FRONTEND_URL = 'https://dev.craftykeepsakes.uk/';
       const connection = {
         beginTransaction: jest.fn(),
@@ -153,7 +153,55 @@ describe('v2 auth routes', () => {
       expect(response.body.verificationEmailSent).toBe(true);
       expect(connection.commit).toHaveBeenCalled();
       expect(mockSendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ email: body.email, from: 'verify' })
+        expect.objectContaining({
+          email: body.email,
+          from: 'verify',
+          text: expect.stringMatching(
+            /https:\/\/dev\.craftykeepsakes\.uk\/verify-email\?token=[a-f0-9]{64}/
+          ),
+        })
+      );
+      const tokenInsert = connection.query.mock.calls.find(([sql]) =>
+        String(sql).includes('INSERT INTO email_verification_tokens_v2')
+      );
+      expect(tokenInsert).toBeDefined();
+      expect(tokenInsert?.[1][1]).toMatch(/^[a-f0-9]{64}$/);
+      expect(mockDb.query.mock.calls[0][1][0]).toBe(tokenInsert?.[1][1]);
+    });
+
+    it('keeps the account and offers retry when delivery fails', async () => {
+      const connection = {
+        beginTransaction: jest.fn(),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([{ insertId: 9 }])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([[{ id: 2 }]])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{ insertId: 10 }])
+          .mockResolvedValueOnce([{}])
+          .mockResolvedValueOnce([{ insertId: 10 }]),
+        commit: jest.fn(),
+        rollback: jest.fn(),
+        release: jest.fn(),
+      };
+      mockDb.getConnection.mockResolvedValue(connection);
+      mockDb.query.mockResolvedValue([{ affectedRows: 1 }]);
+
+      const response = await request(app).post('/api/v2/auth/register').send(body);
+
+      expect(response.status).toBe(201);
+      expect(response.body.verificationEmailSent).toBe(true);
+      expect(connection.commit).toHaveBeenCalled();
+      expect(mockSendEmail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: body.email,
+          from: 'verify',
+          text: expect.stringMatching(
+            /https:\/\/dev\.craftykeepsakes\.uk\/verify-email\?token=[a-f0-9]{64}/
+          ),
+        })
       );
       const tokenInsert = connection.query.mock.calls.find(([sql]) =>
         String(sql).includes('INSERT INTO email_verification_tokens_v2')
