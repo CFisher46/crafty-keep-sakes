@@ -8,6 +8,11 @@ import auditReducer from '../../store/audits/auditSlice';
 import productsReducer from '../../store/products/productsSlice';
 import reviewsReducer from '../../store/reviews/reviewsSlice';
 
+let mockSearch = '';
+jest.mock('react-router-dom', () => ({
+  useLocation: () => ({ search: mockSearch }),
+}), { virtual: true });
+
 const rootReducer = combineReducers({
   auth: authReducer,
   users: usersReducer,
@@ -27,6 +32,7 @@ const renderPage = () =>
 
 describe('AdminTools page', () => {
   beforeEach(() => {
+    mockSearch = '';
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => [],
@@ -88,5 +94,45 @@ describe('AdminTools page', () => {
 
     expect(screen.queryByText('Show Audit Table')).not.toBeInTheDocument();
     expect(screen.queryByText('Select a user to update')).not.toBeInTheDocument();
+  });
+
+  it('loads the user specified in a notification link', async () => {
+    mockSearch = '?user=9';
+    const user = { id: 9, first_name: 'Jane', last_name: 'Doe', email: 'jane@example.com' };
+    (global.fetch as jest.Mock).mockImplementation(async (url: string) => ({
+      ok: true,
+      json: async () => String(url).endsWith('/users/9') ? user : [user],
+    }));
+
+    renderPage();
+
+    expect(await screen.findByPlaceholderText('jane@example.com')).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/users/9'),
+      expect.objectContaining({ credentials: 'include' })
+    );
+    expect(screen.getByText('Select a user to update')).toBeInTheDocument();
+  });
+
+  it('shows an error when the linked user cannot be loaded', async () => {
+    mockSearch = '?user=9';
+    (global.fetch as jest.Mock).mockImplementation(async (url: string) =>
+      String(url).endsWith('/users/9')
+        ? { ok: false, status: 404, text: async () => 'User not found' }
+        : { ok: true, json: async () => [] }
+    );
+
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load this user');
+  });
+
+  it('rejects invalid linked user IDs without fetching them', async () => {
+    mockSearch = '?user=bad';
+    renderPage();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid user link');
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('/users/bad'),
+      expect.anything()
+    );
   });
 });

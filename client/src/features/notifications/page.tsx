@@ -63,7 +63,18 @@ function NotificationsPage() {
       }
 
       if (item.link) {
-        navigate(item.link);
+        const userId =
+          item.type === 'user_registered' &&
+          item.data !== null &&
+          typeof item.data === 'object' &&
+          'userId' in item.data
+            ? String(item.data.userId)
+            : '';
+        const link =
+          item.link.toLowerCase() === '/admin' && /^[1-9]\d*$/.test(userId)
+            ? `/Admin?user=${userId}`
+            : item.link;
+        navigate(link);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to mark this notification as read');

@@ -125,6 +125,7 @@ describe('notify', () => {
     );
     expect(inserts.map(([, params]) => params[0])).toEqual([1, 2]);
     expect(inserts[0][1][3]).toContain('j@x.com');
+    expect(inserts[0][1][4]).toBe('/Admin?user=9');
   });
 
   it('tells a user when an admin deactivates their account', async () => {

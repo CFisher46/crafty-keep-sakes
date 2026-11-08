@@ -66,7 +66,7 @@ export const notificationDefinitions: NotificationDefinitions = {
     build: ({ userId, name, email }) => ({
       title: 'New customer registered',
       body: `${name || 'A new customer'} (${email}) has created an account.`,
-      link: '/Admin',
+      link: `/Admin?user=${userId}`,
       data: { userId },
     }),
   },

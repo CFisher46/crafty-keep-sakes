@@ -1,3 +1,4 @@
+import { afterEach, describe, expect, it } from '@jest/globals';
 import { verificationFrontendUrl } from './verificationService';
 
 describe('verification frontend URL selection', () => {
