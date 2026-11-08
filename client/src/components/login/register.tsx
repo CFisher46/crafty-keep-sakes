@@ -4,6 +4,7 @@ import { ui } from "../../helpers/theme";
 import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useAppDispatch } from "../../store/hooks";
 import { resendVerificationEmail } from "../../store/verification/verificationThunks";
+import { isValidEmail, isValidPassword } from "../../helpers/userValidation";
 
 interface UserRegisterProps {
   onRegistered?: () => void;
@@ -17,8 +18,11 @@ const emptyForm = {
   confirm: "",
 };
 
+type RegisterField = keyof typeof emptyForm;
+
 function UserRegister({ onRegistered }: UserRegisterProps) {
   const [formValues, setFormValues] = useState(emptyForm);
+  const [touched, setTouched] = useState<Partial<Record<RegisterField, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [website, setWebsite] = useState("");
@@ -49,28 +53,23 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   };
   const inputStyle = { backgroundColor: "white", borderRadius: 0 };
 
-  const update = (field: keyof typeof emptyForm, value: string) =>
+  const update = (field: RegisterField, value: string) =>
     setFormValues((prev) => ({ ...prev, [field]: value }));
+
+  const normalizedEmail = formValues.email.trim();
+  const fieldErrors: Record<RegisterField, string> = {
+    first_name: formValues.first_name.trim() ? "" : "Enter your first name.",
+    last_name: formValues.last_name.trim() ? "" : "Enter your last name.",
+    email: isValidEmail(normalizedEmail) ? "" : "Enter a valid email address.",
+    password: isValidPassword(formValues.password) ? "" : "Password must be at least 8 characters.",
+    confirm: formValues.confirm && formValues.confirm === formValues.password ? "" : "Passwords must match.",
+  };
 
   const handleSubmit = async () => {
     if (registrationInProgress.current) return;
     setError(null);
-
-    if (
-      !formValues.first_name.trim() ||
-      !formValues.last_name.trim() ||
-      !formValues.email.trim() ||
-      !formValues.password
-    ) {
-      setError("Please complete all fields.");
-      return;
-    }
-    if (formValues.password.length < 8) {
-      setError("Password must be at least 8 characters.");
-      return;
-    }
-    if (formValues.password !== formValues.confirm) {
-      setError("Passwords do not match.");
+    setTouched({ first_name: true, last_name: true, email: true, password: true, confirm: true });
+    if (Object.values(fieldErrors).some(Boolean)) {
       return;
     }
 
@@ -83,9 +82,9 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            first_name: formValues.first_name,
-            last_name: formValues.last_name,
-            email: formValues.email,
+            first_name: formValues.first_name.trim(),
+            last_name: formValues.last_name.trim(),
+            email: normalizedEmail,
             password: formValues.password,
             website,
             started_at: startedAt.current,
@@ -110,7 +109,7 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
         setError("Unable to confirm registration. Please try signing in or contact support.");
         return;
       }
-      setRegisteredEmail(formValues.email.trim());
+      setRegisteredEmail(normalizedEmail);
       setVerificationEmailSent(result.verificationEmailSent);
       setResendCooldown(60);
       setFormValues(emptyForm);
@@ -145,20 +144,29 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
 
   const field = (
     label: string,
-    name: keyof typeof emptyForm,
+    name: RegisterField,
     placeholder: string,
     type = "text"
   ) => (
     <Box gap="xxsmall" flex>
-      <Text as="label" style={labelStyle}>{label}</Text>
+      <label htmlFor={`register-${name}`} style={labelStyle}>{label}</label>
       <TextInput
+        id={`register-${name}`}
         name={name}
         placeholder={placeholder}
         type={type}
         value={formValues[name]}
+        aria-invalid={Boolean(touched[name] && fieldErrors[name])}
+        aria-describedby={touched[name] && fieldErrors[name] ? `register-${name}-error` : undefined}
+        onBlur={() => setTouched((prev) => ({ ...prev, [name]: true }))}
         onChange={(e) => update(name, e.target.value)}
         style={inputStyle}
       />
+      {touched[name] && fieldErrors[name] && (
+        <Text id={`register-${name}-error`} size="small" color="status-critical">
+          {fieldErrors[name]}
+        </Text>
+      )}
     </Box>
   );
 
@@ -201,7 +209,7 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   }
 
   return (
-    <Form onSubmit={handleSubmit}>
+    <Form onSubmit={handleSubmit} noValidate>
       <Box gap="small">
         <input
           type="text"

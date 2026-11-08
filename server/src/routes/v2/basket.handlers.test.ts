@@ -49,6 +49,19 @@ describe('v2 basket routes', () => {
     expect(response.body).toEqual({ error: 'Not authenticated' });
   });
 
+  it('returns each basket item with its primary image, or null when none exists', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 12 }]])
+      .mockResolvedValueOnce([[
+        { id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set', image_path: '/images/tea.jpg' },
+        { id: 10, basket_id: 12, product_id: 26, quantity: 1, unit_price_snapshot: '3.00', product_name: 'Cup', image_path: null },
+      ]]);
+    const response = await request(app).get('/api/v2/basket').set('Cookie', authCookie(7, 'customer'));
+    expect(response.status).toBe(200);
+    expect(response.body.items.map((item: { image_path: string | null }) => item.image_path)).toEqual(['/images/tea.jpg', null]);
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain('ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.id ASC LIMIT 1');
+  });
+
   it('adds an item to the active basket for the authenticated customer', async () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ price: '12.50', on_sale: 0, sale_percent: 0 }]])

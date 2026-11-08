@@ -16,6 +16,7 @@ type BasketItemRecord = RowDataPacket & {
   quantity: number;
   unit_price_snapshot: string | number;
   product_name?: string;
+  image_path?: string | null;
 };
 
 type AuthenticatedUser = {
@@ -177,7 +178,10 @@ const readBasketItems = async (
 ): Promise<BasketItemRecord[]> => {
   const [rows] = await connection.query<RowDataPacket[]>(
     `SELECT bi.id, bi.basket_id, bi.product_id, bi.quantity, bi.unit_price_snapshot,
-            p.product_name
+            p.product_name,
+            (SELECT pi.image_path FROM product_images_v2 pi
+             WHERE pi.product_id = bi.product_id
+             ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.id ASC LIMIT 1) AS image_path
      FROM basket_items_v2 bi
      LEFT JOIN products_v2 p ON p.id = bi.product_id
      WHERE bi.basket_id = ?
@@ -194,6 +198,7 @@ const mapBasketItem = (item: BasketItemRecord) => ({
   product_id: Number(item.product_id),
   quantity: Number(item.quantity),
   product_name: item.product_name ?? `Product ${item.product_id}`,
+  image_path: item.image_path ?? null,
   unit_price: Number(item.unit_price_snapshot),
   line_total: toCurrency(Number(item.quantity) * Number(item.unit_price_snapshot)),
 });

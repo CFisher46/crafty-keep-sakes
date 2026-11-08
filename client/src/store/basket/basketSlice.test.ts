@@ -120,7 +120,7 @@ describe('basketSlice', () => {
     it('maps server items into basket items', () => {
       const payload = {
         items: [
-          { product_id: 5, product_name: 'Tea Set', quantity: 2, unit_price: 12.5 },
+          { product_id: 5, product_name: 'Tea Set', image_path: 'https://files.example/tea.jpg', quantity: 2, unit_price: 12.5 },
         ],
         total_items: 2,
       };
@@ -130,7 +130,7 @@ describe('basketSlice', () => {
       expect(state.items).toHaveLength(1);
       expect(state.items[0]).toEqual({
         id: '5',
-        image: '',
+        image: 'https://files.example/tea.jpg',
         product_name: 'Tea Set',
         price: 12.5,
         quantity: 2,
