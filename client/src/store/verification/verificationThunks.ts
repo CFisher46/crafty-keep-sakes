@@ -1,30 +1,58 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { Verification } from '../../types';
 import { buildApiUrl } from '../../api/apiPath';
 
-export const verifyEmail = createAsyncThunk<Verification, { token: string }>(
-    '/verifyEmail',
+export type VerificationResult = {
+  status: 'verified' | 'already_verified';
+  message: string;
+};
 
-    async ({ token }: { token: string }, { rejectWithValue }) => {
-        console.log('Verifying email with token:', token);
-        console.log('API URL:', buildApiUrl('auth', 'verify-email'));
+type ResendResult = { message: string };
 
-        try {
-            const res = await fetch(buildApiUrl('auth', 'verify-email'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token }),
-            });
+async function postAuthRequest<T>(
+  path: string,
+  body: Record<string, string>
+): Promise<{ data: T } | { error: string }> {
+  try {
+    const response = await fetch(buildApiUrl('auth', path), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data = (await response.json().catch(() => ({}))) as {
+      error?: string;
+    } & T;
 
-            if (!res.ok) {
-                const errorData = await res.json();
-                return rejectWithValue(errorData.error || 'Failed to verify email');
-            }
-
-            const data = await res.json();
-            return data;
-        } catch (error: any) {
-            return rejectWithValue(error.message || 'Network error');
-        }
+    if (!response.ok) {
+      return { error: data.error || 'The request could not be completed' };
     }
+    return { data };
+  } catch {
+    return { error: 'Network error. Please try again.' };
+  }
+}
+
+export const verifyEmail = createAsyncThunk<
+  VerificationResult,
+  { token: string },
+  { rejectValue: string }
+>(
+  'verification/verifyEmail',
+  async ({ token }, { rejectWithValue }) => {
+    const result = await postAuthRequest<VerificationResult>('verify-email', { token });
+    if ('error' in result) return rejectWithValue(result.error);
+    return result.data;
+  }
+);
+
+export const resendVerificationEmail = createAsyncThunk<
+  ResendResult,
+  { email: string },
+  { rejectValue: string }
+>(
+  'verification/resendEmail',
+  async ({ email }, { rejectWithValue }) => {
+    const result = await postAuthRequest<ResendResult>('resend-verification', { email });
+    if ('error' in result) return rejectWithValue(result.error);
+    return result.data;
+  }
 );

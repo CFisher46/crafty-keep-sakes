@@ -19,8 +19,8 @@ CREATE TABLE IF NOT EXISTS users_v2 (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at DATETIME NULL,
-  mail_verified TINYINT(1) NOT NULL DEFAULT 0,
-  email_verified_at DATETIME NULL
+  email_verified TINYINT(1) NOT NULL DEFAULT 0,
+  email_verified_at DATETIME NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_v2_email (email),
   KEY idx_users_v2_status (status)
@@ -36,20 +36,21 @@ CREATE TABLE IF NOT EXISTS user_roles_v2 (
   CONSTRAINT fk_user_roles_v2_role FOREIGN KEY (role_id) REFERENCES roles_v2(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE email_verification_tokens_v2 (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
+CREATE TABLE IF NOT EXISTS email_verification_tokens_v2 (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
     token_hash CHAR(64) NOT NULL,
     expires_at DATETIME NOT NULL,
     used_at DATETIME NULL,
+    sent_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE KEY uq_token_hash (token_hash),
     INDEX idx_user_id (user_id),
 
-    CONSTRAINT fk_verification_user
+    CONSTRAINT fk_email_verification_tokens_v2_user
         FOREIGN KEY (user_id)
-        REFERENCES users(id)
+        REFERENCES users_v2(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -364,4 +365,3 @@ CREATE TABLE IF NOT EXISTS reviews_v2 (
   star_count INT NOT NULL DEFAULT 1,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-

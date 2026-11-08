@@ -1,7 +1,9 @@
 import { Form, Box, Text, TextInput } from "grommet";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ui } from "../../helpers/theme";
 import ActionButton from "../../features/landingPage/components/ActionButton";
+import { useAppDispatch } from "../../store/hooks";
+import { resendVerificationEmail } from "../../store/verification/verificationThunks";
 
 interface UserRegisterProps {
   onRegistered?: () => void;
@@ -20,7 +22,23 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [website, setWebsite] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [verificationEmailSent, setVerificationEmailSent] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendError, setResendError] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const dispatch = useAppDispatch();
   const startedAt = useRef(Date.now());
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = window.setTimeout(
+      () => setResendCooldown((seconds) => Math.max(0, seconds - 1)),
+      1000
+    );
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   const labelStyle = {
     fontSize: "12px",
@@ -56,7 +74,7 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
 
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || ""}/api/auth/register`,
+        `${process.env.REACT_APP_API_URL || ""}/api/v2/auth/register`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -77,11 +95,34 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
         return;
       }
 
+      const result = await response.json();
+      setRegisteredEmail(formValues.email.trim());
+      setVerificationEmailSent(result.verificationEmailSent === true);
+      setResendCooldown(60);
       setFormValues(emptyForm);
       setSuccess(true);
     } catch (err) {
       console.error("Registration error:", err);
       setError("Registration failed. Please try again.");
+    }
+  };
+
+  const handleResend = async () => {
+    setResendMessage("");
+    setResendError("");
+    setResending(true);
+    try {
+      const result = await dispatch(
+        resendVerificationEmail({ email: registeredEmail })
+      ).unwrap();
+      setResendMessage(result.message);
+      setResendCooldown(60);
+    } catch (reason) {
+      setResendError(
+        typeof reason === "string" ? reason : "Unable to send a request. Please try again."
+      );
+    } finally {
+      setResending(false);
     }
   };
 
@@ -119,13 +160,24 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
           margin="none"
           style={{ fontFamily: ui.serif, fontWeight: 400, fontSize: "26px", color: ui.ink }}
         >
-          Your account is ready
+          {verificationEmailSent ? "Check your email" : "Your account is ready"}
         </Text>
         <Text size="small" style={{ color: ui.muted }}>
-          You can now sign in with your email and password.
+          {verificationEmailSent
+            ? `We sent a verification link to ${registeredEmail}. Verify your address before signing in.`
+            : `Your account was created, but we couldn't send the verification email to ${registeredEmail}. Request a new one below.`}
         </Text>
+        <Box gap="xsmall">
+          <ActionButton
+            label={resending ? "Requesting…" : resendCooldown > 0 ? `Try again in ${resendCooldown}s` : "Resend verification email"}
+            onClick={handleResend}
+            disabled={resending || resendCooldown > 0}
+          />
+          {resendMessage && <Text size="small" style={{ color: ui.accent }}>{resendMessage}</Text>}
+          {resendError && <Text size="small" color="status-critical">{resendError}</Text>}
+        </Box>
         <Box direction="row" margin={{ top: "xsmall" }}>
-          <ActionButton label="Sign In" onClick={() => onRegistered?.()} />
+          <ActionButton label="Back to Sign In" onClick={() => onRegistered?.()} />
         </Box>
       </Box>
     );

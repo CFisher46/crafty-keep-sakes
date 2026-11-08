@@ -8,7 +8,7 @@ import { JWT_SECRET } from '../../ts-common/jwt-secret';
 import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
 import { sendEmail } from '../../email/service/emailService';
 import VerifyEmail from '../../email/templates/VerifyEmail';
-import { generateVerificationToken } from '../../email/utils/verifyToken';
+import { createVerificationToken, hashVerificationToken } from '../../email/service/verificationService';
 //import { verify } from 'crypto';
 
 const router = express.Router();
@@ -113,7 +113,7 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
   }
 
   try {
-    const authUser = await findAuthUserByEmail(String(email));
+    const authUser = await findAuthUserByEmail(String(email).trim().toLowerCase());
 
     if (!authUser) {
       // Same work as a real check so response time does not reveal valid emails
@@ -154,10 +154,9 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
     };
 
     if (!(user.email_verified)) {
-      res.status(403).json({ error: 'Email not verified' });
+      res.status(403).json({ error: 'Email not verified', code: 'EMAIL_NOT_VERIFIED' });
       return;
     }
-    console.log('Email verified status:', user.email_verified);
 
     console.info('Auth login success', {
       user_id: user.id,
@@ -253,7 +252,7 @@ const logoutHandler: RequestHandler = (_req, res): void => {
   res.status(200).json({ message: 'Logged out successfully' });
 };
 
-const registerHandler: RequestHandler = async (req, res, next): Promise<void> => {
+const registerHandler: RequestHandler = async (req, res): Promise<void> => {
   const { email, password, first_name, last_name, website, started_at } = req.body as {
     website?: string;
     started_at?: number;
@@ -267,7 +266,7 @@ const registerHandler: RequestHandler = async (req, res, next): Promise<void> =>
   // Respond as if it worked so bots get no signal.
   const elapsed = Date.now() - Number(started_at);
   if (website || !Number.isFinite(elapsed) || elapsed < 2000) {
-    res.status(201).json({ message: 'Account created' });
+    res.status(201).json({ message: 'Account created', verificationEmailSent: true });
     return;
   }
 
@@ -286,7 +285,13 @@ const registerHandler: RequestHandler = async (req, res, next): Promise<void> =>
     return;
   }
 
+  const normalizedEmail = String(email).trim().toLowerCase();
+  const firstName = String(first_name).trim();
+  const lastName = String(last_name).trim();
   const connection = await db.getConnection();
+  let userId: number;
+  let verificationUrl: string;
+  let tokenHash: string;
 
   try {
     await connection.beginTransaction();
@@ -294,13 +299,13 @@ const registerHandler: RequestHandler = async (req, res, next): Promise<void> =>
     const hashedPassword = await bcrypt.hash(String(password), 10);
     const [accountResult] = await connection.query<ResultSetHeader>(
       'INSERT INTO users_v2 (email, password_hash, status) VALUES (?, ?, ?)',
-      [String(email).trim(), hashedPassword, 'active']
+      [normalizedEmail, hashedPassword, 'active']
     );
-    const userId = accountResult.insertId;
+    userId = accountResult.insertId;
 
     await connection.query(
       'INSERT INTO customer_profiles_v2 (user_id, first_name, last_name) VALUES (?, ?, ?)',
-      [userId, String(first_name).trim(), String(last_name).trim()]
+      [userId, firstName, lastName]
     );
 
     const [roleRows] = await connection.query<RowDataPacket[]>(
@@ -316,21 +321,15 @@ const registerHandler: RequestHandler = async (req, res, next): Promise<void> =>
       [userId, roleId]
     );
 
+    ({ verificationUrl, tokenHash } = await createVerificationToken(connection, userId));
 
     await connection.commit();
-    res.status(201).json({ message: 'Account created' });
-
-
-    await verifyEmailHandler({
-      body: {
-        userId: userId,
-        email: String(email).trim(),
-        name: `${String(first_name).trim()} ${String(last_name).trim()}`.trim(),
-      }
-    } as any, res, next)
-
   } catch (err) {
-    await connection.rollback();
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error('Registration rollback failed:', rollbackError);
+    }
 
     if ((err as { code?: string }).code === 'ER_DUP_ENTRY') {
       res.status(409).json({ error: 'An account with that email already exists' });
@@ -339,96 +338,203 @@ const registerHandler: RequestHandler = async (req, res, next): Promise<void> =>
 
     console.error('Register error:', err);
     res.status(500).json({ error: 'Internal server error' });
+    return;
   } finally {
     connection.release();
   }
 
+  try {
+    await sendEmail({
+      from: 'verify',
+      email: normalizedEmail,
+      subject: 'Verify your Crafty Keepsakes email',
+      template: VerifyEmail({
+        name: `${firstName} ${lastName}`.trim() || 'there',
+        verificationUrl,
+      }),
+      text: `Welcome to Crafty Keepsakes. Verify your email within 24 hours: ${verificationUrl}. If you did not create an account, you can ignore this email.`,
+    });
+    try {
+      await db.query(
+        'UPDATE email_verification_tokens_v2 SET sent_at = CURRENT_TIMESTAMP WHERE token_hash = ?',
+        [tokenHash]
+      );
+    } catch (err) {
+      console.error('Could not record verification email delivery:', err);
+    }
+    res.status(201).json({ message: 'Account created. Check your email to verify it.', verificationEmailSent: true });
+  } catch {
+    console.error('Verification email delivery failed after registration');
+    res.status(201).json({
+      message: 'Account created, but the verification email could not be sent. Please request another email.',
+      verificationEmailSent: false,
+    });
+  }
 };
 
-// Temporary send-only path: builds a verification link and emails it.
-// The token is not stored, so the link cannot confirm an account yet.
-const verifyEmailHandler: RequestHandler = async (req, res, next): Promise<void> => {
-  const { email, name, userId } = req.body as { email?: string; name?: string; userId?: number };
-  const recipient = String(email ?? '').trim();
+const verifyEmailTokenHandler: RequestHandler = async (req, res): Promise<void> => {
+  const token = (req.body as { token?: unknown } | undefined)?.token;
+  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) {
+    res.status(400).json({ error: 'A valid verification token is required', code: 'INVALID_TOKEN' });
+    return;
+  }
 
-  if (!recipient || !EMAIL_PATTERN.test(recipient)) {
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [rows] = await connection.query<RowDataPacket[]>(
+      `SELECT t.user_id, t.used_at, t.expires_at,
+              (t.expires_at <= CURRENT_TIMESTAMP) AS is_expired,
+              u.email_verified
+       FROM email_verification_tokens_v2 t
+       INNER JOIN users_v2 u ON u.id = t.user_id
+       WHERE t.token_hash = ?
+       FOR UPDATE`,
+      [hashVerificationToken(token)]
+    );
+    const record = rows[0];
+    if (!record) {
+      await connection.rollback();
+      res.status(400).json({ error: 'This verification link is invalid', code: 'INVALID_TOKEN' });
+      return;
+    }
+    if (record.email_verified) {
+      await connection.commit();
+      res.status(200).json({ status: 'already_verified', message: 'Email is already verified' });
+      return;
+    }
+    if (record.used_at) {
+      await connection.rollback();
+      res.status(400).json({ error: 'This verification link has already been used', code: 'TOKEN_USED' });
+      return;
+    }
+    if (record.is_expired) {
+      await connection.rollback();
+      res.status(410).json({ error: 'This verification link has expired', code: 'TOKEN_EXPIRED' });
+      return;
+    }
+
+    await connection.query(
+      'UPDATE users_v2 SET email_verified = 1, email_verified_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [record.user_id]
+    );
+    await connection.query(
+      'UPDATE email_verification_tokens_v2 SET used_at = CURRENT_TIMESTAMP WHERE token_hash = ? AND used_at IS NULL',
+      [hashVerificationToken(token)]
+    );
+    await connection.commit();
+    res.status(200).json({ status: 'verified', message: 'Email verified successfully' });
+  } catch (err) {
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error('Email verification rollback failed:', rollbackError);
+    }
+    console.error('Email verification failed:', err);
+    res.status(500).json({ error: 'Unable to verify this email right now' });
+  } finally {
+    connection.release();
+  }
+};
+
+const resendVerificationHandler: RequestHandler = async (req, res): Promise<void> => {
+  const rawEmail = (req.body as { email?: unknown }).email;
+  const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+  if (!EMAIL_PATTERN.test(email)) {
     res.status(400).json({ error: 'Please enter a valid email address' });
     return;
   }
 
-  if (!userId) {
-    res.status(400).json({ error: 'User ID is required' });
-    return;
-  }
-
-  const recipientName = String(name ?? '').trim() || 'there';
-  const { token } = generateVerificationToken();
-  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
-  const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
+  const genericResponse = {
+    message: 'If an unverified account exists for that address, a verification email will be sent.',
+  };
   const connection = await db.getConnection();
-
-  await connection.query(
-    'INSERT INTO email_verification_tokens_v2 (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)',
-    [userId, token, new Date(Date.now() + 3600 * 1000), new Date()]
-  );
+  let account: RowDataPacket | undefined;
+  let verificationUrl: string | undefined;
+  let tokenHash: string | undefined;
 
   try {
-    await sendEmail({
-      from: 'verify',
-      email: recipient,
-      subject: 'Verify your Crafty Keepsakes email',
-      template: VerifyEmail({ name: recipientName, verificationUrl }),
-    });
+    await connection.beginTransaction();
+    const [users] = await connection.query<RowDataPacket[]>(
+      `SELECT u.id, u.email, u.email_verified, cp.first_name, cp.last_name
+       FROM users_v2 u
+       LEFT JOIN customer_profiles_v2 cp ON cp.user_id = u.id
+       WHERE u.email = ?
+       LIMIT 1
+       FOR UPDATE`,
+      [email]
+    );
+    account = users[0];
 
-    res.status(200).json({ message: 'Verification email sent' })
-    console.log('Verification email sent to:', recipient);
+    if (!account || account.email_verified) {
+      await connection.commit();
+      res.status(200).json(genericResponse);
+      return;
+    }
+
+    const [recentSends] = await connection.query<RowDataPacket[]>(
+      `SELECT id
+       FROM email_verification_tokens_v2
+       WHERE user_id = ? AND created_at >= DATE_SUB(CURRENT_TIMESTAMP, INTERVAL 60 SECOND)
+       LIMIT 1`,
+      [account.id]
+    );
+    if (recentSends.length > 0) {
+      await connection.commit();
+      res.status(200).json(genericResponse);
+      return;
+    }
+
+    ({ verificationUrl, tokenHash } = await createVerificationToken(connection, Number(account.id)));
+    await connection.commit();
   } catch (err) {
-    console.error('Verify email send error:', err);
-    res.status(500).json({ error: 'Unable to send email' });
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error('Resend verification rollback failed:', rollbackError);
+    }
+    console.error('Could not prepare verification email:', err);
+    res.status(500).json({ error: 'Unable to process the request right now' });
+    return;
+  } finally {
+    connection.release();
   }
-};
 
-
-const verifyEmailTokenHandler: RequestHandler = async (req, res, next): Promise<void> => {
-  const { token } = req.body as { token?: string };
-  console.log('Verifying email token:', token);
-
-  const connection = await db.getConnection();
-
-  if (!token) {
-    res.status(400).json({ error: 'Token is required' });
+  if (!account || !verificationUrl || !tokenHash) {
+    console.error('Verification resend request completed without a prepared token');
+    res.status(500).json({ error: 'Unable to process the request right now' });
     return;
   }
 
-  // Implement token verification logic here
-  const [rows] = await connection.query(
-    'SELECT * FROM email_verification_tokens_v2 WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?',
-    [token, new Date()]
-  );
-
-  if ((rows as any[]).length === 0) {
-    res.status(400).json({ error: 'Invalid or expired token' });
-    return;
-  }
-
-  await connection.query(
-    'UPDATE email_verification_tokens_v2 SET used_at = ? WHERE token_hash = ?',
-    [new Date(), token]
-  );
-
-  await connection.query(
-    'UPDATE users_v2 SET email_verified_at = ?, email_verified = ? WHERE id = ?',
-    [new Date(), '1', (rows as any[])[0].user_id]
-  );
-  res.status(200).json({ message: 'Token verified' });
-  console.log('Email verified for user:', (rows as any[])[0].user_id);
-  await connection.release();
+  res.status(200).json(genericResponse);
+  void sendEmail({
+      from: 'verify',
+      email,
+      subject: 'Verify your Crafty Keepsakes email',
+      template: VerifyEmail({
+        name: `${account.first_name ?? ''} ${account.last_name ?? ''}`.trim() || 'there',
+        verificationUrl,
+      }),
+      text: `Verify your Crafty Keepsakes email within 24 hours: ${verificationUrl}. If you did not create an account, you can ignore this email.`,
+    }).then(async () => {
+      try {
+        await db.query(
+          'UPDATE email_verification_tokens_v2 SET sent_at = CURRENT_TIMESTAMP WHERE token_hash = ?',
+          [tokenHash]
+        );
+      } catch (err) {
+        console.error('Could not record resent verification email delivery:', err);
+      }
+    }).catch(() => {
+      console.error('Verification email resend failed');
+    });
 };
 
 router.post('/login', loginHandler);
 router.post('/register', registerHandler);
 router.get('/me', meHandler);
 router.post('/verify-email', verifyEmailTokenHandler);
+router.post('/resend-verification', resendVerificationHandler);
 router.post('/verify-password', verifyAuthToken, verifyPasswordHandler);
 router.post('/logout', logoutHandler);
 

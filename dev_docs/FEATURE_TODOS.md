@@ -60,6 +60,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS a CUSTOMER when i register for a user account, I WANT an EMAIL with a a VERIFY link to activate my account
     -   AS an ADMIN, I WANT to put an extra layer of security onto my uder resitration journey AND restrict login UNTIL the user has verified their email address.
     -   AS an ADMIN, I WANT the email feature to be scalable so it can but used for INVOICES, NOTIFICATION and NEWSLETTERS so should support a multi template modal.
+    - Notes: Registration verification is implemented with Resend email templates, hashed 24-hour single-use tokens, resend cooldown/rate limiting, and customer-facing verification states. Still open for provider/DNS/database deployment verification, end-to-end delivery, automated tests, and future invoice/notification/newsletter templates.
 
 
 ## Enhancements

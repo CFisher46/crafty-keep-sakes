@@ -139,7 +139,7 @@ All routes are under `/api/v2` and use the auth cookie. Unless noted, they need 
 
 | Area | Base path | Notes |
 |---|---|---|
-| Auth | `/auth` | Login, register, `me`, logout, verify password. Login also records `last_login_at` |
+| Auth | `/auth` | Login, register, `me`, logout, verify password, verify email, and resend verification. Login also records `last_login_at` and blocks unverified accounts |
 | Products | `/products` | Public read, admin write, image upload |
 | Users | `/users` | Profile access, admin management |
 | Payments | `/payments` | `/webhook` (vendor, signature-verified), `/status/:invoiceId`, `/invoices/:id/pay` |
@@ -164,18 +164,18 @@ The API is moving from a NAS to Railway. The full plan, status and cutover steps
 | Images | MinIO bucket on Railway, served from `files.craftykeepsakes.uk` |
 
 - **Railway:** built from `server/Dockerfile` with `railway.json` (pre-deploy schema script, health check at `/health`). It deploys manually from `main`. Set `ORIGIN_SECRET` and a matching Cloudflare Transform Rule that adds the `X-Origin-Secret` header, so the API only accepts traffic that came through Cloudflare. `/health` and the Square webhook paths are exempt.
-- **Environment:** see `server/.env.example` for the variables (database, `JWT_SECRET`, `CORS_ORIGIN`, `CLIENT_URL`, `MINIO_*`, `ORIGIN_SECRET`, `SQUARE_*`). `CORS_ORIGIN` takes a comma-separated list with no trailing slashes.
+- **Environment:** see `server/.env.example` for the variables (database, `JWT_SECRET`, `CORS_ORIGIN`, `CLIENT_URL`, `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `FRONTEND_URL`, `MINIO_*`, `ORIGIN_SECRET`, `SQUARE_*`). Keep the Resend key on the server only. `CORS_ORIGIN` takes a comma-separated list with no trailing slashes.
 - **Local development:** `npm run dev` uses `server/.env`. `npm run dev:railway` loads `server/.env.railway` (copy `server/.env.railway.example`) to test against Railway. The server refuses a non-local `DB_HOST` outside production unless `ALLOW_REMOTE_DB=1`.
 - **Release flow:** build on a feature branch, merge it into `dev` to test on `dev.craftykeepsakes.uk` (a Preview build that calls Railway directly), then merge the feature branch into `main` by PR. Do not merge `dev` into `main`, and merge `main` back into `dev` afterwards. The login cookie is `SameSite=Strict`, so test sites must sit under `craftykeepsakes.uk`, not `*.vercel.app`.
 - **NAS (until cutover):** the API runs as a Docker image behind a Cloudflare Tunnel (`docker-compose.nas.yml`, whose header lists the build, push and `docker compose up` commands). It needs the database settings, `JWT_SECRET`, `CORS_ORIGIN` and `TUNNEL_TOKEN`.
 
 ## Database schema recovery
 
-Reset or restore the v2 schema by running the bootstrap script from the project root:
+Apply or restore the v2 schema using the configured backend environment:
 
-- `mysql -u <user> -p <database> < server/scripts/migrations/phase1_schema_v2.sql`
+- `cd server && npm run db:apply-schema`
 
-The bootstrap is a single script that creates every v2 table (users and roles, products, baskets, orders, invoices and payments, notifications, blog, reviews, audit, and the view-tracking tables that drive NEW and Updated highlights). It uses `CREATE TABLE IF NOT EXISTS`, so it is safe to re-run, but it does not alter tables that already exist. When a new column or table is added, the script is updated and existing databases need that change applied by hand.
+The bootstrap creates every v2 table (users and roles, products, baskets, orders, invoices and payments, notifications, blog, reviews, audit, and the view-tracking tables that drive NEW and Updated highlights). It also applies the email-verification column and token-table upgrades idempotently and marks admin-role accounts verified. Other existing-table changes still need to be migrated explicitly. The Railway pre-deploy runs this same script.
 
 ## Create an admin user (manual DB insert)
 

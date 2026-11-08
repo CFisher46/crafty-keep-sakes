@@ -62,8 +62,10 @@ async function main() {
   const town = args.town || '';
   const county = args.county || '';
   const postcode = args.postcode || '';
+  const verificationValues =
+    role === 'admin' ? '1, CURRENT_TIMESTAMP' : '0, NULL';
 
-  const sql = `START TRANSACTION;\n\nINSERT INTO users_v2 (email, password_hash, status)\nVALUES ('${sqlEscape(email)}', '${sqlEscape(passwordHash)}', '${sqlEscape(status)}');\n\nSET @new_user_id = LAST_INSERT_ID();\n\nINSERT INTO user_roles_v2 (user_id, role_id)\nSELECT @new_user_id, id FROM roles_v2 WHERE code = '${sqlEscape(role)}';\n\nINSERT INTO customer_profiles_v2 (user_id, first_name, last_name, telephone, address_line1, address_line2, address_line3, town, county, postcode)\nVALUES (@new_user_id, '${sqlEscape(firstName)}', '${sqlEscape(lastName)}', '${sqlEscape(telephone)}', '${sqlEscape(address1)}', '${sqlEscape(address2)}', '${sqlEscape(address3)}', '${sqlEscape(town)}', '${sqlEscape(county)}', '${sqlEscape(postcode)}');\n\nCOMMIT;`;
+  const sql = `START TRANSACTION;\n\nINSERT INTO users_v2 (email, password_hash, status, email_verified, email_verified_at)\nVALUES ('${sqlEscape(email)}', '${sqlEscape(passwordHash)}', '${sqlEscape(status)}', ${verificationValues});\n\nSET @new_user_id = LAST_INSERT_ID();\n\nINSERT INTO user_roles_v2 (user_id, role_id)\nSELECT @new_user_id, id FROM roles_v2 WHERE code = '${sqlEscape(role)}';\n\nINSERT INTO customer_profiles_v2 (user_id, first_name, last_name, telephone, address_line1, address_line2, address_line3, town, county, postcode)\nVALUES (@new_user_id, '${sqlEscape(firstName)}', '${sqlEscape(lastName)}', '${sqlEscape(telephone)}', '${sqlEscape(address1)}', '${sqlEscape(address2)}', '${sqlEscape(address3)}', '${sqlEscape(town)}', '${sqlEscape(county)}', '${sqlEscape(postcode)}');\n\nCOMMIT;`;
 
   console.log(sql);
 }

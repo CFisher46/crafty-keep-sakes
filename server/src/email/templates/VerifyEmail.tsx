@@ -1,65 +1,40 @@
 import {
-  Html,
-  Head,
-  Preview,
-  Body,
-  Container,
-  Heading,
   Text,
   Button,
-  Hr
 } from 'react-email';
+import EmailLayout from '../components/EmailLayout';
+import EmailHeader from '../components/EmailHeader';
+import EmailFooter from '../components/EmailFooter';
 
 interface VerifyEmailProps {
   name: string;
   verificationUrl: string;
 }
 
+const colors = {
+  muted: '#6F675F',
+  accent: '#5E7060',
+};
+
 export default function VerifyEmail({
   name,
   verificationUrl
 }: VerifyEmailProps) {
   return (
-    <Html>
-      <Head />
-      <Preview>Verify your Crafty Keepsakes account</Preview>
-
-      <Body style={{
-        backgroundColor: '#f5f5f5',
-        fontFamily: 'Arial, sans-serif'
-      }}>
-        <Container style={{
-          backgroundColor: '#ffffff',
-          padding: '32px',
-          margin: '30px auto',
-          borderRadius: '8px',
-          maxWidth: '500px'
-        }}>
-
-          <Heading style={{
-            color: '#333333',
-            textAlign: 'center'
-          }}>
-            Welcome to Crafty Keepsakes!
-          </Heading>
-
+    <EmailLayout preview="Verify your Crafty Keepsakes account">
+          <EmailHeader />
+          <Text>Hi {name},</Text>
           <Text>
-            Hi {name},
-          </Text>
-
-          <Text>
-            Thanks for creating an account with us.
-            Before you can get started, we just need
-            to verify your email address.
+            Thanks for creating an account with us. Before you can get started, please verify your email address.
           </Text>
 
           <Button
             href={verificationUrl}
             style={{
-              backgroundColor: '#333333',
+              backgroundColor: colors.accent,
               color: '#ffffff',
               padding: '14px 24px',
-              borderRadius: '6px',
+              borderRadius: '2px',
               textDecoration: 'none',
               display: 'block',
               textAlign: 'center'
@@ -68,23 +43,9 @@ export default function VerifyEmail({
             Verify my email
           </Button>
 
-          <Text>
-            This link will expire in 24 hours.
-          </Text>
-
-          <Hr />
-
-          <Text style={{
-            color: '#888888',
-            fontSize: '12px'
-          }}>
-            If you didn't create an account with
-            Crafty Keepsakes, you can safely ignore
-            this email.
-          </Text>
-
-        </Container>
-      </Body>
-    </Html>
+          <Text>This link will expire in 24 hours. If the button does not work, copy and paste this link:</Text>
+          <Text style={{ color: colors.muted, fontSize: '12px', wordBreak: 'break-all' }}>{verificationUrl}</Text>
+          <EmailFooter />
+    </EmailLayout>
   );
 }

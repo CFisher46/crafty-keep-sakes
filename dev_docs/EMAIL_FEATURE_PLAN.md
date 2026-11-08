@@ -10,10 +10,26 @@ Railway, MySQL, React Email templates, and the Vercel frontend.
 database changes 3. Express backend implementation 4. React Email
 templates 5. React frontend implementation 6. Testing and deployment
 
+## Repository implementation review
+
+The application code now supports registration with a hashed, single-use
+24-hour verification token; transactional verification; generic resend
+responses with a 60-second per-account cooldown and request rate limit;
+login blocking for unverified accounts; and styled registration,
+verification and resend experiences. The schema bootstrap also repairs
+the existing verification columns and token-table foreign key, and marks
+pre-existing admin accounts verified when adding the verification
+status.
+
+Still requires deployment/provider access: verify Railway credentials
+and frontend URL, configure and verify the Resend domain and DNS records,
+confirm the production database migration ran, and complete an end-to-end
+delivery check. Automated tests are intentionally left for a later pass.
+
 > **Existing users:** Existing accounts are currently administrative
-> accounts, and the application is not yet fully public. Existing users
-> will be migrated manually and marked as verified as part of the
-> database migration. New registrations will default to unverified.
+> accounts, and the application is not yet fully public. The schema
+> bootstrap marks existing admin-role accounts verified when it adds
+> the verification status. New registrations default to unverified.
 
 ------------------------------------------------------------------------
 
@@ -64,50 +80,54 @@ FRONTEND_URL=https://craftykeepsakes.uk
 
 ## Stage 2 -- MySQL database changes
 
-### 2.1 Extend the existing users table
+### 2.1 Extend the existing `users_v2` table
 
 Add the verification status and timestamp:
 
 ``` sql
-ALTER TABLE users
+ALTER TABLE users_v2
 ADD COLUMN email_verified TINYINT(1) NOT NULL DEFAULT 0,
 ADD COLUMN email_verified_at DATETIME NULL;
 ```
 
 -   [ ] Confirm the actual users table and primary-key names before
-    running the migration.
+    running the migration. (Confirmed as `users_v2.id` in this codebase.)
 -   [ ] Add `email_verified`, defaulting to `0` for new accounts.
 -   [ ] Add nullable `email_verified_at`.
--   [ ] Manually migrate existing administrative accounts to verified
-    status.
+-   [x] Mark admin-role accounts verified in the idempotent schema
+    bootstrap.
 -   [ ] Confirm existing admin accounts retain access after the
     migration.
 
 Example migration for existing trusted accounts (adjust the condition to
-match the actual admin role field and values):
+match the actual admin role field and values). The schema bootstrap
+performs this update when it adds `email_verified`:
 
 ``` sql
-UPDATE users
-SET email_verified = 1,
-    email_verified_at = CURRENT_TIMESTAMP
-WHERE role_code = 'admin';
+UPDATE users_v2 u
+JOIN user_roles_v2 ur ON ur.user_id = u.id
+JOIN roles_v2 r ON r.id = ur.role_id
+SET u.email_verified = 1,
+    u.email_verified_at = CURRENT_TIMESTAMP
+WHERE r.code = 'admin';
 ```
 
 Only run the update after confirming the role column and exact admin
 value used by the application.
 
-### 2.2 Create the verification token table
+### 2.2 Create the `email_verification_tokens_v2` table
 
-Create `email_verification_tokens` to store hashed, temporary
+Create `email_verification_tokens_v2` to store hashed, temporary
 verification tokens:
 
 ``` sql
-CREATE TABLE email_verification_tokens (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
+CREATE TABLE email_verification_tokens_v2 (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
     token_hash CHAR(64) NOT NULL,
     expires_at DATETIME NOT NULL,
     used_at DATETIME NULL,
+    sent_at DATETIME NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE KEY uq_token_hash (token_hash),
@@ -115,17 +135,17 @@ CREATE TABLE email_verification_tokens (
 
     CONSTRAINT fk_verification_user
         FOREIGN KEY (user_id)
-        REFERENCES users(id)
+        REFERENCES users_v2(id)
         ON DELETE CASCADE
 );
 ```
 
-> Adjust `users(id)` and the `user_id` type to match the existing user
-> primary key exactly. If the user ID is not a `BIGINT`, use the
-> matching type.
+The deployment schema bootstrap repairs the existing table's foreign
+key and ID type if needed. Legacy raw tokens are invalidated during that
+repair so customers can safely request new links.
 
--   [-] Create the table.
--   [-] Add the foreign key and indexes.
+-   [x] Create the table.
+-   [x] Add the foreign key and indexes.
 -   [ ] Confirm deleting a user removes associated verification tokens.
 -   [ ] Test inserting and retrieving a token record.
 -   [ ] Test expiry and used-token handling.
@@ -141,7 +161,7 @@ CREATE TABLE email_verification_tokens (
     rendering.
 -   [-] Configure the backend TypeScript build to support `.tsx` email
     templates.
--   [ ] Confirm the production build includes the email templates
+-   [x] Confirm the TypeScript build includes the email templates
     correctly.
 
 Example:
@@ -156,30 +176,27 @@ different major versions.
 
 ### 3.2 Create the email service
 
-Suggested file: `src/services/emailService.tsx`
+Implemented at `server/src/email/service/emailService.tsx`.
 
--   [-] Initialise the Resend SDK using `RESEND_API_KEY`.
--   [-] Create a reusable `sendVerificationEmail()` function.
--   [-] Accept recipient email, recipient name and verification URL as
-    parameters.
--   [-] Send using `verify@craftykeepsakes.uk`.
--   [ ] Handle and log provider errors safely without logging tokens or
-    sensitive data.
--   [ ] Keep email delivery separate from authentication controllers.
+-   [x] Initialise Resend from `RESEND_API_KEY`.
+-   [x] Expose a reusable `sendEmail()` function accepting sender,
+    recipient, subject, React template and plain-text alternative.
+-   [x] Keep email delivery separate from the authentication handlers.
+-   [x] Log provider error types without logging tokens or message content.
 
 ### 3.3 Create the verification service
 
-Suggested file: `src/services/verificationService.ts`
+Implemented at `server/src/email/service/verificationService.ts`.
 
 -   [-] Generate secure random tokens using Node.js
     `crypto.randomBytes(32)`.
--   [ ] Hash tokens using SHA-256.
--   [ ] Store only the hash in MySQL; never store the raw token.
+-   [x] Hash tokens using SHA-256.
+-   [x] Store only the hash in MySQL; never store the raw token.
 -   [-] Set token expiry to 24 hours.
--   [ ] Invalidate previous outstanding tokens when generating a
+-   [x] Invalidate previous outstanding tokens when generating a
     replacement.
 -   [-] Construct the verification URL using `FRONTEND_URL`.
--   [ ] Keep token creation and persistence logic reusable.
+-   [x] Keep token creation and persistence logic reusable.
 
 ### 3.4 Update the registration API
 
@@ -189,12 +206,12 @@ Existing endpoint: `POST /api/v2/auth/register`
 -   [-] Create new users with `email_verified = 0`.
 -   [-] Create the user and initial verification-token record in a
     database transaction where appropriate.
--   [ ] Generate and store the verification token hash.
+-   [x] Generate and store the verification token hash.
 -   [-] Construct the verification URL.
 -   [-] Send the verification email.
--   [ ] Handle email delivery failures so a temporary provider outage
+-   [x] Handle email delivery failures so a temporary provider outage
     does not leave the user unable to retry.
--   [ ] Return a suitable response telling the user to check their
+-   [x] Return a suitable response telling the user to check their
     email.
 
 Consider separating account creation from email delivery: if Resend is
@@ -205,49 +222,47 @@ request another verification email rather than losing the registration.
 
 Endpoint: `POST /api/v2/auth/verify-email`
 
--   [ ] Accept the raw token from the frontend.
--   [ ] Validate that the token is present and correctly formatted.
--   [ ] Hash the submitted token using SHA-256.
+-   [x] Accept the raw token from the frontend.
+-   [x] Validate that the token is present and correctly formatted.
+-   [x] Hash the submitted token using SHA-256.
 -   [-] Find the matching token record.
--   [ ] Check that it has not expired.
--   [ ] Check that it has not already been used.
--   [-] Update `users.email_verified` to `1`.
--   [-] Set `users.email_verified_at` to the current timestamp.
--   [-] Set `email_verification_tokens.used_at` to the current
+-   [x] Check that it has not expired.
+-   [x] Check that it has not already been used.
+-   [-] Update `users_v2.email_verified` to `1`.
+-   [-] Set `users_v2.email_verified_at` to the current timestamp.
+-   [-] Set `email_verification_tokens_v2.used_at` to the current
     timestamp.
--   [ ] Perform the verification and token-use updates in one database
+-   [x] Perform the verification and token-use updates in one database
     transaction.
--   [ ] Return clear success, invalid-token and expired-token responses.
--   [ ] Handle already-verified accounts gracefully.
+-   [x] Return clear success, invalid-token and expired-token responses.
+-   [x] Handle already-verified accounts gracefully.
 
 ### 3.6 Create the resend-verification API
 
-Endpoint: `POST /api/v2/auth/verify-email`
+Endpoint: `POST /api/v2/auth/resend-verification`
 
 -   [-] Accept the user's email address.
--   [ ] Check whether the account is already verified.
--   [ ] Generate a replacement token and hash.
--   [ ] Invalidate previous outstanding tokens.
+-   [x] Check whether the account is already verified.
+-   [x] Generate a replacement token and hash.
+-   [x] Invalidate previous outstanding tokens.
 -   [-] Store the new token record.
--   [ ] Send a replacement email.
--   [ ] Add rate limiting and a resend cooldown (for example, 60
-    seconds).
--   [ ] Return a generic response that does not reveal whether an email
+-   [x] Send a replacement email.
+-   [x] Add rate limiting and a 60-second per-account resend cooldown.
+-   [x] Return a generic response that does not reveal whether an email
     address has an account.
--   [ ] Ensure email delivery failures can be retried safely.
+-   [x] Ensure email delivery failures can be retried safely.
 
 ### 3.7 Authentication and access control
 
--   [ ] Include `email_verified` in the existing login response.
--   [ ] Include `email_verified` in the existing `/auth/me` response.
--   [ ] Update authentication middleware or protected-route middleware
-    to enforce verification where required.
--   [ ] Keep authentication status, account verification and
+-   [x] Include `email_verified` in the signed-in user payload returned
+    by login and `/auth/me`.
+-   [x] Login rejects unverified accounts and auth middleware rejects
+    tokens that explicitly carry an unverified status.
+-   [x] Keep authentication status, account verification and
     role/permission checks as separate concepts.
--   [ ] Allow unverified users to reach the limited functionality needed
+-   [x] Allow unverified users to reach the limited functionality needed
     to verify their address or request another email.
--   [ ] Ensure admin access continues to work for the manually migrated
-    verified admin accounts.
+-   [x] Keep existing admin accounts verified during the schema upgrade.
 
 ------------------------------------------------------------------------
 
@@ -268,15 +283,15 @@ emails/
 └── emailService.tsx
 ```
 
--   [ ] Create a shared email layout.
--   [ ] Incorporate Crafty Keepsakes branding, logo and brand colours.
+-   [x] Create a shared email layout.
+-   [x] Incorporate Crafty Keepsakes branding and brand colours.
 -   [-] Create `VerifyEmail.tsx`.
 -   [-] Include a personalised greeting.
 -   [-] Include a prominent verification button using the supplied
     verification URL.
 -   [-] Include the 24-hour expiry information.
--   [ ] Explain what to do if the recipient did not create an account.
--   [ ] Ensure the email has a useful plain-text alternative.
+-   [x] Explain what to do if the recipient did not create an account.
+-   [x] Ensure the email has a useful plain-text alternative.
 -   [-] Test rendering and delivery in Gmail and Outlook, on desktop and
     mobile.
 
@@ -290,13 +305,13 @@ frontend.
 
 ### 5.1 Registration flow
 
--   [ ] Update registration success handling.
--   [ ] Display a message explaining that email verification is
+-   [x] Update registration success handling.
+-   [x] Display a message explaining that email verification is
     required.
--   [ ] Display the email address the verification message was sent to,
+-   [x] Display the email address the verification message was sent to,
     where appropriate.
--   [ ] Provide an option to resend the verification email.
--   [ ] Handle the case where account creation succeeds but email
+-   [x] Provide an option to resend the verification email.
+-   [x] Handle the case where account creation succeeds but email
     delivery is temporarily unavailable.
 
 ### 5.2 Verification page
@@ -307,36 +322,38 @@ Create a React route:
 /verify-email
 ```
 
--   [ ] Extract the token from the query string.
--   [ ] Submit the token to `POST /api/v2/auth/verify-email`.
--   [ ] Display a loading state while verification is processed.
--   [ ] Display successful verification.
--   [ ] Display expired or invalid-link messages.
--   [ ] Handle already-verified accounts.
--   [ ] Remove the token from the visible URL and browser history after
+-   [x] Extract the token from the query string.
+-   [x] Submit the token to `POST /api/v2/auth/verify-email`.
+-   [x] Display a loading state while verification is processed.
+-   [x] Display successful verification.
+-   [x] Display expired or invalid-link messages.
+-   [x] Handle already-verified accounts.
+-   [x] Remove the token from the visible URL and browser history after
     extracting it.
--   [ ] Avoid loading third-party analytics or scripts while the token
+-   [x] Avoid loading third-party analytics or scripts while the token
     remains in the URL.
--   [ ] Provide a route back to login.
+-   [x] Provide a route back to login.
 
 ### 5.3 Unverified-account experience
 
--   [ ] Create a clear verification-required screen or message.
--   [ ] Explain that the account needs email verification.
--   [ ] Provide a resend-verification action.
--   [ ] Display resend cooldown and success/failure feedback.
--   [ ] Ensure the user can still access the verification flow without
+-   [x] Create a clear verification-required message at login.
+-   [x] Explain that the account needs email verification.
+-   [x] Provide a resend-verification action.
+-   [x] Display resend cooldown and success/failure feedback.
+-   [x] Ensure the user can still access the verification flow without
     being trapped by protected-route redirects.
 
 ### 5.4 Redux and route protection
 
 -   [ ] Extend the existing Redux authentication state if necessary to
     include `email_verified`.
--   [ ] Update login and `/auth/me` response handling.
--   [ ] Update frontend route guards to reflect verification status.
--   [ ] Do not rely on frontend checks alone; the Express backend must
+-   [x] Keep login and `/auth/me` response handling aligned with the
+    signed user payload.
+-   [x] Rely on the backend login and middleware checks for access
+    enforcement rather than frontend checks alone.
+-   [x] Do not rely on frontend checks alone; the Express backend must
     enforce access restrictions.
--   [ ] Preserve existing role-based customer/admin permissions.
+-   [x] Preserve existing role-based customer/admin permissions.
 
 ------------------------------------------------------------------------
 

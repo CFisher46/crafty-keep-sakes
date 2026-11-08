@@ -45,6 +45,13 @@ export function verifyAuthToken(
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
+    if (
+      typeof decoded !== "string" &&
+      (decoded.email_verified === false || decoded.email_verified === 0)
+    ) {
+      res.status(403).json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
+      return;
+    }
     (req as RequestWithUser).user = decoded as AuthenticatedUser | string;
     next();
   } catch {
