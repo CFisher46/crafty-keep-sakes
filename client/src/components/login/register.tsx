@@ -1,5 +1,5 @@
 import { Form, Box, Text, TextInput } from "grommet";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffect, useRef, useState } from "react";
 import { ui } from "../../helpers/theme";
 import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useAppDispatch } from "../../store/hooks";
@@ -29,7 +29,25 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
   const dispatch = useAppDispatch();
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [verificationEmailSent, setVerificationEmailSent] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendError, setResendError] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const dispatch = useAppDispatch();
   const startedAt = useRef(Date.now());
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = window.setTimeout(
+      () => setResendCooldown((seconds) => Math.max(0, seconds - 1)),
+      1000
+    );
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
+  const registrationInProgress = useRef(false);
 
   useEffect(() => {
     if (resendCooldown <= 0) return undefined;
@@ -52,6 +70,7 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
     setFormValues((prev) => ({ ...prev, [field]: value }));
 
   const handleSubmit = async () => {
+    if (registrationInProgress.current) return;
     setError(null);
 
     if (
@@ -72,6 +91,8 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
       return;
     }
 
+    registrationInProgress.current = true;
+    setRegistering(true);
     try {
       const response = await fetch(
         `${process.env.REACT_APP_API_URL || ""}/api/v2/auth/register`,
@@ -98,6 +119,20 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
       const result = await response.json();
       setRegisteredEmail(formValues.email.trim());
       setVerificationEmailSent(result.verificationEmailSent === true);
+      setResendCooldown(60);
+      const result = await response.json();
+      if (typeof result.error === "string" && result.error) {
+        console.error("Registration returned an error with a successful status");
+        setError(result.error);
+        return;
+      }
+      if (typeof result.verificationEmailSent !== "boolean") {
+        console.error("Registration returned an unexpected response");
+        setError("Unable to confirm registration. Please try signing in or contact support.");
+        return;
+      }
+      setRegisteredEmail(formValues.email.trim());
+      setVerificationEmailSent(result.verificationEmailSent);
       setResendCooldown(60);
       setFormValues(emptyForm);
       setSuccess(true);
@@ -222,7 +257,12 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
         {error && <Text size="small" color="status-critical">{error}</Text>}
 
         <Box direction="row" margin={{ top: "xsmall" }}>
-          <ActionButton label="Create Account" type="submit" onClick={() => undefined} />
+          <ActionButton
+            label={registering ? "Creating account..." : "Create Account"}
+            type="submit"
+            onClick={() => undefined}
+            disabled={registering}
+          />
         </Box>
       </Box>
     </Form>
