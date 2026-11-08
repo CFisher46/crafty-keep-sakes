@@ -21,9 +21,19 @@ import app from '../../app';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 describe('v2 auth routes', () => {
+  const originalFrontendUrl = process.env.FRONTEND_URL;
+
   beforeEach(() => {
     jest.clearAllMocks();
     mockSendEmail.mockResolvedValue({ id: 'email-id' });
+  });
+
+  afterEach(() => {
+    if (originalFrontendUrl === undefined) {
+      delete process.env.FRONTEND_URL;
+    } else {
+      process.env.FRONTEND_URL = originalFrontendUrl;
+    }
   });
 
   describe('POST /api/v2/auth/verify-password', () => {
@@ -75,6 +85,7 @@ describe('v2 auth routes', () => {
     });
 
     it('creates a customer account', async () => {
+      process.env.FRONTEND_URL = 'https://dev.craftykeepsakes.uk/';
       const connection = {
         beginTransaction: jest.fn(),
         query: jest
@@ -98,7 +109,13 @@ describe('v2 auth routes', () => {
       expect(response.body.verificationEmailSent).toBe(true);
       expect(connection.commit).toHaveBeenCalled();
       expect(mockSendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ email: body.email, from: 'verify' })
+        expect.objectContaining({
+          email: body.email,
+          from: 'verify',
+          text: expect.stringMatching(
+            /https:\/\/dev\.craftykeepsakes\.uk\/verify-email\?token=[a-f0-9]{64}/
+          ),
+        })
       );
       const tokenInsert = connection.query.mock.calls.find(([sql]) =>
         String(sql).includes('INSERT INTO email_verification_tokens_v2')
