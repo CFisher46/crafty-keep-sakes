@@ -22,7 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 describe('v2 auth routes', () => {
   const originalFrontendUrl = process.env.FRONTEND_URL;
-
+  const originalAllowedOrigins = process.env.VERIFICATION_FRONTEND_ORIGINS;
   beforeEach(() => {
     jest.clearAllMocks();
     mockSendEmail.mockResolvedValue({ id: 'email-id' });
@@ -33,6 +33,11 @@ describe('v2 auth routes', () => {
       delete process.env.FRONTEND_URL;
     } else {
       process.env.FRONTEND_URL = originalFrontendUrl;
+    }
+    if (originalAllowedOrigins === undefined) {
+      delete process.env.VERIFICATION_FRONTEND_ORIGINS;
+    } else {
+      process.env.VERIFICATION_FRONTEND_ORIGINS = originalAllowedOrigins;
     }
   });
 
@@ -85,7 +90,8 @@ describe('v2 auth routes', () => {
     });
 
     it('creates a customer account', async () => {
-      process.env.FRONTEND_URL = 'https://dev.craftykeepsakes.uk/';
+      process.env.FRONTEND_URL = 'https://craftykeepsakes.uk';
+      process.env.VERIFICATION_FRONTEND_ORIGINS = 'https://dev.craftykeepsakes.uk';
       const connection = {
         beginTransaction: jest.fn(),
         query: jest
@@ -103,7 +109,10 @@ describe('v2 auth routes', () => {
       mockDb.getConnection.mockResolvedValue(connection);
       mockDb.query.mockResolvedValue([{ affectedRows: 1 }]);
 
-      const response = await request(app).post('/api/v2/auth/register').send(body);
+      const response = await request(app)
+        .post('/api/v2/auth/register')
+        .set('Origin', 'https://dev.craftykeepsakes.uk')
+        .send(body);
 
       expect(response.status).toBe(201);
       expect(response.body.verificationEmailSent).toBe(true);
@@ -674,6 +683,8 @@ describe('v2 auth routes', () => {
     });
 
     it('creates a replacement token and sends email for unverified users', async () => {
+      process.env.FRONTEND_URL = 'https://craftykeepsakes.uk';
+      process.env.VERIFICATION_FRONTEND_ORIGINS = 'https://dev.craftykeepsakes.uk';
       const connection = {
         beginTransaction: jest.fn(),
         query: jest
@@ -693,6 +704,7 @@ describe('v2 auth routes', () => {
 
       const response = await request(app)
         .post('/api/v2/auth/resend-verification')
+        .set('Origin', 'https://dev.craftykeepsakes.uk')
         .send({ email: 'WAITING@example.com' });
 
       expect(response.status).toBe(200);
@@ -700,7 +712,13 @@ describe('v2 auth routes', () => {
       expect(connection.commit).toHaveBeenCalledTimes(1);
       await new Promise((resolve) => setImmediate(resolve));
       expect(mockSendEmail).toHaveBeenCalledWith(
-        expect.objectContaining({ email: 'waiting@example.com', from: 'verify' })
+        expect.objectContaining({
+          email: 'waiting@example.com',
+          from: 'verify',
+          text: expect.stringMatching(
+            /https:\/\/dev\.craftykeepsakes\.uk\/verify-email\?token=[a-f0-9]{64}/
+          ),
+        })
       );
       const tokenInsert = connection.query.mock.calls.find(([sql]) =>
         String(sql).includes('INSERT INTO email_verification_tokens_v2')

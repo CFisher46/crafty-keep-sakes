@@ -41,7 +41,6 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
     );
     return () => window.clearTimeout(timer);
   }, [resendCooldown]);
-
   const labelStyle = {
     fontSize: "12px",
     letterSpacing: "0.08em",

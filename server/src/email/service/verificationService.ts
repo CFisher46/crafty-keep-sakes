@@ -3,14 +3,27 @@ import type { PoolConnection } from 'mysql2/promise';
 
 const TOKEN_EXPIRY_HOURS = 24;
 
+export function verificationFrontendUrl(requestOrigin?: string): string {
+  const defaultUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const allowedOrigins = (process.env.VERIFICATION_FRONTEND_ORIGINS || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  return requestOrigin && allowedOrigins.includes(requestOrigin)
+    ? requestOrigin
+    : defaultUrl;
+}
+
 export async function createVerificationToken(
   connection: PoolConnection,
-  userId: number
+  userId: number,
+  requestOrigin?: string
 ): Promise<{ verificationUrl: string; tokenHash: string }> {
   const token = crypto.randomBytes(32).toString('hex');
   const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
   const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
-  const frontendUrl = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const frontendUrl = verificationFrontendUrl(requestOrigin);
   const verificationUrl = `${frontendUrl}/verify-email?token=${token}`;
 
   await connection.query(
