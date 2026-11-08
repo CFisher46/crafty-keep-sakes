@@ -321,7 +321,7 @@ const registerHandler: RequestHandler = async (req, res): Promise<void> => {
       [userId, roleId]
     );
 
-    ({ verificationUrl, tokenHash } = await createVerificationToken(connection, userId));
+    ({ verificationUrl, tokenHash } = await createVerificationToken(connection, userId, req.get('origin')));
 
     await connection.commit();
   } catch (err) {
@@ -485,7 +485,7 @@ const resendVerificationHandler: RequestHandler = async (req, res): Promise<void
       return;
     }
 
-    ({ verificationUrl, tokenHash } = await createVerificationToken(connection, Number(account.id)));
+    ({ verificationUrl, tokenHash } = await createVerificationToken(connection, Number(account.id), req.get('origin')));
     await connection.commit();
   } catch (err) {
     try {
