@@ -56,6 +56,14 @@ export function createApp() {
     skip: () => process.env.NODE_ENV === "test",
     message: { error: "Too many sign-up attempts, please try again later" }
   });
+  const resendVerificationLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === "test",
+    message: { error: "Too many verification requests, please try again later" }
+  });
 
   // Counts only failed logins, per IP + email, so guessing one account is throttled
   const failedLoginLimiter = rateLimit({
@@ -78,6 +86,10 @@ export function createApp() {
   app.use("/api/v2/auth/login", authLimiter);
   app.use("/api/auth/verify-password", authLimiter);
   app.use("/api/v2/auth/verify-password", authLimiter);
+  app.use("/api/auth/verify-email", authLimiter);
+  app.use("/api/v2/auth/verify-email", authLimiter);
+  app.use("/api/auth/resend-verification", resendVerificationLimiter);
+  app.use("/api/v2/auth/resend-verification", resendVerificationLimiter);
 
   app.use("/api/products", v2ProductsRouter);
   app.use("/api/v2/products", v2ProductsRouter);

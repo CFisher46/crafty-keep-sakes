@@ -10,6 +10,14 @@ import { insertAuditEvent } from '../../audit-events';
 
 const router = express.Router();
 
+const isReferencedRowError = (
+  error: unknown
+): error is { code: string } =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  error.code === 'ER_ROW_IS_REFERENCED_2';
+
 router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
   console.log(`DELETE /api/v2/users/${req.params.id}`);
 
@@ -18,6 +26,23 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
 
   try {
     await connection.beginTransaction();
+
+    await connection.query(
+      'UPDATE blog_post_comments_v2 SET user_id = NULL WHERE user_id = ?',
+      [id]
+    );
+    await connection.query(
+      'UPDATE blog_post_views_v2 SET user_id = NULL WHERE user_id = ?',
+      [id]
+    );
+    await connection.query(
+      'UPDATE blog_post_reactions_v2 SET user_id = NULL WHERE user_id = ?',
+      [id]
+    );
+    await connection.query(
+      'DELETE FROM email_verification_tokens_v2 WHERE user_id = ?',
+      [id]
+    );
 
     const [result] = await connection.query<ResultSetHeader>(
       'DELETE FROM users_v2 WHERE id = ?',
@@ -31,10 +56,11 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
     }
 
     const actorUser = getRequestUser(req);
-    const actorUserId =
+    const requestActorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser
         ? Number(actorUser.id)
         : null;
+    const actorUserId = String(requestActorUserId) === id ? null : requestActorUserId;
     const actorRole =
       actorUser && typeof actorUser === 'object' && 'type' in actorUser
         ? String(actorUser.type)
@@ -59,6 +85,13 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
   } catch (error) {
     await connection.rollback();
     console.error('Delete V2 User Error:', error);
+    if (isReferencedRowError(error)) {
+      res.status(409).json({
+        error:
+          'This user has orders or authored blog posts that must be reassigned or resolved before the account can be deleted.',
+      });
+      return;
+    }
     res.status(500).json({ error: 'Failed to delete user' });
   } finally {
     connection.release();

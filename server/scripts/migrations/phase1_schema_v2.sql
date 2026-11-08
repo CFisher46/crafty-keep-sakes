@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS users_v2 (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   last_login_at DATETIME NULL,
+  email_verified TINYINT(1) NOT NULL DEFAULT 0,
+  email_verified_at DATETIME NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_v2_email (email),
   KEY idx_users_v2_status (status)
@@ -32,6 +34,24 @@ CREATE TABLE IF NOT EXISTS user_roles_v2 (
   KEY idx_user_roles_v2_role_id (role_id),
   CONSTRAINT fk_user_roles_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE CASCADE,
   CONSTRAINT fk_user_roles_v2_role FOREIGN KEY (role_id) REFERENCES roles_v2(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS email_verification_tokens_v2 (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    sent_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE KEY uq_token_hash (token_hash),
+    INDEX idx_user_id (user_id),
+
+    CONSTRAINT fk_email_verification_tokens_v2_user
+        FOREIGN KEY (user_id)
+        REFERENCES users_v2(id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS customer_profiles_v2 (
@@ -283,13 +303,13 @@ CREATE TABLE IF NOT EXISTS blog_posts_v2 (
 CREATE TABLE IF NOT EXISTS blog_post_views_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   viewed_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_blog_post_views_v2_post_user (post_id, user_id),
   KEY idx_blog_post_views_v2_user (user_id, viewed_at),
   CONSTRAINT fk_blog_post_views_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
-  CONSTRAINT fk_blog_post_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+  CONSTRAINT fk_blog_post_views_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS blog_post_images_v2 (
@@ -306,27 +326,27 @@ CREATE TABLE IF NOT EXISTS blog_post_images_v2 (
 CREATE TABLE IF NOT EXISTS blog_post_comments_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   comment TEXT NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   KEY idx_blog_post_comments_v2_post (post_id, created_at),
   KEY idx_blog_post_comments_v2_user (user_id),
   CONSTRAINT fk_blog_post_comments_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
-  CONSTRAINT fk_blog_post_comments_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+  CONSTRAINT fk_blog_post_comments_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS blog_post_reactions_v2 (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   post_id BIGINT UNSIGNED NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NULL,
   reaction_type ENUM('like', 'dislike') NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
   UNIQUE KEY uq_blog_post_reactions_v2_post_user (post_id, user_id),
   KEY idx_blog_post_reactions_v2_post (post_id, reaction_type),
   CONSTRAINT fk_blog_post_reactions_v2_post FOREIGN KEY (post_id) REFERENCES blog_posts_v2(id) ON DELETE CASCADE,
-  CONSTRAINT fk_blog_post_reactions_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE RESTRICT
+  CONSTRAINT fk_blog_post_reactions_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO roles_v2 (code, description)
@@ -345,4 +365,3 @@ CREATE TABLE IF NOT EXISTS reviews_v2 (
   star_count INT NOT NULL DEFAULT 1,
   PRIMARY KEY (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-

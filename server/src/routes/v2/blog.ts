@@ -115,7 +115,10 @@ router.get('/posts', async (req, res) => {
           `SELECT
             bc.id,
             bc.user_id,
-            TRIM(CONCAT(COALESCE(cp.first_name, ''), ' ', COALESCE(cp.last_name, ''))) AS user_name,
+            CASE
+              WHEN bc.user_id IS NULL THEN 'Former user'
+              ELSE TRIM(CONCAT(COALESCE(cp.first_name, ''), ' ', COALESCE(cp.last_name, '')))
+            END AS user_name,
             bc.comment,
             bc.created_at
           FROM blog_post_comments_v2 bc

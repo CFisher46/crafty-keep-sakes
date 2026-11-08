@@ -155,6 +155,12 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
 
       await connection.query(DELETE_USER_ROLE_QUERY, [id]);
       await connection.query(INSERT_USER_ROLE_QUERY, [id, roleId]);
+      if (roleCode.toLowerCase() === 'admin') {
+        await connection.query(
+          'UPDATE users_v2 SET email_verified = 1, email_verified_at = COALESCE(email_verified_at, CURRENT_TIMESTAMP) WHERE id = ?',
+          [id]
+        );
+      }
     }
 
     const actorUser = getRequestUser(req);

@@ -25,6 +25,7 @@ const normalizeUserRecord = (user: RawUserRecord): User => ({
   password: String(user.password ?? ''),
 });
 
+
 export const fetchAllUsers = createAsyncThunk('users/fetchAll', async () => {
   const res = await fetch(buildApiUrl('users'), {
     credentials: 'include',
@@ -117,13 +118,24 @@ export const createUser = createAsyncThunk(
 
 export const deleteUser = createAsyncThunk(
   'users/delete',
-  async (id: string) => {
-    await fetch(buildApiUrl('users', `/${id}`), {
-      method: 'DELETE',
-      credentials: 'include',
-    });
+  async (id: string, { rejectWithValue }) => {
+    try {
+      const response = await fetch(buildApiUrl('users', `/${id}`), {
+        method: 'DELETE',
+        credentials: 'include',
+      });
 
-    return id;
+      if (!response.ok) {
+        const result = await response.json();
+        return rejectWithValue(result.error || 'Failed to delete user');
+      }
+
+      return id;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : 'Network error while deleting user'
+      );
+    }
   }
 );
 

@@ -71,6 +71,13 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
 
     await connection.query(INSERT_USER_ROLE_QUERY, [userId, roleId]);
 
+    if (roleCode.toLowerCase() === 'admin') {
+      await connection.query(
+        'UPDATE users_v2 SET email_verified = 1, email_verified_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [userId]
+      );
+    }
+
     const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser

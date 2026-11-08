@@ -16,6 +16,10 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 # Decision Log
 
+# Annoying issues
+
+-   because the dev branch is always open any new branches inherit the first 7 commits, so the history looks a bit messy - is there a way to address this?
+
 ## Features
 
 -   [x] CKS-2-006 : Introduction of  User Notifications (Next Priority)
@@ -51,6 +55,12 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.
     -   Notes: Parked. Many products are hand crafted and may be made on an order-by-order basis, so a quantity of 0 is not necessarily a problem. Stock is also not currently reduced at checkout. Needs a per-product "made to order" flag (to exclude those from alerts), stock decrement on checkout, and a de-duplicated alert (once per threshold crossing, not on every order). A previous implementation used a threshold of 5 (and 0 for out of stock) and was removed.
+
+-   [ ] CKS-2-027 : Emailing from the portal
+    -   AS a CUSTOMER when i register for a user account, I WANT an EMAIL with a a VERIFY link to activate my account
+    -   AS an ADMIN, I WANT to put an extra layer of security onto my uder resitration journey AND restrict login UNTIL the user has verified their email address.
+    -   AS an ADMIN, I WANT the email feature to be scalable so it can but used for INVOICES, NOTIFICATION and NEWSLETTERS so should support a multi template modal.
+    - Notes: Registration verification is implemented with Resend email templates, hashed 24-hour single-use tokens, resend cooldown/rate limiting, and customer-facing verification states. Still open for provider/DNS/database deployment verification, end-to-end delivery, automated tests, and future invoice/notification/newsletter templates.
 
 
 ## Enhancements

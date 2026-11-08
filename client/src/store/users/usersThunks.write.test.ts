@@ -133,6 +133,22 @@ describe('usersThunks (write operations)', () => {
         expect.objectContaining({ method: 'DELETE', credentials: 'include' })
       );
     });
+
+    it('rejects with the server error when deletion is blocked', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: async () => ({
+          error: 'This user has orders or authored blog posts that must be resolved.',
+        }),
+      });
+
+      const result = await deleteUser('42')(jest.fn(), jest.fn(), undefined);
+
+      expect(result.type).toBe('users/delete/rejected');
+      expect(result.payload).toBe(
+        'This user has orders or authored blog posts that must be resolved.'
+      );
+    });
   });
 
   describe('verifyCurrentPassword', () => {

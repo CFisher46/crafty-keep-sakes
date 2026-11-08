@@ -1,5 +1,5 @@
-import { Form, Box, Text, TextInput } from "grommet";
-import { useState } from "react";
+import { Button, Form, Box, Text, TextInput } from "grommet";
+import { useEffect, useState } from "react";
 import { loginSuccess } from "../../store/auth/authSlice";
 import { useLocation, useNavigate } from "react-router-dom";
 import { ui } from "../../helpers/theme";
@@ -7,14 +7,28 @@ import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { removeItemFromBasket } from "../../store/basket/basketSlice";
 import { addBasketItem } from "../../store/basket/basketThunks";
+import { resendVerificationEmail } from "../../store/verification/verificationThunks";
 
 function UserLogin() {
   const [formValues, setFormValues] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
+  const [resendMessage, setResendMessage] = useState("");
+  const [resendError, setResendError] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   const dispatch = useAppDispatch();
   const guestItems = useAppSelector((state) => state.basket.items);
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = window.setTimeout(
+      () => setResendCooldown((seconds) => Math.max(0, seconds - 1)),
+      1000
+    );
+    return () => window.clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleSubmit = async (event: any) => {
     event.preventDefault();
@@ -61,6 +75,25 @@ function UserLogin() {
     } catch (error) {
       setError("Failed to login. Please try again.");
       console.error("Login error:", error);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendMessage("");
+    setResendError("");
+    setResending(true);
+    try {
+      const result = await dispatch(
+        resendVerificationEmail({ email: formValues.email })
+      ).unwrap();
+      setResendMessage(result.message);
+      setResendCooldown(60);
+    } catch (reason) {
+      setResendError(
+        typeof reason === "string" ? reason : "Unable to send a request. Please try again."
+      );
+    } finally {
+      setResending(false);
     }
   };
 
@@ -123,6 +156,22 @@ function UserLogin() {
         </Box>
 
         {error && <Text size="small" color="status-critical">{error}</Text>}
+        {error === "Email not verified" && (
+          <Box gap="xsmall">
+            <Text size="small" style={{ color: ui.muted }}>
+              Verify your email before signing in. We can send another link to this address.
+            </Text>
+            <Button
+              plain
+              label={resending ? "Requesting…" : resendCooldown > 0 ? `Try again in ${resendCooldown}s` : "Resend verification email"}
+              onClick={handleResendVerification}
+              disabled={resending || resendCooldown > 0 || !formValues.email.trim()}
+              style={{ alignSelf: "flex-start", color: ui.accent, textDecoration: "underline" }}
+            />
+            {resendMessage && <Text size="small" style={{ color: ui.accent }}>{resendMessage}</Text>}
+            {resendError && <Text size="small" color="status-critical">{resendError}</Text>}
+          </Box>
+        )}
 
         <Box direction="row" margin={{ top: "xsmall" }}>
           <ActionButton label="Login" type="submit" onClick={() => undefined} />

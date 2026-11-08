@@ -13,6 +13,7 @@ const DEFAULT_DOMAIN_FLAGS: DomainFlagMap = {
   reviews: 'v2',
   reports: 'v2',
   payments: 'v2',
+  'verify-email': 'v2',
 };
 
 function readFlag(
@@ -40,6 +41,7 @@ export function resolveDomainFlags(): DomainFlagMap {
     reviews: readFlag(process.env.REACT_APP_API_REVIEWS_VERSION),
     reports: readFlag(process.env.REACT_APP_API_REPORTS_VERSION),
     payments: readFlag(process.env.REACT_APP_API_PAYMENTS_VERSION),
+    'verify-email': readFlag(process.env.REACT_APP_API_VERIFY_EMAIL_VERSION),
   };
 }
 
