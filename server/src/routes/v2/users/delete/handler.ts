@@ -22,7 +22,14 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
   console.log(`DELETE /api/v2/users/${req.params.id}`);
 
   const id = String(req.params.id);
-  const connection = await db.getConnection();
+  let connection: Awaited<ReturnType<typeof db.getConnection>>;
+  try {
+    connection = await db.getConnection();
+  } catch (error) {
+    console.error('Delete V2 User Connection Error:', error);
+    res.status(500).json({ code: 'USER_DELETE_FAILED', error: 'Failed to delete user' });
+    return;
+  }
 
   try {
     await connection.beginTransaction();
@@ -51,7 +58,7 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
 
     if (!result.affectedRows) {
       await connection.rollback();
-      res.status(404).json({ error: 'User not found' });
+      res.status(404).json({ code: 'USER_NOT_FOUND', error: 'User not found' });
       return;
     }
 
@@ -87,12 +94,13 @@ router.delete('/:id', verifyAuthToken, requireRole('admin'), async (req, res) =>
     console.error('Delete V2 User Error:', error);
     if (isReferencedRowError(error)) {
       res.status(409).json({
+        code: 'USER_HAS_DEPENDENCIES',
         error:
           'This user has orders or authored blog posts that must be reassigned or resolved before the account can be deleted.',
       });
       return;
     }
-    res.status(500).json({ error: 'Failed to delete user' });
+    res.status(500).json({ code: 'USER_DELETE_FAILED', error: 'Failed to delete user' });
   } finally {
     connection.release();
   }

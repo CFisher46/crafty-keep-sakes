@@ -46,12 +46,40 @@ describe('Basket page', () => {
     expect(screen.getByText('Your basket is empty.')).toBeInTheDocument();
   });
 
+  it('renders a server basket image using the API origin', async () => {
+    const previousUrl = process.env.REACT_APP_API_URL;
+    process.env.REACT_APP_API_URL = 'https://api.example.test/';
+    try {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ items: [{ product_id: 1, product_name: 'Mug', quantity: 1, unit_price: 10, image_path: '/images/mug.jpg' }], total_items: 1 }),
+      });
+      const store = buildStore({
+        basket: { items: [], totalItems: 0 },
+        auth: { isLoggedIn: true, user: { id: '1' } },
+      });
+      render(<Provider store={store}><Basket /></Provider>);
+      expect(await screen.findByRole('img', { name: 'Mug' })).toHaveAttribute('src', 'https://api.example.test/images/mug.jpg');
+    } finally {
+      if (previousUrl === undefined) delete process.env.REACT_APP_API_URL;
+      else process.env.REACT_APP_API_URL = previousUrl;
+    }
+  });
+
+  it('preserves full object-storage URLs for guest images', () => {
+    const store = buildStore({
+      basket: { items: [{ ...basketItem, image: 'https://files.example/mug.jpg' }], totalItems: 2 },
+      auth: { isLoggedIn: false, user: null },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    expect(screen.getByRole('img', { name: 'Mug' })).toHaveAttribute('src', 'https://files.example/mug.jpg');
+  });
+
   it('renders basket items with quantity and totals', () => {
     const store = buildStore({
       basket: { items: [basketItem], totalItems: 2 },
       auth: { isLoggedIn: false, user: null },
     });
-
     render(
       <Provider store={store}>
         <Basket />

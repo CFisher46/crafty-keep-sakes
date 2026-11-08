@@ -47,7 +47,16 @@ export const notificationDefinitions: NotificationDefinitions = {
     resolveRecipients: (executor) => getActiveAdminIds(executor),
     build: ({ orderId, invoiceId, invoiceNumber, totalDue }) => ({
       title: 'New order placed',
-      body: `Order #${orderId} (${invoiceNumber}) for ${formatCurrency(totalDue)} is ready to process.`,
+      body: `Order #${orderId} (${invoiceNumber}) for ${formatCurrency(totalDue)} has been created and is awaiting payment.`,
+      link: `/Reporting/invoices?invoice=${invoiceId}`,
+      data: { orderId, invoiceId, invoiceNumber },
+    }),
+  },
+  order_payment_received: {
+    resolveRecipients: (executor) => getActiveAdminIds(executor),
+    build: ({ orderId, invoiceId, invoiceNumber }) => ({
+      title: 'Order payment received',
+      body: `Payment received for order #${orderId} (${invoiceNumber}).`,
       link: `/Reporting/invoices?invoice=${invoiceId}`,
       data: { orderId, invoiceId, invoiceNumber },
     }),
@@ -66,7 +75,7 @@ export const notificationDefinitions: NotificationDefinitions = {
     build: ({ userId, name, email }) => ({
       title: 'New customer registered',
       body: `${name || 'A new customer'} (${email}) has created an account.`,
-      link: '/Admin',
+      link: `/Admin?user=${userId}`,
       data: { userId },
     }),
   },

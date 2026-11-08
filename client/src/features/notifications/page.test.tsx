@@ -87,6 +87,24 @@ describe('NotificationsPage', () => {
     );
   });
 
+  it('opens the user details for existing registration notifications', async () => {
+    global.fetch = jest.fn(async (_url: string, init?: RequestInit) => ({
+      ok: true,
+      json: async () => init?.method === 'PUT' ? {} : {
+        data: [{
+          ...notifications[0],
+          type: 'user_registered',
+          title: 'New customer registered',
+          data: { userId: 9 },
+        }],
+      },
+    })) as unknown as typeof fetch;
+
+    render(<NotificationsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'New customer registered' }));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/Admin?user=9'));
+  });
+
   it('shows an empty state when there are no notifications', async () => {
     global.fetch = jest.fn(async () => ({
       ok: true,

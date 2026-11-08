@@ -8,12 +8,16 @@ const mockDb = {
   getConnection: jest.fn(),
 };
 const mockSendEmail = jest.fn();
+const mockNotify = jest.fn();
 
 jest.mock('../../ts-common/database', () => ({
   db: mockDb,
 }));
 jest.mock('../../email/service/emailService', () => ({
   sendEmail: mockSendEmail,
+}));
+jest.mock('../../notifications/service', () => ({
+  notify: mockNotify,
 }));
 
 import app from '../../app';
@@ -117,6 +121,11 @@ describe('v2 auth routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.verificationEmailSent).toBe(true);
       expect(connection.commit).toHaveBeenCalled();
+      expect(mockNotify).toHaveBeenCalledWith('user_registered', {
+        userId: 9,
+        name: 'A B',
+        email: body.email,
+      });
       expect(mockSendEmail).toHaveBeenCalledWith(
         expect.objectContaining({
           email: body.email,
@@ -157,6 +166,11 @@ describe('v2 auth routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.verificationEmailSent).toBe(false);
       expect(connection.commit).toHaveBeenCalled();
+      expect(mockNotify).toHaveBeenCalledWith('user_registered', {
+        userId: 9,
+        name: 'A B',
+        email: body.email,
+      });
       expect(connection.rollback).not.toHaveBeenCalled();
     });
 
@@ -174,6 +188,7 @@ describe('v2 auth routes', () => {
 
       expect(response.status).toBe(409);
       expect(connection.rollback).toHaveBeenCalled();
+      expect(mockNotify).not.toHaveBeenCalled();
     });
   });
 

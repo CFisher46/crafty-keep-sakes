@@ -309,7 +309,7 @@ function Basket() {
                   <Box width="88px" height="88px" flex={false} overflow="hidden" background={ui.sand}>
                     {item.image ? (
                       <img
-                        src={item.image}
+                        src={item.image.startsWith('/images/') ? `${(process.env.REACT_APP_API_URL || '').replace(/\/$/, '')}${item.image}` : item.image}
                         alt={item.product_name}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                       />

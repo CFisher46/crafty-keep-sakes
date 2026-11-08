@@ -17,6 +17,7 @@ jest.mock('../../../ts-common/database', () => ({
 }));
 
 import app from '../../../app';
+import { db } from '../../../ts-common/database';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
@@ -310,6 +311,7 @@ describe('v2 users write routes', () => {
     expect(response.status).toBe(404);
     expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
     expect(mockConnection.commit).not.toHaveBeenCalled();
+    expect(response.body).toEqual({ code: 'USER_NOT_FOUND', error: 'User not found' });
   });
 
   it('returns a clear conflict when historical records prevent user deletion', async () => {
@@ -325,8 +327,29 @@ describe('v2 users write routes', () => {
       .set('Cookie', authCookie(1, 'admin'));
 
     expect(response.status).toBe(409);
+    expect(response.body.code).toBe('USER_HAS_DEPENDENCIES');
     expect(response.body.error).toMatch(/orders or authored blog posts/);
     expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
     expect(mockConnection.commit).not.toHaveBeenCalled();
+  });
+
+  it('returns a stable error code without database details for an unexpected delete error', async () => {
+    mockConnection.query.mockRejectedValueOnce(new Error('private database details'));
+    const response = await request(app)
+      .delete('/api/v2/users/42')
+      .set('Cookie', authCookie(1, 'admin'));
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ code: 'USER_DELETE_FAILED', error: 'Failed to delete user' });
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns a stable error code when a database connection cannot be obtained', async () => {
+    (db.getConnection as jest.Mock).mockRejectedValueOnce(new Error('private database details'));
+    const response = await request(app)
+      .delete('/api/v2/users/42')
+      .set('Cookie', authCookie(1, 'admin'));
+    expect(response.status).toBe(500);
+    expect(response.body).toEqual({ code: 'USER_DELETE_FAILED', error: 'Failed to delete user' });
+    expect(mockConnection.rollback).not.toHaveBeenCalled();
   });
 });

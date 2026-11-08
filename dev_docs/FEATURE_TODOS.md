@@ -50,7 +50,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS a CUSTOMER, WHEN I check out, I WANT to pay securely online so that my order is confirmed once payment is taken.
     -   AS an ADMIN, WHEN a payment is taken, I WANT the invoice to be marked as paid automatically, so I don't have to update it by hand.
     -   Notes: High priority. Today checkout creates the order and an `unpaid` invoice and an admin sets the status manually, so no money is actually taken. Vendor not chosen yet (e.g. Stripe, PayPal, Square). Things to decide and cover: use the vendor's hosted checkout so card details never touch our servers; confirm payment through a signed webhook rather than trusting the browser; keep orders pending until payment succeeds; handle failed, abandoned and refunded payments; store the vendor's payment reference on the invoice; notify the customer and admins on payment; keep secrets in environment config only; add tests for the webhook (including signature rejection and duplicate events).
-    -   Foundation built (mock provider): `PAYMENTS_PROVIDER=mock` enables a provider-neutral flow in `server/src/payments/`. Checkout returns a `payment_url`, orders stay `pending` until a signed webhook event marks the invoice paid (events de-duplicated, amount checked, audited, customer and admins notified). A simulated payment page lives at `/payments/mock` and a result page at `/payments/result`. Square provider built (Payment Links, `x-square-hmacsha256-signature` verification, `payment.updated` mapping) and verified against the sandbox API; "Pay now" on unpaid invoices exists. Still to do: an end-to-end sandbox payment through the live webhook, refunds (`refund.updated`), going live (see README, "Going live"; production credentials go in `SQUARE_PRODUCTION_*` on the NAS only), and removing the mock path once Square is live.
+    -   Foundation built (mock provider): `PAYMENTS_PROVIDER=mock` enables a provider-neutral flow in `server/src/payments/`. Checkout returns a `payment_url`, orders stay `pending` until a signed webhook event marks the invoice paid (events de-duplicated, amount checked, audited, customer and admins notified). A simulated payment page lives at `/payments/mock` and a result page at `/payments/result`. Square provider built (Payment Links, `x-square-hmacsha256-signature` verification, `payment.updated` mapping); sandbox payments and webhooks have been tested locally and on dev. Still to do: refunds (`refund.updated`), going live (see README, "Going live"), and deciding when to remove the mock path.
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.
@@ -60,7 +60,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS a CUSTOMER when i register for a user account, I WANT an EMAIL with a a VERIFY link to activate my account
     -   AS an ADMIN, I WANT to put an extra layer of security onto my uder resitration journey AND restrict login UNTIL the user has verified their email address.
     -   AS an ADMIN, I WANT the email feature to be scalable so it can but used for INVOICES, NOTIFICATION and NEWSLETTERS so should support a multi template modal.
-    - Notes: Registration verification is implemented with Resend email templates, hashed 24-hour single-use tokens, resend cooldown/rate limiting, and customer-facing verification states. Still open for provider/DNS/database deployment verification, end-to-end delivery, automated tests, and future invoice/notification/newsletter templates.
+    - Notes: Registration verification is implemented with Resend email templates, hashed 24-hour single-use tokens, resend cooldown/rate limiting, customer-facing verification states, and automated tests. Dev email delivery has been verified. Future invoice/notification/newsletter templates remain open.
 
 
 ## Enhancements
@@ -91,7 +91,16 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-018 : Move Invoice feature into its own component
     -   AS a DEVELOPER, WHEN I come to make changes to the Invocies feature, I WANT to be able to quickly identify the Invoices component.
 
--   [ ] CKS-2-026 : Update User profile actions panel
+-   [x] CKS-2-026 : Update User profile actions panel
+
+-   [ ] CKS-2-029 : contact us form for any anyone that sends from the app to craftykeepsakesprints@gmail.com
+    -   AS a CUSTOMER I NEED to be able to submit a form to contact the craftykeepsakes team WITHOUT having to be a logged in user.
+    -   AS an ADMIN I WOULD like some restrictive measures put in place to prevent bots and spam for example a user cannot submit more than one contact within 24hours
+
+-   [ ] CKS-2-030 : logged in users can add a review to a product, products should also display the feedback provided.
+    -   AS a CUSTOMER I WANT to be able to provide feedback (good and bad) for a product i have purchased
+    -   AS an ADMIN I WANT to be able to reply to feedback on products AND have the right to delete user submissions
+    -   AS an APPLICATION ONLY users that are verified and logged in are permitted so submit a review
 
 
 ## Bugs
@@ -112,15 +121,23 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [x] Admin Audit feature, the filters only capture whats being displayed for example there a 5 rows on the first page all actions have been for POST /api/v2/basket/checkout, this means the source endpoint filter only has POST /api/v2/basket/checkout to select from, but there are another 6 pages, so there should be more endpoints listed.
 
--   [ ] Basket isnt showing the images for the products
+-   [x] Basket isnt showing the images for the products
+    -   Basket responses include the primary product image, and relative image paths use the configured API origin. Previously uploaded images still need to exist in the relevant storage.
 
 ## Adhoc TODOs
 
--   [ ] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
+-   [x] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
+    -   Admin create-user form checks email format, optional telephone format and password length/matching inline. Registration checks required names, email format and password length/matching inline before submitting.
 
--   [ ] Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
+-   [x] Delete V2 User Error: Error: Cannot delete or update a parent row: a foreign key constraint fails (`CraftyKeepsakes`.`blog_post_comments_v2`,  CONSTRAINT `fk_blog_post_comments_v2_user` FOREIGN KEY (`user_id`) REFERENCES `users_v2` (`id`)) at PromisePoolConnection.query need to add a feedback mechanism for the user when deletion fails due to foreign key constraints and set the status to error with a user-friendly message, this impacts the deleterUser process.
 
--   [ ] Look to introduce an error catalog or mapping to provide more specific error messages based on the error type or code,this impacts the deleterUser process, this impacts the deleterUser process.
+-   [ ] Introduce a consistent API error catalog: stable codes, HTTP statuses and customer-safe messages across registration, user management, checkout and payments. Keep the existing `error` field for compatibility; document and test mappings.
+    -   Started: user deletion returns `USER_NOT_FOUND`, `USER_HAS_DEPENDENCIES` or `USER_DELETE_FAILED` alongside its existing messages.
+
+-   [ ] Add request correlation: generate a server-side request ID, return it with errors and include it in structured logs without recording credentials, payment payloads or personal data. Define a retention policy and roll out across API journeys.
+
+-   [ ] Set up external monitoring of the public API `/health` endpoint and alerts for tunnel or API outages; decide ownership, alert destination and check frequency. Consider protected diagnostics separately. Monitor Square webhook delivery independently: API health does not prove webhook delivery.
+    -   Existing `/health` checks the database and is used by Railway. It logs distinct database failure and timeout codes while returning only generic public status.
 
 -   [x] CKS-2-013 : Make sure onSale items when added to the basket use the sale price NOT the original price?
 

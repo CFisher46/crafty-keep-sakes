@@ -85,10 +85,10 @@ export default function PaymentResultPage() {
     message = `Your payment for invoice ${status.invoice_number} did not go through. You have not been charged.`;
   } else if (status && !checking) {
     title = 'Awaiting payment';
-    message = `We have not received a payment for invoice ${status.invoice_number} yet. If you have just paid, it may take a minute to appear.`;
+    message = `We cannot confirm payment for invoice ${status.invoice_number} yet. If you have already paid, please check your invoice later or contact us before paying again.`;
   }
 
-  const canRetry = status?.invoice_status === 'unpaid' && !checking;
+  const canRetry = status?.invoice_status === 'unpaid' && !checking && !error;
 
   return (
     <Box align="center" pad="medium">

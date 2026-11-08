@@ -16,6 +16,7 @@ export type BasketServerItem = {
   product_id: number;
   quantity: number;
   product_name: string;
+  image_path: string | null;
   unit_price: number;
   line_total: number;
 };
