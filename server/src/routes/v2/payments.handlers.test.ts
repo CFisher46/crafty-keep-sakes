@@ -19,6 +19,7 @@ jest.mock('../../ts-common/database', () => ({
 import app from '../../app';
 import { db } from '../../ts-common/database';
 import { MOCK_SIGNATURE_HEADER, signMockPayload } from '../../payments/mockProvider';
+import { computeSquareSignature, SQUARE_SIGNATURE_HEADER } from '../../payments/squareProvider';
 
 const mockedDbQuery = db.query as jest.Mock;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
@@ -63,6 +64,7 @@ describe('payments v2 routes', () => {
     mockedDbQuery.mockResolvedValue([[]]);
     jest.spyOn(console, 'log').mockImplementation(() => undefined);
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    jest.spyOn(console, 'warn').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -80,6 +82,7 @@ describe('payments v2 routes', () => {
       expect(missing.status).toBe(401);
       expect(tampered.status).toBe(401);
       expect(mockConnection.query).not.toHaveBeenCalled();
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('"reason":"invalid_signature_or_payload"'));
     });
 
     it('returns 404 when payments are not enabled', async () => {
@@ -103,6 +106,7 @@ describe('payments v2 routes', () => {
       expect(sql.some((q) => q.includes("UPDATE invoices_v2 SET invoice_status = 'paid'"))).toBe(true);
       expect(sql.some((q) => q.includes('UPDATE orders_v2 SET order_status'))).toBe(true);
       expect(mockConnection.commit).toHaveBeenCalledTimes(1);
+      expect(console.warn).not.toHaveBeenCalled();
       const notifications = mockedDbQuery.mock.calls.filter(([sql]) =>
         String(sql).includes('INSERT INTO notifications_v2')
       );
@@ -121,6 +125,7 @@ describe('payments v2 routes', () => {
       expect(sqlOf(mockConnection.query).some((q) => q.includes('INSERT INTO payments_v2'))).toBe(false);
       expect(mockConnection.rollback).toHaveBeenCalled();
       expect(mockedDbQuery).not.toHaveBeenCalled();
+      expect(console.warn).not.toHaveBeenCalled();
     });
 
     it('does not mark the invoice paid when the amount differs', async () => {
@@ -134,6 +139,7 @@ describe('payments v2 routes', () => {
       expect(response.body.outcome).toBe('amount_mismatch');
       expect(sqlOf(mockConnection.query).some((q) => q.includes("SET invoice_status = 'paid'"))).toBe(false);
       expect(mockedDbQuery).not.toHaveBeenCalled();
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('"reason":"amount_mismatch"'));
     });
 
     it('records a failed payment, leaves the invoice unpaid and notifies the customer', async () => {
@@ -170,6 +176,66 @@ describe('payments v2 routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.outcome).toBe('unknown_payment');
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('"reason":"unknown_payment"'));
+    });
+
+    it('processes a signed Square event without logging payment details', async () => {
+      const names = ['PAYMENTS_PROVIDER', 'SQUARE_ENVIRONMENT', 'SQUARE_SANDBOX_ACCESS_TOKEN',
+        'SQUARE_SANDBOX_LOCATION_ID', 'SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY', 'SQUARE_WEBHOOK_URL'] as const;
+      const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+      Object.assign(process.env, {
+        PAYMENTS_PROVIDER: 'square',
+        SQUARE_ENVIRONMENT: 'sandbox',
+        SQUARE_SANDBOX_ACCESS_TOKEN: 'test-access-token',
+        SQUARE_SANDBOX_LOCATION_ID: 'test-location',
+        SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY: 'test-signature-key',
+        SQUARE_WEBHOOK_URL: 'https://example.test/api/v2/payments/webhook',
+      });
+
+      try {
+        mockConnection.query
+          .mockResolvedValueOnce([[linkRow]])
+          .mockResolvedValueOnce([[]])
+          .mockResolvedValue([{ affectedRows: 1 }]);
+        const body = JSON.stringify({
+          event_id: 'square-event-id',
+          type: 'payment.updated',
+          data: { object: { payment: {
+            order_id: 'square-order-id',
+            status: 'COMPLETED',
+            amount_money: { amount: 2500, currency: 'GBP' },
+            customer_details: 'private-test-data',
+          } } },
+        });
+        const signature = computeSquareSignature('test-signature-key', 'https://example.test/api/v2/payments/webhook', body);
+        const response = await request(app)
+          .post('/api/v2/payments/webhook')
+          .set('Content-Type', 'application/json')
+          .set(SQUARE_SIGNATURE_HEADER, signature)
+          .send(body);
+
+        expect(response.body).toEqual({ received: true, outcome: 'paid' });
+        const logs = [console.log, console.warn, console.error]
+          .flatMap((method) => (method as jest.Mock).mock.calls.flat()).join('\n');
+        for (const secret of ['test-access-token', 'test-signature-key', signature, 'square-order-id', 'square-event-id', 'private-test-data']) {
+          expect(logs).not.toContain(secret);
+        }
+      } finally {
+        for (const name of names) {
+          if (previous[name] === undefined) delete process.env[name];
+          else process.env[name] = previous[name];
+        }
+      }
+    });
+
+    it('logs webhook processing errors and returns 500 for retry', async () => {
+      mockConnection.query.mockRejectedValueOnce(new Error('database unavailable'));
+
+      const response = await postWebhook(signedEvent());
+
+      expect(response.status).toBe(500);
+      expect(mockConnection.rollback).toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalledWith('Payment Webhook Error:', 'mock', expect.any(Error));
     });
   });
 

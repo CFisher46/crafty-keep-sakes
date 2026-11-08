@@ -214,6 +214,10 @@ The webhook URL must match the subscription exactly. Square sends customers back
 
 Set `CLIENT_URL` to the storefront's public URL so payment redirects return to the right place.
 
+**Payment troubleshooting:** Check Square's webhook delivery history and the receiving API's logs. Warnings prefixed `[payments]` include `signature_mismatch` (check the exact subscription URL and its signature key), `unknown_payment` (no matching payment link in this database), and `amount_mismatch` (the invoice remains unpaid). `unknown_payment` can occur when separate local and Railway subscriptions receive each other's sandbox events. These outcomes are acknowledged to Square but do not update the invoice. Never share keys, signatures or raw payloads.
+
+If Square cannot reach a Cloudflare Tunnel, the API cannot log that request. Check the tunnel's connector is healthy, its published route points to the correct running API, and `https://<webhook-host>/health` responds. A healthy tunnel with a 502 response can indicate that the connector cannot reach its configured origin; a 530 can indicate a tunnel or DNS routing issue. Check Square's delivery status and Cloudflare's error details rather than assuming a specific cause. If a payment cannot be confirmed, check Square and the invoice before trying payment again.
+
 ## Further documentation
 
 - `dev_docs/FEATURE_TODOS.md`: the feature, enhancement and bug backlog, with user stories.

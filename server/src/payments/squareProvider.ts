@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import type { PaymentEvent, PaymentEventStatus, PaymentProvider } from './types';
+import { warnPayment } from './logging';
 
 export const SQUARE_SIGNATURE_HEADER = 'x-square-hmacsha256-signature';
 
@@ -129,6 +130,9 @@ export const createSquareProvider = (config: SquareConfig, fetchImpl: FetchLike 
     const expected = computeSquareSignature(config.webhookSignatureKey, config.webhookUrl, rawBody);
 
     if (typeof signature !== 'string' || !safeEqual(signature, expected)) {
+      warnPayment(typeof signature !== 'string' ? 'missing_signature' : 'signature_mismatch', {
+        environment: config.environment,
+      });
       return null;
     }
 
@@ -138,6 +142,9 @@ export const createSquareProvider = (config: SquareConfig, fetchImpl: FetchLike 
 
       // Only payment events are handled; anything else is a valid, ignorable event.
       if (!body?.event_id || !payment?.order_id) {
+        warnPayment('missing_event_id_or_payment_order_id', {
+          environment: config.environment,
+        });
         return null;
       }
 
@@ -152,6 +159,7 @@ export const createSquareProvider = (config: SquareConfig, fetchImpl: FetchLike 
         currency: payment.amount_money?.currency,
       } as PaymentEvent;
     } catch {
+      warnPayment('invalid_json', { environment: config.environment });
       return null;
     }
   },

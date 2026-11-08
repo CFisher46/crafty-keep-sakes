@@ -93,6 +93,8 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [ ] CKS-2-026 : Update User profile actions panel
 
+-   [ ] CKS-2-029 : contact us form for any anyone that sends from the app to craftykeepsakesprints@gmail.com 
+
 
 ## Bugs
 
