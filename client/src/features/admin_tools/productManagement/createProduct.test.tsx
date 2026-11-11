@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { renderWithProviders } from '../../../test-utils/renderWithProviders';
 import CreateNewProduct from './createProduct';
 
@@ -7,6 +7,14 @@ describe('Create product quantity', () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ insertId: 1 }),
+    });
+  });
+
+  afterEach(async () => {
+    cleanup();
+    // Grommet keeps an animated copy of a closed layer briefly after unmount.
+    await waitFor(() => {
+      expect(screen.queryByText('Product added successfully.')).not.toBeInTheDocument();
     });
   });
 
