@@ -10,6 +10,7 @@ module.exports = {
     ...tsJestTransformCfg
   },
   testPathIgnorePatterns: ["/node_modules/", "/dist/"],
+  modulePathIgnorePatterns: ["<rootDir>/dist/"],
   collectCoverageFrom: ["src/**/*.ts"],
   coverageReporters: ["text-summary", "lcov", "json-summary"],
   coveragePathIgnorePatterns: ["/node_modules/", "/dist/"],

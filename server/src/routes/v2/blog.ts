@@ -6,7 +6,7 @@ import { db } from '../../ts-common/database';
 import { createImageUpload, getStoredImagePath } from '../../ts-common/image-storage';
 import { imageFileFilter, IMAGE_UPLOAD_LIMITS } from '../../ts-common/image-upload';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
-import { verifyAuthToken, requireRole, getRequestUser } from '../../ts-common/middleware';
+import { verifyAuthToken, requireRole, getRequestUser, hasValidTokenClaims, getCurrentTokenAccount } from '../../ts-common/middleware';
 
 const router = express.Router();
 
@@ -38,20 +38,24 @@ type InsertResult = {
   insertId?: number;
 };
 
-const getOptionalUserId = (req: express.Request): number | null => {
+const getOptionalUserId = async (req: express.Request): Promise<number | null> => {
   const token = req.cookies?.auth_token;
 
   if (!token) {
     return null;
   }
 
+  let decoded: string | jwt.JwtPayload;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { id?: string | number };
-    const userId = Number(decoded?.id ?? 0);
-    return Number.isFinite(userId) && userId > 0 ? userId : null;
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch {
     return null;
   }
+  if (!hasValidTokenClaims(decoded)) return null;
+  const account = await getCurrentTokenAccount(decoded);
+  if (account.error) return null;
+  const userId = Number(decoded.id);
+  return Number.isSafeInteger(userId) ? userId : null;
 };
 
 const isRecentPost = (createdAt?: string | null) => {
@@ -101,7 +105,7 @@ router.get('/posts', async (req, res) => {
 
     const posts = Array.isArray(postsRows) ? (postsRows as BlogPostRecord[]) : [];
 
-    const viewerUserId = getOptionalUserId(req);
+    const viewerUserId = await getOptionalUserId(req);
 
     const withDetails = await Promise.all(
       posts.map(async (post) => {

@@ -1,5 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { loginSuccess, logout, resetState } from './authSlice';
+import { loginSuccess, logout, resetState, logoutError } from './authSlice';
 import { buildApiUrl } from '../../api/apiPath';
 import type { RootState } from '../index';
 import type { User } from '../../types';
@@ -38,12 +38,15 @@ export const performLogout = createAsyncThunk(
     thunkAPI.dispatch(resetState());
 
     try {
-      await fetch(buildApiUrl('auth', '/logout'), {
+      const response = await fetch(buildApiUrl('auth', '/logout'), {
         method: 'POST',
         credentials: 'include',
       });
+      if (!response.ok) throw new Error('Session revocation failed');
     } catch (error) {
       console.error('Logout failed', error);
+      thunkAPI.dispatch(logoutError());
+      throw error;
     }
   }
 );

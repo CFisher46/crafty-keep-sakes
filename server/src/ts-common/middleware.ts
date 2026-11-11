@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
 import { JWT_SECRET } from "./jwt-secret";
+import { getAuthAccount } from "./auth-account";
 
 export type AuthenticatedUser = {
   id?: string | number;
@@ -32,7 +33,26 @@ function getUserRole(user: AuthenticatedUser): string {
   return String(user.type || user.role_code || "").trim().toLowerCase();
 }
 
-export function verifyAuthToken(
+export function hasValidTokenClaims(decoded: string | jwt.JwtPayload): decoded is jwt.JwtPayload & { id: string | number; token_version: number } {
+  return typeof decoded !== "string" &&
+    (typeof decoded.id === "string" || typeof decoded.id === "number") &&
+    /^[1-9]\d*$/.test(String(decoded.id)) &&
+    Number.isInteger(decoded.token_version) && decoded.token_version >= 0;
+}
+
+export async function getCurrentTokenAccount(decoded: jwt.JwtPayload & { id: string | number; token_version: number }) {
+  const account = await getAuthAccount({ id: decoded.id, type: decoded.type, role_code: decoded.role_code });
+  if (!account || account.status !== "active") return { error: "inactive" as const };
+  if (account.token_version !== decoded.token_version) return { error: "revoked" as const };
+  if (!account.email_verified || decoded.email_verified === false || decoded.email_verified === 0) {
+    return { error: "unverified" as const };
+  }
+  const role = String(account.role_code).trim().toLowerCase();
+  if (!role || getUserRole(decoded) !== role) return { error: "permissions" as const };
+  return { role };
+}
+
+export async function verifyAuthToken(
   req: Request,
   res: Response,
   next: NextFunction
@@ -43,21 +63,44 @@ export function verifyAuthToken(
     return;
   }
 
+  let decoded: string | jwt.JwtPayload;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    if (
-      typeof decoded !== "string" &&
-      (decoded.email_verified === false || decoded.email_verified === 0)
-    ) {
-      res.status(403).json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
-      return;
-    }
-    (req as RequestWithUser).user = decoded as AuthenticatedUser | string;
-    next();
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch {
     res.status(403).json({ error: "Invalid token" });
     return;
   }
+
+  if (!hasValidTokenClaims(decoded)) {
+    res.status(403).json({ error: "Invalid token" });
+    return;
+  }
+
+  try {
+    const account = await getCurrentTokenAccount(decoded);
+    if (account.error === "inactive") {
+      res.status(403).json({ error: "Account inactive or unavailable" });
+      return;
+    }
+    if (account.error === "revoked") {
+      res.status(403).json({ error: "Session revoked. Please sign in again." });
+      return;
+    }
+    if (account.error === "unverified") {
+      res.status(403).json({ error: "Email not verified", code: "EMAIL_NOT_VERIFIED" });
+      return;
+    }
+    if (account.error === "permissions") {
+      res.status(403).json({ error: "Account permissions changed. Please sign in again." });
+      return;
+    }
+    (req as RequestWithUser).user = { ...decoded, type: account.role, role_code: account.role };
+  } catch (error) {
+    console.error("Authentication account lookup failed:", error);
+    res.status(503).json({ error: "Authentication temporarily unavailable" });
+    return;
+  }
+  next();
 }
 
 export const requireAuth = verifyAuthToken;

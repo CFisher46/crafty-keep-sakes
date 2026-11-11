@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users_v2 (
   last_login_at DATETIME NULL,
   email_verified TINYINT(1) NOT NULL DEFAULT 0,
   email_verified_at DATETIME NULL,
+  token_version INT UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (id),
   UNIQUE KEY uq_users_v2_email (email),
   KEY idx_users_v2_status (status)

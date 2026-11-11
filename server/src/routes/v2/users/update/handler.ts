@@ -163,6 +163,13 @@ router.put('/:id', verifyAuthToken, requireSelfOrAdmin(), async (req, res) => {
       }
     }
 
+    if (updates.password !== undefined || updates.status !== undefined || hasRoleUpdate) {
+      await connection.query(
+        'UPDATE users_v2 SET token_version = token_version + 1 WHERE id = ?',
+        [id]
+      );
+    }
+
     const actorUser = getRequestUser(req);
     const actorUserId =
       actorUser && typeof actorUser === 'object' && 'id' in actorUser

@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
+jest.mock('./ts-common/auth-account');
 import app from './app';
 import { db } from './ts-common/database';
 import { ACTIVE_ENDPOINTS, ENDPOINT_INVENTORY } from './endpoint-inventory';
@@ -24,7 +25,7 @@ const mockedConnection = {
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 const authCookie = (id: string | number, role: string) => {
-  const token = jwt.sign({ id, type: role }, JWT_SECRET, {
+  const token = jwt.sign({ id, type: role, token_version: 0 }, JWT_SECRET, {
     expiresIn: '1h',
   });
 
@@ -358,6 +359,7 @@ describe('endpoint inventory', () => {
             id: 1,
             email: 'admin@example.com',
             password_hash: passwordHash,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'Ada',
