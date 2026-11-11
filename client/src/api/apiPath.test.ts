@@ -32,4 +32,10 @@ describe('api route switchboard', () => {
     expect(getDomainFlag('auth')).toBe('v2');
     expect(buildApiUrl('auth', '/me')).toBe('https://example.test/api/v2/auth/me');
   });
+
+  it('uses a same-origin API path when no API URL is configured', () => {
+    delete process.env.REACT_APP_API_URL;
+    expect(buildApiUrl('auth', '/me')).toBe('/api/v2/auth/me');
+    expect(buildApiUrl('products', '?is_live=true')).toBe('/api/v2/products?is_live=true');
+  });
 });

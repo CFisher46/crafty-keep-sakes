@@ -2,6 +2,35 @@
 
 Steps and findings for moving the API and MySQL database from the NAS to Railway.
 
+## Current P1 preparation: 11 November 2026
+
+The agreed test-data configuration keeps the Vercel production address
+`https://crafty-keep-sakes.vercel.app` and uses a same-origin `/api` rewrite to
+`https://api-prd.craftykeepsakes.uk`. The repository rewrite is prepared but
+has not been deployed or verified. The older progress log and runbook below
+describe historical settings and should not be treated as confirmation of the
+current deployment.
+
+1. In Vercel project settings, remove `REACT_APP_API_URL` from the Production
+   scope (or ensure it is empty), then deploy the updated `main` build. Keep the
+   Preview setting for `dev.craftykeepsakes.uk` unchanged. The frontend reads the
+   variable at build time; a redeploy is required.
+2. Verify that `/api/v2/products` on the Vercel domain returns the Railway data,
+   then test login, reload, logout, registration and verification email, images,
+   basket and Square sandbox checkout. Confirm the payment returns to the
+   intended frontend and Square's webhook marks the invoice paid. Check Railway's
+   `CLIENT_URL`, `FRONTEND_URL`, and `VERIFICATION_FRONTEND_ORIGINS` without
+   exposing their values; a shared backend may send payment returns to only one
+   configured frontend.
+3. This proxy can cause Cloudflare and the API to see Vercel proxy addresses
+   instead of individual customers. Treat per-IP rate limiting as unverified and
+   unsuitable as a live-production safeguard until the routing and trusted-client
+   IP design are addressed. Do not trust client-supplied forwarding headers.
+4. Preview and production currently share a Railway database containing test
+   data. Isolate staging before real customer data is introduced. Keep the NAS
+   available until the Railway cutover is verified and a rollback is agreed; do
+   not delete services or data as part of this preparation.
+
 ## Priority 1: remove all dependencies on legacy tables (done)
 Before migrating, the server must only use the `_v2` tables. This was done in this PR:
 
