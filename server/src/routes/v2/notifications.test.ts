@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
+jest.mock('../../ts-common/auth-account');
+
 const mockQuery = jest.fn();
 
 jest.mock('../../ts-common/database', () => ({
@@ -15,7 +17,7 @@ import app from '../../app';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 const authCookie = (id: number, role: string) => [
-  `auth_token=${jwt.sign({ id, type: role }, JWT_SECRET, { expiresIn: '1h' })}`,
+  `auth_token=${jwt.sign({ id, type: role, token_version: 0 }, JWT_SECRET, { expiresIn: '1h' })}`,
 ];
 
 describe('v2 notification routes', () => {

@@ -152,6 +152,26 @@ describe('PageHeader', () => {
     expect(screen.queryByRole('menu', { name: 'Account' })).not.toBeInTheDocument();
   });
 
+  it('warns and allows retry when session revocation fails', async () => {
+    const store = buildStore({
+      auth: { isLoggedIn: true, user: { id: '42' } },
+      basket: { items: [], totalItems: 0 },
+    });
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    (global.fetch as jest.Mock).mockImplementation(async (url: string) => {
+      if (String(url).includes('/logout')) return { ok: false };
+      return { ok: true, json: async () => ({ unread: 0 }) };
+    });
+    render(<Provider store={store}><PageHeader /></Provider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Log out' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Your sessions may still be active');
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true });
+    fireEvent.click(screen.getByRole('button', { name: 'Try sign out again' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    log.mockRestore();
+  });
+
   it('closes the account menu on Escape', () => {
     const store = buildStore({
       auth: { isLoggedIn: true, user: { id: '42' } },

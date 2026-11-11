@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
+jest.mock('../../ts-common/auth-account');
+
 const mockConnection = {
   query: jest.fn(),
   release: jest.fn(),
@@ -15,12 +17,13 @@ jest.mock('../../ts-common/database', () => ({
 
 import app from '../../app';
 import { db } from '../../ts-common/database';
+import * as authAccount from '../../ts-common/auth-account';
 
 const mockedDbQuery = db.query as jest.Mock;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 const authCookie = (id: string | number, role: string) => {
-  const token = jwt.sign({ id, type: role }, JWT_SECRET, {
+  const token = jwt.sign({ id, type: role, token_version: 0 }, JWT_SECRET, {
     expiresIn: '1h',
   });
 
@@ -107,6 +110,23 @@ describe('blog v2 routes', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.data[0].is_new).toBe(false);
+  });
+
+  it('treats a revoked cookie as a guest on the public posts endpoint', async () => {
+    const account = jest.spyOn(authAccount, 'getAuthAccount').mockResolvedValueOnce({
+      status: 'active', email_verified: true, role_code: 'customer', token_version: 1,
+    } as Awaited<ReturnType<typeof authAccount.getAuthAccount>>);
+    mockedDbQuery
+      .mockResolvedValueOnce([[{ id: 5, title: 'Recent post', created_at: new Date().toISOString() }]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[]])
+      .mockResolvedValueOnce([[{ count: 0 }]])
+      .mockResolvedValueOnce([[{ count: 0 }]]);
+    const response = await request(app).get('/api/v2/blog/posts').set('Cookie', authCookie(42, 'customer'));
+    expect(response.status).toBe(200);
+    expect(response.body.data[0].is_new).toBe(false);
+    expect(mockedDbQuery).toHaveBeenCalledTimes(5);
+    account.mockRestore();
   });
 
   it('records a blog post view for a logged-in user', async () => {

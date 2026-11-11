@@ -9,6 +9,8 @@ import {
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { useAppDispatch } from '../../store/hooks';
+import { sessionEnded } from '../../store/auth/authSlice';
+import { clearSelectedUser } from '../../store/users/usersSlice';
 import { useParams } from 'react-router-dom';
 import { ui } from '../../helpers/theme';
 import { ActionButton } from '../landingPage/components/ActionButton';
@@ -224,6 +226,12 @@ function UsersProfile() {
           previousUser: selectedUser ?? undefined,
         })
       ).unwrap();
+
+      if (hasPasswordChange) {
+        dispatch(clearSelectedUser());
+        dispatch(sessionEnded('Password updated. Please sign in again on all devices.'));
+        return;
+      }
 
       setPasswordError(null);
       setPasswordVerified(false);

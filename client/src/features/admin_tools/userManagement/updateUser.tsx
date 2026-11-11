@@ -3,12 +3,15 @@ import ActionButton from '../../landingPage/components/ActionButton';
 import { useState } from 'react';
 import { User } from '../../../types';
 import { updateUser } from '../../../store/users/usersThunks';
-import { useAppDispatch } from '../../../store/hooks';
+import { useAppDispatch, useAppSelector } from '../../../store/hooks';
+import { sessionEnded } from '../../../store/auth/authSlice';
+import { clearSelectedUser } from '../../../store/users/usersSlice';
 
 const UpdateUser = (updateUserData: Partial<User>) => {
   const [changedFields, setChangedFields] = useState<Partial<User>>({});
   const [passwordUpdate, setPasswordUpdate] = useState<boolean>(false);
   const dispatch = useAppDispatch();
+  const currentUserId = useAppSelector((state) => state.auth.user?.id);
 
   const handleFieldChange = (key: string, value: string) => {
     setChangedFields((prev) => ({
@@ -33,11 +36,6 @@ const UpdateUser = (updateUserData: Partial<User>) => {
       return;
     }
 
-    console.log(
-      `Updating user ${updateUserData.id} with data:`,
-      changedFieldsFiltered
-    );
-
     try {
       await dispatch(
         updateUser({
@@ -46,6 +44,15 @@ const UpdateUser = (updateUserData: Partial<User>) => {
           previousUser: updateUserData as User,
         })
       ).unwrap();
+
+      if (
+        String(currentUserId) === String(updateUserData.id) &&
+        ('password' in changedFieldsFiltered || 'status' in changedFieldsFiltered || 'type' in changedFieldsFiltered)
+      ) {
+        dispatch(clearSelectedUser());
+        dispatch(sessionEnded('Your account permissions or password changed. Please sign in again.'));
+        return;
+      }
 
       console.log('User updated successfully');
       setChangedFields({});

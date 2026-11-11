@@ -12,11 +12,14 @@ import { NOTIFICATIONS_CHANGED_EVENT } from "../../features/notifications/events
 import { useAppDispatch } from "../../store/hooks";
 import { performLogout } from "../../store/auth/authThunks";
 import { clearSelectedUser } from "../../store/users/usersSlice";
+import ActionButton from "../../features/landingPage/components/ActionButton";
 
 const NOTIFICATION_POLL_MS = 60000;
 
 function PageHeader() {
   const userId = useSelector((state: RootState) => state.auth.user?.id);
+  const notice = useSelector((state: RootState) => state.auth.notice);
+  const logoutFailed = useSelector((state: RootState) => state.auth.logoutFailed);
   const { totalItems } = useSelector((state: RootState) => state.basket);
   const navigate = useNavigate();
   const location = useLocation();
@@ -104,6 +107,12 @@ function PageHeader() {
         borderBottom: `1px solid ${ui.line}`,
       }}
     >
+      {notice && (
+        <Box direction="row" align="center" gap="small" pad="small" role="alert">
+          <Text>{notice}</Text>
+          {logoutFailed && <ActionButton label="Try sign out again" compact onClick={() => dispatch(performLogout())} />}
+        </Box>
+      )}
       {/* Announcement bar */}
       <Box
         background={ui.ink}

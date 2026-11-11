@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
+jest.mock('../../ts-common/auth-account');
+
 jest.mock('../../ts-common/database', () => ({
   db: {
     query: jest.fn(),
@@ -15,7 +17,7 @@ const mockedDbQuery = db.query as jest.Mock;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 const authCookie = (id: number, role: string) => {
-  const token = jwt.sign({ id, type: role }, JWT_SECRET, { expiresIn: '1h' });
+  const token = jwt.sign({ id, type: role, token_version: 0 }, JWT_SECRET, { expiresIn: '1h' });
   return [`auth_token=${token}`];
 };
 

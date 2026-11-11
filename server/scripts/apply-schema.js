@@ -17,6 +17,11 @@ async function ensureEmailVerificationSchema(connection) {
   if (!existingUserColumns.has('email_verified_at')) {
     await connection.query('ALTER TABLE users_v2 ADD COLUMN email_verified_at DATETIME NULL');
   }
+  if (!existingUserColumns.has('token_version')) {
+    await connection.query(
+      'ALTER TABLE users_v2 ADD COLUMN token_version INT UNSIGNED NOT NULL DEFAULT 0'
+    );
+  }
 
   const [tokenColumns] = await connection.query(
     'SHOW COLUMNS FROM email_verification_tokens_v2'

@@ -1,5 +1,5 @@
 import { checkAuth, performLogout } from './authThunks';
-import { loginSuccess, logout, resetState } from './authSlice';
+import { loginSuccess, logout, resetState, logoutError } from './authSlice';
 import { store } from '../index';
 
 describe('auth thunks', () => {
@@ -85,5 +85,20 @@ describe('auth thunks', () => {
 
     resolveFetch({ ok: true } as Response);
     await logoutRequest;
+    expect(dispatch.mock.calls.filter(([action]) => action.type === logout.type)).toHaveLength(1);
+    expect(dispatch.mock.calls.filter(([action]) => action.type === resetState.type)).toHaveLength(1);
+  });
+
+  it.each([
+    ['server error', () => Promise.resolve({ ok: false })],
+    ['network error', () => Promise.reject(new Error('offline'))],
+  ])('reports %s when sign out cannot revoke sessions', async (_label, response) => {
+    (global.fetch as jest.Mock).mockImplementation(response);
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const dispatch = jest.fn();
+    const result = await performLogout()(dispatch, jest.fn(), undefined);
+    expect(result.type).toBe('auth/logout/rejected');
+    expect(dispatch).toHaveBeenCalledWith(logoutError());
+    log.mockRestore();
   });
 });

@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import request from 'supertest';
 
+jest.mock('../../../ts-common/auth-account');
+
 const mockConnection = {
   beginTransaction: jest.fn(),
   commit: jest.fn(),
@@ -22,7 +24,7 @@ import { db } from '../../../ts-common/database';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-dev-secret';
 
 const authCookie = (id: string | number, role: string) => {
-  const token = jwt.sign({ id, type: role }, JWT_SECRET, {
+  const token = jwt.sign({ id, type: role, token_version: 0 }, JWT_SECRET, {
     expiresIn: '1h',
   });
 
@@ -139,6 +141,7 @@ describe('v2 users write routes', () => {
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 77 }]);
 
     const response = await request(app)
@@ -158,7 +161,7 @@ describe('v2 users write routes', () => {
       affectedRows: 1,
     });
 
-    const auditValues = mockConnection.query.mock.calls[7][1] as Array<unknown>;
+    const auditValues = mockConnection.query.mock.calls[8][1] as Array<unknown>;
     expect(JSON.parse(String(auditValues[6]))).toMatchObject({
       id: 42,
       email_address: 'old@example.com',
@@ -176,13 +179,14 @@ describe('v2 users write routes', () => {
     });
 
     const updateSql = String(mockConnection.query.mock.calls[1][0]);
-    const auditSql = String(mockConnection.query.mock.calls[7][0]);
+    const auditSql = String(mockConnection.query.mock.calls[8][0]);
     expect(updateSql).toContain('UPDATE users_v2');
     expect(String(mockConnection.query.mock.calls[2][0])).toContain('customer_profiles_v2');
     expect(String(mockConnection.query.mock.calls[3][0])).toContain('roles_v2');
     expect(String(mockConnection.query.mock.calls[6][0])).toContain(
       'UPDATE users_v2 SET email_verified = 1'
     );
+    expect(String(mockConnection.query.mock.calls[7][0])).toContain('token_version = token_version + 1');
     expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
@@ -240,6 +244,49 @@ describe('v2 users write routes', () => {
     expect(roleResponse.status).toBe(403);
     expect(statusResponse.status).toBe(403);
     expect(mockConnection.query).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['password', { password: 'NewPassword123' }],
+    ['status', { status: 'inactive' }],
+    ['role', { type: 'customer' }],
+  ])('increments the token version inside the transaction for a %s update', async (_label, changes) => {
+    mockConnection.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM users_v2 u')) {
+        return [[{ id: 7, status: 'active', role_code: 'admin' }]];
+      }
+      if (sql.includes('FROM roles_v2')) return [[{ id: 2 }]];
+      return [{ affectedRows: 1, insertId: 1 }];
+    });
+    const response = await request(app)
+      .put('/api/v2/users/7')
+      .set('Cookie', authCookie(1, 'admin'))
+      .send(changes);
+    expect(response.status).toBe(200);
+    const versionCall = mockConnection.query.mock.calls.find(([sql]) =>
+      String(sql).includes('token_version = token_version + 1')
+    );
+    expect(versionCall?.[1]).toEqual(['7']);
+    expect(mockConnection.beginTransaction).toHaveBeenCalled();
+    expect(mockConnection.commit).toHaveBeenCalled();
+    expect(mockConnection.rollback).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the account update when session revocation fails', async () => {
+    mockConnection.query.mockImplementation(async (sql: string) => {
+      if (sql.includes('FROM users_v2 u')) return [[{ id: 7, status: 'active', role_code: 'customer' }]];
+      if (sql.includes('token_version = token_version + 1')) throw new Error('database unavailable');
+      return [{ affectedRows: 1 }];
+    });
+    const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const response = await request(app)
+      .put('/api/v2/users/7')
+      .set('Cookie', authCookie(1, 'admin'))
+      .send({ password: 'NewPassword123' });
+    expect(response.status).toBe(500);
+    expect(mockConnection.rollback).toHaveBeenCalled();
+    expect(mockConnection.commit).not.toHaveBeenCalled();
+    log.mockRestore();
   });
 
   it('blocks a customer from updating another users v2 profile', async () => {

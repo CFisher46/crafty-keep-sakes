@@ -5,7 +5,7 @@ import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../ts-common/database';
 import { notify } from '../../notifications/service';
 import { JWT_SECRET } from '../../ts-common/jwt-secret';
-import { verifyAuthToken, getRequestUser } from '../../ts-common/middleware';
+import { verifyAuthToken, getRequestUser, hasValidTokenClaims } from '../../ts-common/middleware';
 import { sendEmail } from '../../email/service/emailService';
 import VerifyEmail from '../../email/templates/VerifyEmail';
 import { createVerificationToken, hashVerificationToken } from '../../email/service/verificationService';
@@ -30,6 +30,7 @@ interface V2UserPayload extends RowDataPacket {
   postcode?: string;
   telephone_number?: string;
   email_verified: boolean;
+  token_version: number;
 }
 
 const V2_USER_BY_EMAIL_SQL = `
@@ -38,6 +39,7 @@ const V2_USER_BY_EMAIL_SQL = `
     u.email,
     u.password_hash,
     u.status,
+    u.token_version,
     cp.first_name,
     cp.last_name,
     cp.address_line1,
@@ -68,6 +70,7 @@ const V2_USER_BY_ID_SQL = `
     u.email,
     u.password_hash,
     u.status,
+    u.token_version,
     cp.first_name,
     cp.last_name,
     cp.address_line1,
@@ -136,6 +139,9 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
     }
 
     const roleType = user.role_code || 'customer';
+    if (!Number.isInteger(user.token_version) || user.token_version < 0) {
+      throw new Error('Invalid account token version');
+    }
 
     const payload = {
       id: user.id,
@@ -170,7 +176,7 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
       console.error('Failed to record last login:', err);
     }
 
-    const token = jwt.sign(payload, JWT_SECRET, {
+    const token = jwt.sign({ ...payload, token_version: user.token_version }, JWT_SECRET, {
       expiresIn: rememberMe ? '30d' : '14d',
     });
 
@@ -191,28 +197,7 @@ const loginHandler: RequestHandler = async (req, res): Promise<void> => {
 };
 
 const meHandler: RequestHandler = (req, res): void => {
-  void (async () => {
-    const token = req.cookies.auth_token;
-
-    if (!token) {
-      res.status(401).json({ message: 'No token provided' });
-      return;
-    }
-
-    try {
-      const user = jwt.verify(token, JWT_SECRET) as jwt.JwtPayload & { type?: string };
-      res.json({
-        user: {
-          ...(user as object),
-          type: user.type,
-        },
-        authenticated: true,
-      });
-    } catch (err) {
-      console.error('Token verification error:', err);
-      res.status(401).json({ message: 'Invalid token' });
-    }
-  })();
+  res.json({ user: getRequestUser(req), authenticated: true });
 };
 
 const verifyPasswordHandler: RequestHandler = async (req, res): Promise<void> => {
@@ -242,11 +227,32 @@ const verifyPasswordHandler: RequestHandler = async (req, res): Promise<void> =>
   }
 };
 
-const logoutHandler: RequestHandler = (_req, res): void => {
+const logoutHandler: RequestHandler = async (req, res): Promise<void> => {
+  const token = req.cookies?.auth_token;
+  if (token) {
+    let decoded: string | jwt.JwtPayload;
+    try {
+      decoded = jwt.verify(token, JWT_SECRET);
+    } catch {
+      decoded = '';
+    }
+    if (hasValidTokenClaims(decoded)) {
+      try {
+        await db.query(
+          'UPDATE users_v2 SET token_version = token_version + 1 WHERE id = ? AND token_version = ?',
+          [decoded.id, decoded.token_version]
+        );
+      } catch (error) {
+        console.error('Logout session revocation failed:', error);
+        res.status(503).json({ error: 'Unable to revoke sessions. Please try logging out again.' });
+        return;
+      }
+    }
+  }
   res.clearCookie('auth_token', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
   });
 
   res.status(200).json({ message: 'Logged out successfully' });
@@ -538,7 +544,7 @@ const resendVerificationHandler: RequestHandler = async (req, res): Promise<void
 
 router.post('/login', loginHandler);
 router.post('/register', registerHandler);
-router.get('/me', meHandler);
+router.get('/me', verifyAuthToken, meHandler);
 router.post('/verify-email', verifyEmailTokenHandler);
 router.post('/resend-verification', resendVerificationHandler);
 router.post('/verify-password', verifyAuthToken, verifyPasswordHandler);
