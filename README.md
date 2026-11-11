@@ -55,6 +55,13 @@ All customer features, plus:
 | `admin` | Everything, plus Admin Tools and Reporting |
 
 Admin routes are protected in the client and enforced on the server (`requireRole('admin')`).
+Protected requests and the session endpoint verify the token and check the account's
+current status, email verification and role in the database. A changed role requires
+signing in again; inactive or deleted accounts are denied. Logging out revokes
+all sessions for that account, as do password, status and role changes. Authentication
+returns 503 if the account lookup fails. The `token_version` schema update must be
+applied before deploying this server; existing sessions must sign in again.
+See [the security audit](dev_docs/SECURITY_AUDIT.md) for deployment verification.
 
 ## Tech stack
 

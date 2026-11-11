@@ -240,6 +240,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'John',
@@ -266,6 +267,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'inactive',
             first_name: 'John',
@@ -292,6 +294,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'locked',
             first_name: 'John',
@@ -318,6 +321,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'John',
@@ -358,6 +362,7 @@ describe('v2 auth routes', () => {
         id: 1,
         email: 'user@example.com',
         password_hash: hashedPassword,
+        token_version: 0,
         email_verified: true,
         status: 'active',
         first_name: 'John',
@@ -397,6 +402,7 @@ describe('v2 auth routes', () => {
             id: 2,
             email: 'admin@example.com',
             password_hash: hashedPassword,
+            token_version: 7,
             email_verified: true,
             status: 'active',
             first_name: 'Admin',
@@ -423,6 +429,8 @@ describe('v2 auth routes', () => {
       expect(cookie).toContain('auth_token=');
       expect(cookie).toContain('HttpOnly');
       expect(cookie).toContain('SameSite=Strict');
+      const token = cookie.split(';')[0].replace('auth_token=', '');
+      expect(jwt.verify(token, JWT_SECRET)).toMatchObject({ id: 2, token_version: 7 });
     });
 
     it('sets 14 day expiration by default', async () => {
@@ -434,6 +442,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'John',
@@ -476,6 +485,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'John',
@@ -517,6 +527,7 @@ describe('v2 auth routes', () => {
             id: 99,
             email: 'admin@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'Admin',
@@ -549,6 +560,7 @@ describe('v2 auth routes', () => {
             id: 1,
             email: 'user@example.com',
             password_hash: hashedPassword,
+            token_version: 0,
             email_verified: true,
             status: 'active',
             first_name: 'John',
@@ -579,6 +591,7 @@ describe('v2 auth routes', () => {
           id: 21,
           email: 'waiting@example.com',
           password_hash: hashedPassword,
+          token_version: 0,
           email_verified: false,
           status: 'active',
           first_name: 'Waiting',
@@ -747,16 +760,16 @@ describe('v2 auth routes', () => {
       const response = await request(app).get('/api/v2/auth/me');
 
       expect(response.status).toBe(401);
-      expect(response.body).toEqual({ message: 'No token provided' });
+      expect(response.body).toEqual({ error: 'Not authenticated' });
     });
 
-    it('returns 401 when invalid auth token provided', async () => {
+    it('returns 403 when invalid auth token provided', async () => {
       const response = await request(app)
         .get('/api/v2/auth/me')
         .set('Cookie', 'auth_token=invalid.token.here');
 
-      expect(response.status).toBe(401);
-      expect(response.body).toEqual({ message: 'Invalid token' });
+      expect(response.status).toBe(403);
+      expect(response.body).toEqual({ error: 'Invalid token' });
     });
 
     it('returns user data from valid JWT token', async () => {
@@ -768,7 +781,8 @@ describe('v2 auth routes', () => {
         type: 'customer',
       };
 
-      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign({ ...payload, token_version: 0 }, JWT_SECRET, { expiresIn: '1h' });
+      mockDb.query.mockResolvedValueOnce([[{ status: 'active', email_verified: 1, role_code: 'customer', token_version: 0 }]]);
 
       const response = await request(app)
         .get('/api/v2/auth/me')
@@ -796,7 +810,8 @@ describe('v2 auth routes', () => {
         type: 'admin',
       };
 
-      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+      const token = jwt.sign({ ...payload, token_version: 0 }, JWT_SECRET, { expiresIn: '1h' });
+      mockDb.query.mockResolvedValueOnce([[{ status: 'active', email_verified: 1, role_code: 'admin', token_version: 0 }]]);
 
       const response = await request(app)
         .get('/api/v2/auth/me')
@@ -804,6 +819,20 @@ describe('v2 auth routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.user.type).toBe('admin');
+    });
+
+    it('rejects a previously valid token when the account is disabled or demoted', async () => {
+      const token = jwt.sign({ id: 99, type: 'admin', token_version: 0 }, JWT_SECRET, { expiresIn: '1h' });
+      mockDb.query
+        .mockResolvedValueOnce([[{ status: 'inactive', email_verified: 1, role_code: 'admin', token_version: 0 }]])
+        .mockResolvedValueOnce([[{ status: 'active', email_verified: 1, role_code: 'customer', token_version: 0 }]]);
+      for (let i = 0; i < 2; i++) {
+        const response = await request(app)
+          .get('/api/v2/auth/me')
+          .set('Cookie', `auth_token=${token}`);
+        expect(response.status).toBe(403);
+        expect(response.body.authenticated).not.toBe(true);
+      }
     });
   });
 
@@ -818,6 +847,54 @@ describe('v2 auth routes', () => {
       const cookie = response.headers['set-cookie'][0];
       expect(cookie).toContain('auth_token=;');
       expect(cookie).toMatch(/Expires=Thu, 01 Jan 1970/);
+    });
+
+    it('revokes copied tokens on every device without allowing a stale token to revoke a new login', async () => {
+      let version = 0;
+      mockDb.query.mockReset();
+      mockDb.query.mockImplementation(async (sql: string, values: number[]) => {
+        if (sql.includes('SET token_version = token_version + 1')) {
+          if (values[1] === version) {
+            version++;
+            return [{ affectedRows: 1 }];
+          }
+          return [{ affectedRows: 0 }];
+        }
+        return [[{ status: 'active', email_verified: 1, role_code: 'customer', token_version: version }]];
+      });
+      const old = jwt.sign({ id: 1, type: 'customer', token_version: 0 }, JWT_SECRET);
+      const oldCookie = `auth_token=${old}`;
+      expect((await request(app).get('/api/v2/auth/me').set('Cookie', oldCookie)).status).toBe(200);
+      expect((await request(app).post('/api/v2/auth/logout').set('Cookie', oldCookie)).status).toBe(200);
+      expect((await request(app).get('/api/v2/auth/me').set('Cookie', oldCookie)).status).toBe(403);
+
+      const fresh = jwt.sign({ id: 1, type: 'customer', token_version: 1 }, JWT_SECRET);
+      expect((await request(app).post('/api/v2/auth/logout').set('Cookie', oldCookie)).status).toBe(200);
+      expect((await request(app).get('/api/v2/auth/me').set('Cookie', `auth_token=${fresh}`)).status).toBe(200);
+      expect(version).toBe(1);
+    });
+
+    it('reports a database failure and keeps the cookie so logout can be retried', async () => {
+      mockDb.query.mockReset();
+      mockDb.query.mockRejectedValueOnce(new Error('database unavailable'));
+      const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+      const token = jwt.sign({ id: 1, type: 'customer', token_version: 0 }, JWT_SECRET);
+      const response = await request(app).post('/api/v2/auth/logout').set('Cookie', `auth_token=${token}`);
+      expect(response.status).toBe(503);
+      expect(response.headers['set-cookie']).toBeUndefined();
+      expect(log).toHaveBeenCalled();
+      log.mockRestore();
+    });
+
+    it('clears malformed and pre-migration tokens without modifying account versions', async () => {
+      mockDb.query.mockReset();
+      const legacy = jwt.sign({ id: 1, type: 'customer' }, JWT_SECRET);
+      for (const token of ['invalid.token.value', legacy]) {
+        const response = await request(app).post('/api/v2/auth/logout').set('Cookie', `auth_token=${token}`);
+        expect(response.status).toBe(200);
+        expect(response.headers['set-cookie'][0]).toContain('auth_token=;');
+      }
+      expect(mockDb.query).not.toHaveBeenCalled();
     });
   });
 });

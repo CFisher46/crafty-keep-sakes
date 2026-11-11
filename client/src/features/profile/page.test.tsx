@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import UsersProfile from './page';
-import authReducer from '../../store/auth/authSlice';
+import authReducer, { loginSuccess } from '../../store/auth/authSlice';
 import usersReducer from '../../store/users/usersSlice';
 import basketReducer from '../../store/basket/basketSlice';
 
@@ -167,4 +167,27 @@ describe('UsersProfile', () => {
       ).toBeInTheDocument();
     });
   });
+
+  it('ends the local session and prompts for sign-in after a password change', async () => {
+      (global.fetch as jest.Mock).mockImplementation((url: string, options?: { method?: string }) => {
+        if (String(url).includes('verify-password')) {
+          return Promise.resolve({ ok: true, json: async () => ({ valid: true }) });
+        }
+        if (options?.method === 'PUT') {
+          return Promise.resolve({ ok: true, json: async () => ({}) });
+        }
+        return Promise.resolve({ ok: true, json: async () => selectedUser });
+      });
+      const store = buildStore();
+      store.dispatch(loginSuccess(selectedUser));
+      render(<Provider store={store}><UsersProfile /></Provider>);
+      fireEvent.change(screen.getByPlaceholderText('Enter current password'), { target: { value: 'oldpass' } });
+      fireEvent.click(screen.getByText('Verify Password'));
+      await screen.findByText('Current password verified.');
+      fireEvent.change(screen.getByPlaceholderText('Enter new password'), { target: { value: 'NewSecret123' } });
+      fireEvent.change(screen.getByPlaceholderText('Confirm new password'), { target: { value: 'NewSecret123' } });
+      fireEvent.click(screen.getByText('Save Changes'));
+      await waitFor(() => expect(store.getState().auth.notice).toMatch(/please sign in again/i));
+      expect(store.getState().auth.isLoggedIn).toBe(false);
+    });
 });
