@@ -85,6 +85,8 @@ describe('auth thunks', () => {
 
     resolveFetch({ ok: true } as Response);
     await logoutRequest;
+    expect(dispatch.mock.calls.filter(([action]) => action.type === logout.type)).toHaveLength(1);
+    expect(dispatch.mock.calls.filter(([action]) => action.type === resetState.type)).toHaveLength(1);
   });
 
   it.each([
