@@ -3,6 +3,8 @@ import { loginSuccess, logout, resetState, logoutError } from './authSlice';
 import { buildApiUrl } from '../../api/apiPath';
 import type { RootState } from '../index';
 import type { User } from '../../types';
+import type { RootState } from '../index';
+import type { User } from '../../types';
 
 export const checkAuth = createAsyncThunk<User, void, { state: RootState }>(
   'auth/check',
@@ -34,6 +36,9 @@ export const checkAuth = createAsyncThunk<User, void, { state: RootState }>(
 export const performLogout = createAsyncThunk(
   'auth/logout',
   async (_, thunkAPI) => {
+    thunkAPI.dispatch(logout());
+    thunkAPI.dispatch(resetState());
+
     thunkAPI.dispatch(logout());
     thunkAPI.dispatch(resetState());
 
