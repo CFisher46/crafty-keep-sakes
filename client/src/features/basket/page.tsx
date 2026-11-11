@@ -18,6 +18,17 @@ import type { DeliveryAddress } from "../../types";
 import { ui } from "../../helpers/theme";
 import { ActionButton } from "../landingPage/components/ActionButton";
 import { notifyNotificationsChanged } from "../notifications/events";
+import QuantityInput from "../../components/quantity-input/quantity-input";
+import { parseQuantity } from "../../helpers/quantity";
+
+const isCompleteDeliveryAddress = (
+  address: Partial<DeliveryAddress> | null | undefined
+) =>
+  Boolean(
+    address?.address_line1?.trim() &&
+      address?.town?.trim() &&
+      address?.postcode?.trim()
+  );
 
 function Basket() {
   const dispatch = useDispatch<any>();
@@ -25,8 +36,12 @@ function Basket() {
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const authUser = useSelector((state: RootState) => state.auth.user);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [checkoutAddressError, setCheckoutAddressError] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [quantityDrafts, setQuantityDrafts] = useState<Record<string, string>>({});
+  const [pendingQuantities, setPendingQuantities] = useState<Record<string, boolean>>({});
+  const [quantityError, setQuantityError] = useState<string | null>(null);
   const emptyAddress = useMemo<DeliveryAddress>(
     () => ({
       address_line1: '',
@@ -71,45 +86,77 @@ function Basket() {
     loadBasket();
   }, [dispatch, isLoggedIn]);
 
+  const displayedQuantity = (id: string, quantity: number) =>
+    parseQuantity(quantityDrafts[id] ?? String(quantity)) ?? quantity;
+  const hasUncommittedQuantity = items.some((item) => {
+    const draft = quantityDrafts[item.id];
+    return draft !== undefined && parseQuantity(draft) !== item.quantity;
+  });
+  const quantityBusy = Object.values(pendingQuantities).some(Boolean);
   const totalPrice = items.reduce(
-    (sum, item) => sum + item.quantity * item.price,
+    (sum, item) => sum + displayedQuantity(item.id, item.quantity) * item.price,
+    0
+  );
+  const displayedTotalItems = items.reduce(
+    (sum, item) => sum + displayedQuantity(item.id, item.quantity),
     0
   );
 
-  const handleBasketQuantity = async (itemId: string, delta: number) => {
+  const clearQuantityDraft = (itemId: string) => {
+    setQuantityDrafts((current) => {
+      const next = { ...current };
+      delete next[itemId];
+      return next;
+    });
+  };
+
+  const setBasketQuantity = async (itemId: string, quantity: number) => {
     const existingItem = items.find((item) => item.id === itemId);
+    if (!existingItem || pendingQuantities[itemId]) return;
+
+    if (quantity === existingItem.quantity) {
+      clearQuantityDraft(itemId);
+      return;
+    }
+
+    setQuantityError(null);
 
     if (!isLoggedIn) {
-      if (existingItem) {
-        dispatch(addItemToBasket({ ...existingItem, quantity: delta }));
-      }
+      dispatch(addItemToBasket({ ...existingItem, quantity: quantity - existingItem.quantity }));
+      clearQuantityDraft(itemId);
       return;
     }
 
-    const nextQuantity = existingItem?.quantity ?? 0;
-    const adjustedQuantity = Math.max(0, nextQuantity + delta);
-
-    if (adjustedQuantity <= 0) {
-      const result = await dispatch(removeBasketItem(itemId));
-      if (removeBasketItem.fulfilled.match(result)) {
-        const refreshed = await dispatch(fetchBasket());
-        if (fetchBasket.fulfilled.match(refreshed)) {
-          dispatch(hydrateBasketFromServer(refreshed.payload));
-        }
-      }
-      return;
-    }
-
-    const result = await dispatch(updateBasketItem({ productId: itemId, quantity: adjustedQuantity }));
+    setPendingQuantities((current) => ({ ...current, [itemId]: true }));
+    const result = await dispatch(updateBasketItem({ productId: itemId, quantity }));
     if (updateBasketItem.fulfilled.match(result)) {
-      const refreshed = await dispatch(fetchBasket());
-      if (fetchBasket.fulfilled.match(refreshed)) {
-        dispatch(hydrateBasketFromServer(refreshed.payload));
-      }
+      dispatch(addItemToBasket({ ...existingItem, quantity: quantity - existingItem.quantity }));
+      clearQuantityDraft(itemId);
+    } else {
+      clearQuantityDraft(itemId);
+      setQuantityError(`Unable to update the quantity for ${existingItem.product_name}. Please try again.`);
+    }
+    setPendingQuantities((current) => ({ ...current, [itemId]: false }));
+  };
+
+  const handleBasketQuantity = (itemId: string, delta: number) => {
+    const item = items.find((entry) => entry.id === itemId);
+    if (!item) return;
+    const quantity = item.quantity + delta;
+    if (quantity <= 0) {
+      removeItem(itemId);
+    } else if (parseQuantity(String(quantity)) !== null) {
+      setBasketQuantity(itemId, quantity);
     }
   };
 
   const handleCheckout = async () => {
+    if (!isCompleteDeliveryAddress(deliveryAddress)) {
+      setCheckoutAddressError('Enter address line 1, town and postcode to continue.');
+      return;
+    }
+
+    setCheckoutAddressError(null);
     const resultAction = await dispatch(checkoutBasket(deliveryAddress));
 
     if (checkoutBasket.fulfilled.match(resultAction)) {
@@ -121,6 +168,7 @@ function Basket() {
       };
 
       dispatch(clearBasket());
+      setQuantityDrafts({});
       notifyNotificationsChanged();
       localStorage.removeItem('basket');
       setInvoiceId(String(payload.invoice_id ?? payload.invoice_number ?? 'N/A'));
@@ -148,31 +196,35 @@ function Basket() {
   };
 
   const handleCheckoutStart = () => {
+    if (hasUncommittedQuantity || quantityBusy) return;
     if (!authUser) {
       setCheckoutMessage('Please log in before checking out.');
       return;
     }
 
+    setCheckoutAddressError(null);
     setShowCheckoutModal(true);
   };
 
   const updateDeliveryField = (field: keyof DeliveryAddress, value: string) => {
     setDeliveryAddress((current) => ({ ...current, [field]: value }));
+    setCheckoutAddressError(null);
   };
 
   const removeItem = async (itemId: string) => {
-    if (!isLoggedIn) {
-      dispatch(removeItemFromBasket(itemId));
-      return;
-    }
-
-    const result = await dispatch(removeBasketItem(itemId));
-    if (removeBasketItem.fulfilled.match(result)) {
-      const refreshed = await dispatch(fetchBasket());
-      if (fetchBasket.fulfilled.match(refreshed)) {
-        dispatch(hydrateBasketFromServer(refreshed.payload));
+    if (pendingQuantities[itemId]) return;
+    setQuantityError(null);
+    if (isLoggedIn) {
+      setPendingQuantities((current) => ({ ...current, [itemId]: true }));
+      const result = await dispatch(removeBasketItem(itemId));
+      setPendingQuantities((current) => ({ ...current, [itemId]: false }));
+      if (!removeBasketItem.fulfilled.match(result)) {
+        setQuantityError('Unable to remove this item from your basket. Please try again.');
+        return;
       }
     }
+    dispatch(removeItemFromBasket(itemId));
+    clearQuantityDraft(itemId);
   };
 
   const inputStyle = { borderRadius: 0, fontWeight: 400 };
@@ -204,6 +256,15 @@ function Basket() {
             <Text size="small" style={{ color: ui.muted }}>
               Choose the delivery address to store on the invoice or update it before checkout.
             </Text>
+            {!isCompleteDeliveryAddress({
+              address_line1: authUser?.address_line1,
+              town: authUser?.town,
+              postcode: authUser?.postcode,
+            }) && (
+              <Text size="small" role="status" style={{ color: ui.muted }}>
+                Your profile has no complete delivery address. Enter one here or update it in your profile.
+              </Text>
+            )}
             <Box alignSelf="start">
               <ActionButton
                 label="Use saved delivery address"
@@ -219,6 +280,7 @@ function Basket() {
                       postcode: authUser.postcode || '',
                     });
                   }
+                  setCheckoutAddressError(null);
                 }}
               />
             </Box>
@@ -260,6 +322,11 @@ function Basket() {
               onChange={(event) => updateDeliveryField('postcode', event.target.value)}
               placeholder="Postcode"
             />
+            {checkoutAddressError && (
+              <Text role="alert" size="small" style={{ color: ui.ink }}>
+                {checkoutAddressError}
+              </Text>
+            )}
             <Box direction="row" justify="end" gap="small" margin={{ top: 'small' }}>
               <ActionButton label="Cancel" secondary fixed onClick={() => setShowCheckoutModal(false)} />
               <ActionButton label="Confirm checkout" fixed onClick={handleCheckout} />
@@ -287,6 +354,7 @@ function Basket() {
           )}
         </Box>
       )}
+      {quantityError && <Text role="alert" color="status-critical">{quantityError}</Text>}
 
       {items.length === 0 ? (
         <Box pad="large" background="white" border={{ color: ui.line }} align="center">
@@ -325,6 +393,7 @@ function Basket() {
                     <Box alignSelf="start">
                       <button
                         type="button"
+                        disabled={pendingQuantities[item.id]}
                         onClick={() => removeItem(item.id)}
                         style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: ui.muted, textDecoration: 'underline', fontSize: 13 }}
                       >
@@ -333,13 +402,22 @@ function Basket() {
                     </Box>
                   </Box>
                   <Box direction="row" align="center" gap="small">
-                    <button type="button" style={stepperStyle} aria-label="Decrease quantity" onClick={() => handleBasketQuantity(item.id, -1)}>-</button>
-                    <Text style={{ minWidth: 20, textAlign: 'center' }}>{item.quantity}</Text>
-                    <button type="button" style={stepperStyle} aria-label="Increase quantity" onClick={() => handleBasketQuantity(item.id, 1)}>+</button>
+                    <button type="button" style={stepperStyle} aria-label="Decrease quantity" disabled={pendingQuantities[item.id] || hasUncommittedQuantity} onClick={() => handleBasketQuantity(item.id, -1)}>-</button>
+                    <QuantityInput
+                      label={`Quantity for ${item.product_name}`}
+                      value={quantityDrafts[item.id] ?? String(item.quantity)}
+                      disabled={pendingQuantities[item.id]}
+                      onChange={(value) => setQuantityDrafts((current) => ({ ...current, [item.id]: value }))}
+                      onBlur={() => {
+                        const quantity = parseQuantity(quantityDrafts[item.id] ?? String(item.quantity));
+                        if (quantity !== null) setBasketQuantity(item.id, quantity);
+                      }}
+                    />
+                    <button type="button" style={stepperStyle} aria-label="Increase quantity" disabled={pendingQuantities[item.id] || hasUncommittedQuantity} onClick={() => handleBasketQuantity(item.id, 1)}>+</button>
                   </Box>
                   <Box width="90px" align="end">
                     <Text weight="bold" style={{ color: ui.ink }}>
-                      £{(item.quantity * Number(item.price)).toFixed(2)}
+                      £{(displayedQuantity(item.id, item.quantity) * Number(item.price)).toFixed(2)}
                     </Text>
                   </Box>
                 </Box>
@@ -351,13 +429,18 @@ function Basket() {
             <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '22px', fontWeight: 400, color: ui.ink }}>
               Order summary
             </Text>
-            <Text style={{ color: ui.muted }}>{totalItems} {totalItems === 1 ? 'item' : 'items'}</Text>
+            <Text style={{ color: ui.muted }}>{displayedTotalItems} {displayedTotalItems === 1 ? 'item' : 'items'}</Text>
             <Box border={{ side: 'top', color: ui.line }} pad={{ top: 'medium' }}>
               <Text weight="bold" size="large" style={{ color: ui.ink }}>
                 {`Total Price: £${totalPrice.toFixed(2)}`}
               </Text>
             </Box>
-            <ActionButton label="Checkout" onClick={handleCheckoutStart} disabled={totalItems === 0} />
+            {(hasUncommittedQuantity || quantityBusy) && (
+              <Text size="small" role="status">
+                {quantityBusy ? 'Updating basket quantity...' : 'Enter a valid quantity and leave the field to update your basket.'}
+              </Text>
+            )}
+            <ActionButton label="Checkout" onClick={handleCheckoutStart} disabled={totalItems === 0 || hasUncommittedQuantity || quantityBusy} />
           </Box>
         </div>
       )}

@@ -1,4 +1,6 @@
-import { checkAuth } from './authThunks';
+import { checkAuth, performLogout } from './authThunks';
+import { loginSuccess, logout, resetState } from './authSlice';
+import { store } from '../index';
 
 describe('auth thunks', () => {
   beforeEach(() => {
@@ -20,7 +22,7 @@ describe('auth thunks', () => {
     });
 
     const dispatch = jest.fn();
-    const getState = jest.fn();
+    const getState = jest.fn(() => store.getState());
 
     const result = await checkAuth()(dispatch, getState, undefined);
 
@@ -33,5 +35,55 @@ describe('auth thunks', () => {
     expect(dispatch).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'auth/loginSuccess' })
     );
+  });
+
+  it('does not restore auth from a session check that started before logout', async () => {
+    let sessionVersion = 0;
+    let resolveFetch!: (response: Response) => void;
+    (global.fetch as jest.Mock).mockImplementation(
+      () => new Promise<Response>((resolve) => {
+        resolveFetch = resolve;
+      })
+    );
+
+    const dispatch = jest.fn((action) => {
+      if (action.type === logout.type) sessionVersion += 1;
+    });
+    const getState = jest.fn(() => ({
+      ...store.getState(),
+      auth: { ...store.getState().auth, sessionVersion },
+    }));
+
+    const sessionCheck = checkAuth()(dispatch, getState, undefined);
+    dispatch(logout());
+    resolveFetch({
+      ok: true,
+      json: async () => ({ user: { id: '1' } }),
+    } as Response);
+
+    await sessionCheck;
+
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: loginSuccess.type })
+    );
+  });
+
+  it('clears local auth state before waiting for the logout request', async () => {
+    let resolveFetch!: (response: Response) => void;
+    const dispatch = jest.fn();
+    (global.fetch as jest.Mock).mockImplementation(
+      () => {
+        expect(dispatch).toHaveBeenCalledWith(logout());
+        expect(dispatch).toHaveBeenCalledWith(resetState());
+        return new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        });
+      }
+    );
+
+    const logoutRequest = performLogout()(dispatch, jest.fn(), undefined);
+
+    resolveFetch({ ok: true } as Response);
+    await logoutRequest;
   });
 });

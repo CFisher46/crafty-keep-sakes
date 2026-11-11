@@ -16,6 +16,7 @@ import { addBasketItem } from '../../store/basket/basketThunks';
 import { addItemToBasket } from '../../store/basket/basketSlice';
 import { buildApiUrl } from '../../api/apiPath';
 import { ui } from '../../helpers/theme';
+import { MAX_QUANTITY } from '../../helpers/quantity';
 import PopularGallery from './components/PopularGallery';
 import ActionButton from './components/ActionButton';
 import ProductCarousel from './components/ProductCarousel';
@@ -30,6 +31,7 @@ function Home() {
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
   const userDetails = useAppSelector((state) => state.auth.user);
   const userType = useAppSelector((state) => state.auth.user?.type);
+  const basketItems = useAppSelector((state) => state.basket.items);
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
 
@@ -38,6 +40,7 @@ function Home() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [blogs, setBlogs] = useState<HomepageBlogItem[]>([]);
+  const [basketError, setBasketError] = useState<string | null>(null);
 
   const salePrice = (product: Product) =>
     product.price * (1 - product.sale_percent / 100);
@@ -52,7 +55,12 @@ function Home() {
     setIsModalOpen(false);
   };
 
-  const handleAddToCart = async (product: Product) => {
+  const handleAddToCart = async (product: Product, quantity = 1) => {
+    const currentQuantity = basketItems.find((item) => item.id === product.id)?.quantity ?? 0;
+    if (currentQuantity + quantity > MAX_QUANTITY) {
+      setBasketError(`The total quantity for ${product.product_name} cannot exceed ${MAX_QUANTITY}.`);
+      return;
+    }
     let image = '';
     if (Array.isArray(product.images)) {
       image = product.images[0] || '';
@@ -70,11 +78,16 @@ function Home() {
       image,
       product_name: product.product_name,
       price: product.on_sale ? salePrice(product) : product.price,
-      quantity: 1,
+      quantity,
     };
 
+    setBasketError(null);
     if (isLoggedIn) {
-      await dispatch(addBasketItem(basketItem));
+      const result = await dispatch(addBasketItem(basketItem));
+      if (addBasketItem.rejected.match(result)) {
+        setBasketError('Unable to add this item to your basket. Please try again.');
+        return;
+      }
     }
 
     dispatch(addItemToBasket(basketItem));
@@ -312,6 +325,7 @@ function Home() {
         border={{ color: ui.line, size: 'xsmall' }}
         elevation="none"
       >
+        {basketError && <Text role="alert" color="status-critical">{basketError}</Text>}
         <ProductCarousel
           products={onSaleProducts}
           title="Special Wedding Offers"

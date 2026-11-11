@@ -253,6 +253,34 @@ describe('v2 basket routes', () => {
     });
   });
 
+  it('rejects checkout when neither the request nor profile has a complete delivery address', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 12 }]])
+      .mockResolvedValueOnce([[
+        {
+          id: 9,
+          basket_id: 12,
+          product_id: 25,
+          quantity: 1,
+          unit_price_snapshot: '12.50',
+          product_name: 'Tea Set',
+        },
+      ]])
+      .mockResolvedValueOnce([[]]);
+
+    const response = await request(app)
+      .post('/api/v2/basket/checkout')
+      .set('Cookie', authCookie(7, 'customer'));
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'A delivery address with address line 1, town, and postcode is required',
+    });
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.commit).not.toHaveBeenCalled();
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(false);
+  });
+
   it.each([false, true])('notifies admins when payment link creation fails: %s', async (paymentLinkFails) => {
     process.env.PAYMENTS_PROVIDER = 'mock';
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);

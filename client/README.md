@@ -67,6 +67,8 @@ src/
 
 Shared, reusable UI components used across multiple features.
 
+Customers can enter a positive whole-number quantity in product details before adding to the basket; adding directly from a product card adds one item. Basket quantities can be typed directly; totals preview the entered quantity and the change is saved when leaving the field. Checkout is unavailable while a quantity is invalid or being saved. Admins may leave quantity blank when creating a product; it defaults to zero in the existing stock field and does not indicate a separate made-to-order status.
+
 ### `buttons/`
 
 | File | Description |
@@ -77,7 +79,11 @@ Shared, reusable UI components used across multiple features.
 
 | File | Description |
 |------|-------------|
-| `footer.tsx` | Page footer. Renders social media icon links (Instagram, Facebook, Twitter) displayed at the bottom of every page. |
+| `footer.tsx` | Page footer. Renders social media links and configured policy links. |
+
+### `policies/`
+
+Policy text files live in `public/policies/` and are loaded when opened, so text updates require no component changes (deploy the updated file to publish them). Replace the placeholders with approved policy text before publishing; the Terms & Conditions placeholder must also be replaced before using it for customer registration. The footer and registration form use the same terms file. To add another footer policy, add its text file and an entry to `footerPolicies` in `src/components/policies/policies.ts`.
 
 ### `header/`
 

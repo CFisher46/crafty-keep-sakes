@@ -50,8 +50,27 @@ describe('ProductModal', () => {
     const onAddToBasket = jest.fn();
     render(<ProductModal title="Tea Mug" values={product} onAddToBasket={onAddToBasket} />);
 
+    expect(screen.getByLabelText('Quantity for Tea Mug')).toHaveStyle({ textAlign: 'center' });
     fireEvent.click(screen.getByRole('button', { name: 'Add to Basket' }));
 
-    expect(onAddToBasket).toHaveBeenCalledWith(product);
+    expect(onAddToBasket).toHaveBeenCalledWith(product, 1);
+  });
+
+  it('uses the requested quantity and shows the resulting sale total', () => {
+    const onAddToBasket = jest.fn();
+    render(<ProductModal title="Tea Mug" values={{ ...product, on_sale: true, sale_percent: 20 }} onAddToBasket={onAddToBasket} />);
+
+    fireEvent.change(screen.getByLabelText('Quantity for Tea Mug'), { target: { value: '12' } });
+    expect(screen.getByText('Total: £96.00')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Basket' }));
+    expect(onAddToBasket).toHaveBeenCalledWith(expect.objectContaining({ id: 1 }), 12);
+  });
+
+  it.each(['', '0', '-1', '1.5', '2147483648'])('blocks invalid quantity %s', (value) => {
+    const onAddToBasket = jest.fn();
+    render(<ProductModal title="Tea Mug" values={product} onAddToBasket={onAddToBasket} />);
+    fireEvent.change(screen.getByLabelText('Quantity for Tea Mug'), { target: { value } });
+    expect(screen.getByRole('button', { name: 'Add to Basket' })).toBeDisabled();
+    expect(onAddToBasket).not.toHaveBeenCalled();
   });
 });
