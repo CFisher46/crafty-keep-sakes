@@ -113,7 +113,7 @@ function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, t
               >
                 <thead>
                   <tr style={{ background: ui.page, borderBottom: `1px solid ${ui.line}` }}>
-                    {['Order', 'Invoice', ...(showCustomer ? ['Customer'] : []), 'Status', 'Tracking', 'Total', 'Date'].map((heading) => (
+                    {['Order', 'Invoice', ...(showCustomer ? ['Customer', 'Email'] : []), 'Status', 'Tracking', 'Total', 'Date'].map((heading) => (
                       <th key={heading} style={headingStyle}>{heading}</th>
                     ))}
                   </tr>
@@ -167,7 +167,10 @@ function InvoiceHistory({ orders, title = 'My Invoices', showCustomer = false, t
                           )}
                         </td>
                         {showCustomer && (
-                          <td style={cellStyle}>{order.customer_name || order.customer_email || `User ${order.user_id}`}</td>
+                          <>
+                            <td style={cellStyle}>{order.customer_name || order.customer_email || `User ${order.user_id}`}</td>
+                            <td style={cellStyle}>{order.customer_email || '—'}</td>
+                          </>
                         )}
                         <td style={cellStyle}>{order.order_status}</td>
                         <td style={cellStyle}>{order.tracking_info || '—'}</td>

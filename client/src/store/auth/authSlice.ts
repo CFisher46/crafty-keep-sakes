@@ -4,11 +4,13 @@ import { User } from "../../types";
 interface AuthState {
   isLoggedIn: boolean;
   user: User | null;
+  sessionVersion?: number;
 }
 
 const initialState: AuthState = {
   isLoggedIn: false,
-  user: null
+  user: null,
+  sessionVersion: 0,
 };
 
 const authSlice = createSlice({
@@ -22,9 +24,10 @@ const authSlice = createSlice({
     logout: (state) => {
       state.isLoggedIn = false;
       state.user = null;
+      state.sessionVersion = (state.sessionVersion ?? 0) + 1;
     },
-    resetState() {
-      return initialState;
+    resetState(state) {
+      return { ...initialState, sessionVersion: state.sessionVersion ?? 0 };
     },
     setLoggedIn: (state, action: PayloadAction<boolean>) => {
       state.isLoggedIn = action.payload;

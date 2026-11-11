@@ -1,6 +1,19 @@
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitForElementToBeRemoved } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '../../test-utils/renderWithProviders';
 import Register from './register';
+
+let mockUseRealPolicyModal = false;
+jest.mock('../policies/policy-modal', () => ({
+  __esModule: true,
+  default: (props: { onClose: () => void; policy: { title: string; fileName: string } }) => {
+    if (mockUseRealPolicyModal) {
+      const RealPolicyModal = jest.requireActual('../policies/policy-modal').default;
+      return <RealPolicyModal {...props} />;
+    }
+    return <button type="button" onClick={props.onClose}>Close terms</button>;
+  },
+}));
 
 function completeRegistrationForm() {
   fireEvent.change(screen.getByPlaceholderText('First name'), {
@@ -18,6 +31,9 @@ function completeRegistrationForm() {
   fireEvent.change(screen.getByPlaceholderText('Repeat password'), {
     target: { value: 'password123' },
   });
+  fireEvent.click(screen.getByRole('button', { name: 'Terms & Conditions' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Close terms' }));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'I accept the Terms & Conditions' }));
 }
 
 describe('UserRegister email verification', () => {
@@ -26,6 +42,7 @@ describe('UserRegister email verification', () => {
   });
 
   afterEach(() => {
+    mockUseRealPolicyModal = false;
     jest.clearAllMocks();
   });
 
@@ -68,6 +85,60 @@ describe('UserRegister email verification', () => {
     expect(screen.getByText('Password must be at least 8 characters.')).toBeInTheDocument();
     expect(screen.getByText('Passwords must match.')).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('requires acceptance before submitting a valid registration', () => {
+    renderWithProviders(<Register />);
+    completeRegistrationForm();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I accept the Terms & Conditions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+
+    expect(screen.getByText('Please accept the Terms & Conditions to create an account.')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'I accept the Terms & Conditions' }));
+    expect(screen.queryByText('Please accept the Terms & Conditions to create an account.')).not.toBeInTheDocument();
+  });
+
+  it('disables acceptance until the terms modal has been opened', () => {
+    renderWithProviders(<Register />);
+    const checkbox = screen.getByRole('checkbox', { name: 'I accept the Terms & Conditions' });
+    expect(checkbox).toBeDisabled();
+    expect(screen.getByText('Open the Terms & Conditions before accepting them.')).toBeInTheDocument();
+
+    userEvent.click(checkbox);
+    fireEvent.click(screen.getByRole('button', { name: 'Create Account' }));
+    expect(checkbox).not.toBeChecked();
+    expect(screen.getByText('Please open and accept the Terms & Conditions to create an account.')).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Terms & Conditions' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close terms' }));
+    expect(checkbox).toBeEnabled();
+    expect(checkbox).not.toBeChecked();
+    fireEvent.click(checkbox);
+    expect(checkbox).toBeChecked();
+  });
+
+  it('opens the shared terms file without submitting the form', async () => {
+    mockUseRealPolicyModal = true;
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      text: async () => 'Shared terms text',
+    });
+    renderWithProviders(<Register />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Terms & Conditions' }));
+
+    expect(await screen.findByText('Shared terms text')).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Terms & Conditions' })).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringMatching(/\/policies\/terms-and-conditions\.txt$/),
+      expect.objectContaining({ signal: expect.anything() })
+    );
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitForElementToBeRemoved(() => screen.queryByText('Shared terms text'));
+    expect(screen.getByRole('checkbox', { name: 'I accept the Terms & Conditions' })).not.toBeChecked();
   });
 
   it('trims names and email before sending a valid form', async () => {

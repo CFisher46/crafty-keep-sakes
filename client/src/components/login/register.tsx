@@ -1,10 +1,12 @@
-import { Form, Box, Text, TextInput } from "grommet";
+import { Form, Box, Button, Text, TextInput } from "grommet";
 import { useEffect, useRef, useState } from "react";
 import { ui } from "../../helpers/theme";
 import ActionButton from "../../features/landingPage/components/ActionButton";
 import { useAppDispatch } from "../../store/hooks";
 import { resendVerificationEmail } from "../../store/verification/verificationThunks";
 import { isValidEmail, isValidPassword } from "../../helpers/userValidation";
+import PolicyModal from "../policies/policy-modal";
+import { termsAndConditions } from "../policies/policies";
 
 interface UserRegisterProps {
   onRegistered?: () => void;
@@ -33,6 +35,10 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resending, setResending] = useState(false);
   const [registering, setRegistering] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsError, setShowTermsError] = useState(false);
+  const [showTerms, setShowTerms] = useState(false);
+  const [openedTerms, setOpenedTerms] = useState(false);
   const dispatch = useAppDispatch();
   const startedAt = useRef(Date.now());
   const registrationInProgress = useRef(false);
@@ -69,7 +75,8 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
     if (registrationInProgress.current) return;
     setError(null);
     setTouched({ first_name: true, last_name: true, email: true, password: true, confirm: true });
-    if (Object.values(fieldErrors).some(Boolean)) {
+    setShowTermsError(!acceptedTerms);
+    if (Object.values(fieldErrors).some(Boolean) || !acceptedTerms) {
       return;
     }
 
@@ -244,6 +251,49 @@ function UserRegister({ onRegistered }: UserRegisterProps) {
         {field("Password", "password", "At least 8 characters", "password")}
         {field("Confirm password", "confirm", "Repeat password", "password")}
 
+        <Box gap="xxsmall">
+          <Box direction="row" align="center" gap="xsmall">
+            <input
+              id="register-accept-terms"
+              type="checkbox"
+              checked={acceptedTerms}
+              disabled={!openedTerms}
+              aria-label="I accept the Terms & Conditions"
+              aria-invalid={showTermsError}
+              aria-describedby={showTermsError ? "register-terms-error" : !openedTerms ? "register-terms-hint" : undefined}
+              onChange={(event) => {
+                setAcceptedTerms(event.target.checked);
+                setShowTermsError(false);
+              }}
+            />
+            <label htmlFor="register-accept-terms">I accept the</label>
+            <Button
+              type="button"
+              plain
+              label={termsAndConditions.title}
+              onClick={() => {
+                setOpenedTerms(true);
+                setShowTerms(true);
+              }}
+              style={{ color: ui.ink, textDecoration: "underline" }}
+            />
+          </Box>
+          {!openedTerms && !showTermsError && (
+            <Text id="register-terms-hint" size="small" style={{ color: ui.muted }}>
+              Open the Terms & Conditions before accepting them.
+            </Text>
+          )}
+          {showTermsError && (
+            <Text id="register-terms-error" size="small" color="status-critical">
+              {openedTerms
+                ? "Please accept the Terms & Conditions to create an account."
+                : "Please open and accept the Terms & Conditions to create an account."}
+            </Text>
+          )}
+        </Box>
+        {showTerms && (
+          <PolicyModal policy={termsAndConditions} onClose={() => setShowTerms(false)} />
+        )}
         {error && <Text size="small" color="status-critical">{error}</Text>}
 
         <Box direction="row" margin={{ top: "xsmall" }}>

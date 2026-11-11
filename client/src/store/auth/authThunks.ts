@@ -1,39 +1,49 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { loginSuccess, logout, resetState } from './authSlice';
 import { buildApiUrl } from '../../api/apiPath';
+import type { RootState } from '../index';
+import type { User } from '../../types';
 
-export const checkAuth = createAsyncThunk('auth/check', async (_, thunkAPI) => {
-  try {
-    const response = await fetch(buildApiUrl('auth', '/me'), {
-      credentials: 'include',
-    });
+export const checkAuth = createAsyncThunk<User, void, { state: RootState }>(
+  'auth/check',
+  async (_, thunkAPI) => {
+    const sessionVersion = thunkAPI.getState().auth.sessionVersion;
 
-    if (!response.ok) throw new Error('Not authenticated');
+    try {
+      const response = await fetch(buildApiUrl('auth', '/me'), {
+        credentials: 'include',
+      });
 
-    const { user } = await response.json();
+      if (!response.ok) throw new Error('Not authenticated');
 
-    thunkAPI.dispatch(loginSuccess(user));
-    return user;
-  } catch (err) {
-    thunkAPI.dispatch(logout());
-    throw err;
+      const { user } = await response.json();
+
+      if (thunkAPI.getState().auth.sessionVersion === sessionVersion) {
+        thunkAPI.dispatch(loginSuccess(user));
+      }
+      return user;
+    } catch (err) {
+      if (thunkAPI.getState().auth.sessionVersion === sessionVersion) {
+        thunkAPI.dispatch(logout());
+      }
+      throw err;
+    }
   }
-});
+);
 
 export const performLogout = createAsyncThunk(
   'auth/logout',
   async (_, thunkAPI) => {
+    thunkAPI.dispatch(logout());
+    thunkAPI.dispatch(resetState());
+
     try {
       await fetch(buildApiUrl('auth', '/logout'), {
         method: 'POST',
         credentials: 'include',
       });
-
-      thunkAPI.dispatch(logout());
-      thunkAPI.dispatch(resetState());
     } catch (error) {
       console.error('Logout failed', error);
-      thunkAPI.dispatch(logout());
     }
   }
 );
