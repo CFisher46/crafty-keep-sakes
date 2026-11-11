@@ -800,6 +800,14 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       ? suppliedDeliveryAddress
       : await getProfileBillingAddress(connection, userId);
 
+    if (
+      !resolvedDeliveryAddress.address_line1 ||
+      !resolvedDeliveryAddress.town ||
+      !resolvedDeliveryAddress.postcode
+    ) {
+      throw new Error('Delivery address is incomplete');
+    }
+
     await ensureInvoiceBillingColumns(connection);
 
     const subtotal = items.reduce(
@@ -953,6 +961,13 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
 
     if (err instanceof Error && err.message === 'Basket is empty') {
       res.status(400).json({ error: 'Basket is empty' });
+      return;
+    }
+
+    if (err instanceof Error && err.message === 'Delivery address is incomplete') {
+      res.status(400).json({
+        error: 'A delivery address with address line 1, town, and postcode is required',
+      });
       return;
     }
 

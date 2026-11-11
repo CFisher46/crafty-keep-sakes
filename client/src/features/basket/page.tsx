@@ -19,12 +19,22 @@ import { ui } from "../../helpers/theme";
 import { ActionButton } from "../landingPage/components/ActionButton";
 import { notifyNotificationsChanged } from "../notifications/events";
 
+const isCompleteDeliveryAddress = (
+  address: Partial<DeliveryAddress> | null | undefined
+) =>
+  Boolean(
+    address?.address_line1?.trim() &&
+      address?.town?.trim() &&
+      address?.postcode?.trim()
+  );
+
 function Basket() {
   const dispatch = useDispatch<any>();
   const { items, totalItems } = useSelector((state: RootState) => state.basket);
   const isLoggedIn = useSelector((state: RootState) => state.auth.isLoggedIn);
   const authUser = useSelector((state: RootState) => state.auth.user);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [checkoutAddressError, setCheckoutAddressError] = useState<string | null>(null);
   const [invoiceId, setInvoiceId] = useState<string | null>(null);
   const [showCheckoutModal, setShowCheckoutModal] = useState(false);
   const emptyAddress = useMemo<DeliveryAddress>(
@@ -110,6 +120,12 @@ function Basket() {
   };
 
   const handleCheckout = async () => {
+    if (!isCompleteDeliveryAddress(deliveryAddress)) {
+      setCheckoutAddressError('Enter address line 1, town and postcode to continue.');
+      return;
+    }
+
+    setCheckoutAddressError(null);
     const resultAction = await dispatch(checkoutBasket(deliveryAddress));
 
     if (checkoutBasket.fulfilled.match(resultAction)) {
@@ -153,11 +169,13 @@ function Basket() {
       return;
     }
 
+    setCheckoutAddressError(null);
     setShowCheckoutModal(true);
   };
 
   const updateDeliveryField = (field: keyof DeliveryAddress, value: string) => {
     setDeliveryAddress((current) => ({ ...current, [field]: value }));
+    setCheckoutAddressError(null);
   };
 
   const removeItem = async (itemId: string) => {
@@ -204,6 +222,15 @@ function Basket() {
             <Text size="small" style={{ color: ui.muted }}>
               Choose the delivery address to store on the invoice or update it before checkout.
             </Text>
+            {!isCompleteDeliveryAddress({
+              address_line1: authUser?.address_line1,
+              town: authUser?.town,
+              postcode: authUser?.postcode,
+            }) && (
+              <Text size="small" role="status" style={{ color: ui.muted }}>
+                Your profile has no complete delivery address. Enter one here or update it in your profile.
+              </Text>
+            )}
             <Box alignSelf="start">
               <ActionButton
                 label="Use saved delivery address"
@@ -219,6 +246,7 @@ function Basket() {
                       postcode: authUser.postcode || '',
                     });
                   }
+                  setCheckoutAddressError(null);
                 }}
               />
             </Box>
@@ -260,6 +288,11 @@ function Basket() {
               onChange={(event) => updateDeliveryField('postcode', event.target.value)}
               placeholder="Postcode"
             />
+            {checkoutAddressError && (
+              <Text role="alert" size="small" style={{ color: ui.ink }}>
+                {checkoutAddressError}
+              </Text>
+            )}
             <Box direction="row" justify="end" gap="small" margin={{ top: 'small' }}>
               <ActionButton label="Cancel" secondary fixed onClick={() => setShowCheckoutModal(false)} />
               <ActionButton label="Confirm checkout" fixed onClick={handleCheckout} />

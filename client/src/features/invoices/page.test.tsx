@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 import MyInvoicesPage from './page';
@@ -70,6 +70,8 @@ describe('Invoice pages', () => {
     );
 
     expect(screen.getByRole('heading', { name: 'My invoices' })).toBeInTheDocument();
+    expect(await screen.findByText('INV-001')).toBeInTheDocument();
+    expect(screen.queryByRole('columnheader', { name: 'Email' })).not.toBeInTheDocument();
     fireEvent.click(await screen.findByText('INV-001'));
     fireEvent.click(screen.getByText('Open Selected Invoice'));
 
@@ -89,6 +91,10 @@ describe('Invoice pages', () => {
     );
 
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
+    const row = screen.getByText('Ada Lovelace').closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByRole('cell', { name: 'ada@example.com' })).toBeInTheDocument();
     expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('/orders/all'))).toBe(true);
 
     fireEvent.click(screen.getByText('INV-001'));
@@ -177,5 +183,29 @@ describe('Invoice pages', () => {
 
     expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
     expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+  });
+
+  it('shows a placeholder for missing emails and can filter by email', async () => {
+    mockApi([
+      { ...order, customer_name: 'Ada Lovelace', customer_email: null },
+      { ...order, id: 11, invoice_id: 91, invoice_number: 'INV-002', customer_name: 'Grace Hopper', customer_email: 'grace@example.com' },
+    ]);
+
+    render(
+      <Provider store={buildStore()}>
+        <AllInvoicesPage />
+      </Provider>
+    );
+
+    const customer = await screen.findByText('Ada Lovelace');
+    const row = customer.closest('tr');
+    expect(row).not.toBeNull();
+    expect(within(row!).getByRole('cell', { name: '—' })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search invoice number, customer/), { target: { value: 'grace@example.com' } });
+
+    expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument();
+    expect(screen.getByText('Grace Hopper')).toBeInTheDocument();
+    expect(screen.getByText('grace@example.com')).toBeInTheDocument();
   });
 });

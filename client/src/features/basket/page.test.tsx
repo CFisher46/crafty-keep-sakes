@@ -195,6 +195,27 @@ describe('Basket page', () => {
     expect(screen.getByText('Delivery address')).toBeInTheDocument();
   });
 
+  it('requires a complete delivery address before submitting checkout', async () => {
+    const store = buildStore({
+      basket: { items: [basketItem], totalItems: 2 },
+      auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+    });
+
+    render(
+      <Provider store={store}>
+        <Basket />
+      </Provider>
+    );
+
+    fireEvent.click(screen.getByText('Checkout'));
+    screen.getAllByText('Confirm checkout').forEach((button) => fireEvent.click(button));
+
+    expect(
+      await screen.findByRole('alert')
+    ).toHaveTextContent('Enter address line 1, town and postcode to continue.');
+    expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('/checkout'))).toBe(false);
+  });
+
   it('completes checkout and shows a success message', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
@@ -210,7 +231,16 @@ describe('Basket page', () => {
 
     const store = buildStore({
       basket: { items: [basketItem], totalItems: 2 },
-      auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+      auth: {
+        isLoggedIn: true,
+        user: {
+          id: '1',
+          first_name: 'John',
+          address_line1: '1 Test Street',
+          town: 'Bristol',
+          postcode: 'BS1 1AA',
+        },
+      },
     });
 
     render(
@@ -251,7 +281,16 @@ describe('Basket page', () => {
 
       const store = buildStore({
         basket: { items: [basketItem], totalItems: 2 },
-        auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+        auth: {
+          isLoggedIn: true,
+          user: {
+            id: '1',
+            first_name: 'John',
+            address_line1: '1 Test Street',
+            town: 'Bristol',
+            postcode: 'BS1 1AA',
+          },
+        },
       });
 
       render(
@@ -286,7 +325,16 @@ describe('Basket page', () => {
 
     const store = buildStore({
       basket: { items: [basketItem], totalItems: 2 },
-      auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+      auth: {
+        isLoggedIn: true,
+        user: {
+          id: '1',
+          first_name: 'John',
+          address_line1: '1 Test Street',
+          town: 'Bristol',
+          postcode: 'BS1 1AA',
+        },
+      },
     });
 
     render(
@@ -311,7 +359,16 @@ describe('Basket page', () => {
 
     const store = buildStore({
       basket: { items: [basketItem], totalItems: 2 },
-      auth: { isLoggedIn: true, user: { id: '1', first_name: 'John' } },
+      auth: {
+        isLoggedIn: true,
+        user: {
+          id: '1',
+          first_name: 'John',
+          address_line1: '1 Test Street',
+          town: 'Bristol',
+          postcode: 'BS1 1AA',
+        },
+      },
     });
 
     render(

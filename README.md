@@ -39,7 +39,7 @@ Online shop and business website for hand crafted wedding keepsakes. Customers c
 All customer features, plus:
 
 - **Admin Tools** (`/Admin`): manage products (create, update, images), users (create, update, delete), customer reviews (add, edit, remove), and view the audit log.
-- **Invoices**: see every customer's invoices (`/Reporting/invoices`), update the invoice status and add tracking in a single "Save Changes" action. New orders are highlighted until you open them.
+- **Invoices**: see every customer's invoices and email address (`/Reporting/invoices`), update the invoice status and add tracking in a single "Save Changes" action. New orders are highlighted until you open them.
 - **Reporting** (`/Reporting`):
   - **Dashboard** (`/Reporting/dashboard`): orders, revenue, units sold, customers and new accounts, with charts for a chosen date range (the last 30 days by default).
   - **Product sales**, **User activity** (including dormant accounts) and **Blog stats** reports, each with date filters, charts, pagination (10, 20, 50, 100 or All rows) and CSV export of the full filtered table.
