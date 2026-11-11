@@ -8,6 +8,7 @@ import { addBasketItem } from '../../store/basket/basketThunks';
 import { ui } from '../../helpers/theme';
 import ActionButton from '../landingPage/components/ActionButton';
 import CommonModal from '../../components/modals/common-modal';
+import { MAX_QUANTITY } from '../../helpers/quantity';
 import { Product } from '../../types';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
@@ -20,10 +21,12 @@ function Shop() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [basketError, setBasketError] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const products = useAppSelector(selectAllProducts);
   const loading = useAppSelector(selectProductsLoading);
   const isLoggedIn = useAppSelector((state) => state.auth.isLoggedIn);
+  const basketItems = useAppSelector((state) => state.basket.items);
   const location = useLocation();
   const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
 
@@ -69,18 +72,28 @@ function Shop() {
     }
   };
 
-  const handleAddToCart = async (product: Product) => {
+  const handleAddToCart = async (product: Product, quantity = 1) => {
+    const currentQuantity = basketItems.find((item) => item.id === product.id)?.quantity ?? 0;
+    if (currentQuantity + quantity > MAX_QUANTITY) {
+      setBasketError(`The total quantity for ${product.product_name} cannot exceed ${MAX_QUANTITY}.`);
+      return;
+    }
     const productImages = parseProductImages(product.images);
     const basketItem = {
       id: product.id,
       image: productImages[0] || '',
       product_name: product.product_name,
       price: product.on_sale ? salePrice(product) : product.price,
-      quantity: 1,
+      quantity,
     };
 
+    setBasketError(null);
     if (isLoggedIn) {
-      await dispatch(addBasketItem(basketItem));
+      const result = await dispatch(addBasketItem(basketItem));
+      if (addBasketItem.rejected.match(result)) {
+        setBasketError('Unable to add this item to your basket. Please try again.');
+        return;
+      }
     }
 
     dispatch(addItemToBasket(basketItem));
@@ -142,6 +155,7 @@ function Shop() {
         </Text>
       </Box>
       <ShopFilterBar />
+      {basketError && <Text role="alert" color="status-critical">{basketError}</Text>}
       <Box>
         <Form value={{}} onChange={() => { }}>
           {loading ? (

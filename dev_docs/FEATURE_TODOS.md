@@ -93,6 +93,15 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [x] CKS-2-026 : Update User profile actions panel
 
+-   [x] Customer email on the admin invoice report
+    -   AS an ADMIN, WHEN viewing all invoices, I WANT to see each customer's email address so I can contact them about bespoke requirements.
+    -   The all-invoices table displays an Email column and can be searched by email; the customer's own invoice view is unchanged.
+
+-   [x] Footer policies and registration terms
+    -   AS a CUSTOMER, I WANT to read the Terms & Conditions, Shipping & Delivery, Data Protection and Returns & Refunds policies from the footer.
+    -   AS a CUSTOMER, WHEN registering, I WANT to open and accept the Terms & Conditions before submitting.
+    -   Policy links use a reusable, scrollable modal and editable text files in `client/public/policies/`. Registration uses the same terms file and enables acceptance after the modal is opened; opening it does not guarantee it has been read.
+
 -   [ ] CKS-2-029 : contact us form for any anyone that sends from the app to craftykeepsakesprints@gmail.com
     -   AS a CUSTOMER I NEED to be able to submit a form to contact the craftykeepsakes team WITHOUT having to be a logged in user.
     -   AS an ADMIN I WOULD like some restrictive measures put in place to prevent bots and spam for example a user cannot submit more than one contact within 24hours
@@ -102,12 +111,14 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   AS an ADMIN I WANT to be able to reply to feedback on products AND have the right to delete user submissions
     -   AS an APPLICATION ONLY users that are verified and logged in are permitted so submit a review
 
--   [ ] CKS-2-031 : Changes to how Quantity is managed
+-   [x] CKS-2-031 : Changes to how Quantity is managed
     -   AS a CUSTOMER when updating how many of the item i need, I DONT WANT to have to click '+' multipe times, there should be a text box to allow me to type how many i want and the price should reflect this new quantity.
     -   AS a CUSTOMER before adding an item to the basket, i should be able to define the quantity i want beforehand.
+    -   Quantity can be entered in product details and in the basket, with values centred in both inputs. Adding directly from a product card adds one item. Basket totals preview valid edits, which are saved on leaving the field.
 
--   [ ] CKS-2-032 : New Product Quantity
+-   [x] CKS-2-032 : New Product Quantity
     -   AS an ADMIN i need to be able to add a new product and NOT have to specify a quantity since some products are not stocked they are hand crafted.   
+    -   Quantity is optional when creating a product and defaults to zero in the existing stock field; this does not add a made-to-order flag.
 
 -   [ ] CKS-2-033 : [HIGH] Setup a staging database on railway for dev instead of using the production database and move local to also use the same DB connection
 
@@ -139,6 +150,8 @@ Purpose: Document new/next features and improvements to ensure the requirements 
     -   Checkout now requires address line 1, town and postcode, with a prompt to complete the profile address or enter an override.
 
 ## Adhoc TODOs
+
+-   [ ] Replace the placeholder text in all four files under `client/public/policies/` with approved policies before publishing. The Terms & Conditions must be replaced before using them for customer registration.
 
 -   [x] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
     -   Admin create-user form checks email format, optional telephone format and password length/matching inline. Registration checks required names, email format and password length/matching inline before submitting.

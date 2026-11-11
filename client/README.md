@@ -67,6 +67,8 @@ src/
 
 Shared, reusable UI components used across multiple features.
 
+Customers can enter a positive whole-number quantity in product details before adding to the basket; adding directly from a product card adds one item. Basket quantities can be typed directly; totals preview the entered quantity and the change is saved when leaving the field. Checkout is unavailable while a quantity is invalid or being saved. Admins may leave quantity blank when creating a product; it defaults to zero in the existing stock field and does not indicate a separate made-to-order status.
+
 ### `buttons/`
 
 | File | Description |

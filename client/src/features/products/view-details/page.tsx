@@ -4,6 +4,8 @@ import { FormClose } from 'grommet-icons';
 import { Product } from '../../../types';
 import { ui } from '../../../helpers/theme';
 import ActionButton from '../../landingPage/components/ActionButton';
+import QuantityInput from '../../../components/quantity-input/quantity-input';
+import { parseQuantity } from '../../../helpers/quantity';
 
 function ProductModal({
   title,
@@ -14,9 +16,10 @@ function ProductModal({
   title: string;
   values?: Product;
   onClose?: () => void;
-  onAddToBasket?: (product: Product) => void;
+  onAddToBasket?: (product: Product, quantity: number) => void;
 }) {
   const [selectedImage, setSelectedImage] = useState(0);
+  const [quantity, setQuantity] = useState('1');
   const product = values;
   const salePrice = (product: Product) => product.price * (1 - product.sale_percent / 100);
 
@@ -163,8 +166,16 @@ function ProductModal({
           </Box>
 
           {onAddToBasket && (
-            <Box direction="row">
-              <ActionButton label="Add to Basket" onClick={() => onAddToBasket(product)} />
+            <Box gap="small">
+              <Text size="small">Quantity</Text>
+              <QuantityInput label={`Quantity for ${product.product_name}`} value={quantity} onChange={setQuantity} />
+              {parseQuantity(quantity) !== null && (
+                <Text>Total: £{((product.on_sale ? salePrice(product) : product.price) * (parseQuantity(quantity) ?? 0)).toFixed(2)}</Text>
+              )}
+              <ActionButton label="Add to Basket" disabled={parseQuantity(quantity) === null} onClick={() => {
+                const amount = parseQuantity(quantity);
+                if (amount !== null) onAddToBasket(product, amount);
+              }} />
             </Box>
           )}
         </Box>
