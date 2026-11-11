@@ -126,6 +126,88 @@ describe('Basket page', () => {
     expect(store.getState().basket.items[0].quantity).toBe(1);
   });
 
+  it('previews and saves a typed quantity for guests', () => {
+    const store = buildStore({
+      basket: { items: [basketItem], totalItems: 2 },
+      auth: { isLoggedIn: false, user: null },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+
+    const input = screen.getByLabelText('Quantity for Mug');
+    expect(input).toHaveStyle({ textAlign: 'center' });
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(screen.getByText('Total Price: £120.00')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Checkout' })).toBeDisabled();
+    fireEvent.blur(input);
+    expect(store.getState().basket.items[0].quantity).toBe(12);
+    expect(screen.getByRole('button', { name: 'Checkout' })).toBeEnabled();
+  });
+
+  it.each(['', '0', '-1', '1.5', '2147483648'])('blocks invalid basket quantity %s', (value) => {
+    const store = buildStore({
+      basket: { items: [basketItem], totalItems: 2 },
+      auth: { isLoggedIn: false, user: null },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    const input = screen.getByLabelText('Quantity for Mug');
+    fireEvent.change(input, { target: { value } });
+    fireEvent.blur(input);
+    expect(screen.getByRole('button', { name: 'Checkout' })).toBeDisabled();
+    expect(store.getState().basket.items[0].quantity).toBe(2);
+  });
+
+  it('saves a typed quantity to the server and updates the total', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
+      if (options?.method === 'PUT') {
+        return Promise.resolve({ ok: true, json: async () => ({ quantity: 12 }) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ items: [{ product_id: 1, product_name: 'Mug', quantity: 2, unit_price: 10 }], total_items: 2 }),
+      });
+    });
+    const store = buildStore({
+      basket: { items: [basketItem], totalItems: 2 },
+      auth: { isLoggedIn: true, user: { id: '1' } },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    await waitFor(() => expect(store.getState().basket.items[0].image).toBe(''));
+
+    const input = screen.getByLabelText('Quantity for Mug');
+    fireEvent.change(input, { target: { value: '12' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(store.getState().basket.items[0].quantity).toBe(12));
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/basket/items/1'),
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ quantity: 12 }) })
+    );
+    expect(screen.getByText('Total Price: £120.00')).toBeInTheDocument();
+  });
+
+  it('reports a server quantity update failure and restores the previous quantity', async () => {
+    (global.fetch as jest.Mock).mockImplementation((url: string, options?: RequestInit) => {
+      if (options?.method === 'PUT') {
+        return Promise.resolve({ ok: false, json: async () => ({ error: 'Update failed' }) });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ items: [{ product_id: 1, product_name: 'Mug', quantity: 2, unit_price: 10 }], total_items: 2 }),
+      });
+    });
+    const store = buildStore({
+      basket: { items: [basketItem], totalItems: 2 },
+      auth: { isLoggedIn: true, user: { id: '1' } },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    await waitFor(() => expect(store.getState().basket.items[0].image).toBe(''));
+    const input = screen.getByLabelText('Quantity for Mug');
+    fireEvent.change(input, { target: { value: '12' } });
+    fireEvent.blur(input);
+    expect(await screen.findByText(/Unable to update the quantity/)).toBeInTheDocument();
+    expect(screen.getByLabelText('Quantity for Mug')).toHaveValue('2');
+    expect(store.getState().basket.items[0].quantity).toBe(2);
+  });
+
   it('removes an item locally for guest users', () => {
     const store = buildStore({
       basket: { items: [basketItem], totalItems: 2 },

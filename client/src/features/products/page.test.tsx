@@ -163,10 +163,12 @@ describe('Shop (products page)', () => {
       expect(screen.getByText('Add to Basket')).toBeInTheDocument();
     });
 
+    expect(screen.queryByLabelText('Quantity for Tea Mug')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Add to Basket'));
 
     expect(store.getState().basket.items).toHaveLength(1);
     expect(store.getState().basket.items[0].product_name).toBe('Tea Mug');
+    expect(store.getState().basket.totalItems).toBe(1);
   });
 
   it('opens the product details modal when View Details is clicked', async () => {
@@ -225,9 +227,10 @@ describe('Shop (products page)', () => {
     });
 
     fireEvent.click(screen.getByText('View Details'));
+    fireEvent.change(screen.getByLabelText('Quantity for Tea Mug'), { target: { value: '5' } });
     fireEvent.click(screen.getAllByText('Add to Basket')[1]);
 
-    expect(store.getState().basket.totalItems).toBe(1);
+    expect(store.getState().basket.totalItems).toBe(5);
 
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
 
@@ -268,13 +271,38 @@ describe('Shop (products page)', () => {
       }),
     });
 
-    fireEvent.click(screen.getByText('Add to Basket'));
+    fireEvent.click(screen.getByText('View Details'));
+    fireEvent.change(screen.getByLabelText('Quantity for Tea Mug'), { target: { value: '7' } });
+    fireEvent.click(screen.getAllByText('Add to Basket')[1]);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/v2/basket/items'),
-        expect.objectContaining({ method: 'POST' })
+        expect.objectContaining({ method: 'POST', body: expect.stringContaining('"quantity":7') })
       );
     });
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument());
+  });
+
+  it('reports an add failure without updating the local basket', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: JSON.stringify([sampleProduct]) }),
+    }) as unknown as typeof fetch;
+    const store = buildStore({
+      products: emptyProductsState,
+      auth: { isLoggedIn: true, user: { id: '1' } },
+      basket: { items: [], totalItems: 0 },
+    });
+    render(<Provider store={store}><Shop /></Provider>);
+    await screen.findByText('Add to Basket');
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Unable to add' }),
+    });
+    fireEvent.click(screen.getByText('Add to Basket'));
+    expect(await screen.findByText(/Unable to add this item/)).toBeInTheDocument();
+    expect(store.getState().basket.items).toHaveLength(0);
   });
 });

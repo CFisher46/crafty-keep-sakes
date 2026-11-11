@@ -1,5 +1,6 @@
 import { Layer, Box } from 'grommet';
 import ProductModal from '../../features/products/view-details/page';
+import type { Product } from '../../types';
 
 function CommonModal({
   title,
@@ -12,7 +13,7 @@ function CommonModal({
   onClose: () => void;
   type: string;
   values?: any;
-  onAddToBasket?: (product: any) => void;
+  onAddToBasket?: (product: Product, quantity: number) => void;
 }) {
   return (
     <Layer modal responsive={false} style={{ borderRadius: '2px' }} onEsc={onClose} onClickOutside={onClose}>

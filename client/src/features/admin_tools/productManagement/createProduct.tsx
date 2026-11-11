@@ -12,6 +12,7 @@ import ActionButton from '../../landingPage/components/ActionButton';
 import { Product } from '../../../types';
 import { useAppDispatch } from '../../../store/hooks';
 import { useState } from 'react';
+import { MAX_QUANTITY } from '../../../helpers/quantity';
 import {
   createProduct,
   uploadProductImages,
@@ -39,7 +40,6 @@ const CreateNewProduct = () => {
     'category',
     'description',
     'price',
-    'quantity',
   ] as const;
 
   const parseBoolean = (value: string): boolean => {
@@ -67,16 +67,19 @@ const CreateNewProduct = () => {
   );
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showValidationWarning, setShowValidationWarning] = useState(false);
+  const [quantityError, setQuantityError] = useState(false);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
 
   const resetForm = () => {
     setNewProduct(requiredDetails);
     setSelectedImages([]);
     setRawInputValues(getBlankRawValues());
+    setQuantityError(false);
     setFileInputResetKey((prev) => prev + 1);
   };
 
   const handleInputChange = (key: keyof Product, rawValue: string) => {
+    if (key === 'quantity') setQuantityError(false);
     setRawInputValues((prev) => ({
       ...prev,
       [key]: rawValue,
@@ -126,6 +129,10 @@ const CreateNewProduct = () => {
   };
 
   const handleCreateProductClick = () => {
+    const rawQuantity = rawInputValues.quantity.trim();
+    const validQuantity = rawQuantity === '' ||
+      (/^\d+$/.test(rawQuantity) && Number.isSafeInteger(Number(rawQuantity)) && Number(rawQuantity) <= MAX_QUANTITY);
+    setQuantityError(!validQuantity);
     const missingFields = requiredFields.filter(
       (field) => rawInputValues[field]?.trim() === ''
     );
@@ -135,6 +142,7 @@ const CreateNewProduct = () => {
       return;
     }
 
+    if (!validQuantity) return;
     handleCreateProduct();
   };
 
@@ -185,15 +193,15 @@ const CreateNewProduct = () => {
             .filter(([key]) => key !== 'images')
             .map(([key, value], index) => (
               <Box key={index} direction="column" gap="xsmall">
-                <Text
-                  size="small"
-                  weight="bold"
-                  style={{ textTransform: 'capitalize' }}
+                <label
+                  htmlFor={`product-${key}`}
+                  style={{ textTransform: 'capitalize', fontSize: '14px', fontWeight: 'bold' }}
                 >
-                  {getFieldLabel(key)}:
-                </Text>
+                  {getFieldLabel(key)}{key === 'quantity' ? ' (optional)' : ''}:
+                </label>
 
                 <TextInput
+                  id={`product-${key}`}
                   value={rawInputValues[key] ?? String(value)}
                   placeholder={String(value)}
                   size="small"
@@ -205,6 +213,11 @@ const CreateNewProduct = () => {
                     )
                   }
                 />
+                {key === 'quantity' && quantityError && (
+                  <Text size="small" color="status-critical" role="alert">
+                    Enter a whole number between 0 and 2147483647, or leave quantity blank.
+                  </Text>
+                )}
               </Box>
             ))}
 
@@ -270,4 +283,3 @@ const CreateNewProduct = () => {
 };
 
 export default CreateNewProduct;
-

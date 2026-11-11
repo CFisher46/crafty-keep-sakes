@@ -92,9 +92,8 @@ describe('Invoice pages', () => {
 
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Email' })).toBeInTheDocument();
-    const row = screen.getByText('Ada Lovelace').closest('tr');
-    expect(row).not.toBeNull();
-    expect(within(row!).getByRole('cell', { name: 'ada@example.com' })).toBeInTheDocument();
+    const row = screen.getByRole('row', { name: /Ada Lovelace/ });
+    expect(within(row).getByRole('cell', { name: 'ada@example.com' })).toBeInTheDocument();
     expect((global.fetch as jest.Mock).mock.calls.some(([url]) => String(url).includes('/orders/all'))).toBe(true);
 
     fireEvent.click(screen.getByText('INV-001'));
@@ -197,10 +196,8 @@ describe('Invoice pages', () => {
       </Provider>
     );
 
-    const customer = await screen.findByText('Ada Lovelace');
-    const row = customer.closest('tr');
-    expect(row).not.toBeNull();
-    expect(within(row!).getByRole('cell', { name: '—' })).toBeInTheDocument();
+    const row = await screen.findByRole('row', { name: /Ada Lovelace/ });
+    expect(within(row).getByRole('cell', { name: '—' })).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText(/Search invoice number, customer/), { target: { value: 'grace@example.com' } });
 
