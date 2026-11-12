@@ -1,9 +1,13 @@
 import { ApiVersion, resolveApiVersion } from './apiVersion';
 import { getDomainFlag } from './domainFlags';
 
-export type ApiDomain = 'auth' | 'products' | 'users' | 'audit' | 'basket' | 'blog' | 'notifications' | 'reviews' | 'reports' | 'payments' | 'verify-email';
+export type ApiDomain = 'auth' | 'products' | 'users' | 'audit' | 'basket' | 'blog' | 'notifications' | 'reviews' | 'reports' | 'payments' | 'verify-email' | 'contact';
 
 const DOMAIN_PATHS: Record<ApiDomain, Record<ApiVersion, string>> = {
+  contact: {
+    v1: '/api/contact',
+    v2: '/api/v2/contact',
+  },
   auth: {
     v1: '/api/auth',
     v2: '/api/v2/auth',

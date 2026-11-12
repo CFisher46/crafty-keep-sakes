@@ -3,6 +3,7 @@ import { ApiDomain } from './apiPath';
 export type DomainFlagMap = Record<ApiDomain, 'legacy' | 'v2'>;
 
 const DEFAULT_DOMAIN_FLAGS: DomainFlagMap = {
+  contact: 'v2',
   auth: 'v2',
   products: 'v2',
   users: 'v2',
@@ -31,6 +32,7 @@ function readFlag(
 
 export function resolveDomainFlags(): DomainFlagMap {
   return {
+    contact: readFlag(process.env.REACT_APP_API_CONTACT_VERSION),
     auth: readFlag(process.env.REACT_APP_API_AUTH_VERSION),
     products: readFlag(process.env.REACT_APP_API_PRODUCTS_VERSION),
     users: readFlag(process.env.REACT_APP_API_USERS_VERSION),

@@ -14,7 +14,7 @@ import NotificationsPage from "../../features/notifications/page";
 import ProtectedRoute from "../../helpers/protectedRoutes";
 import MockPaymentPage from "../../features/payments/mockPaymentPage";
 import PaymentResultPage from "../../features/payments/resultPage";
-// import ContactUs from '../../pages/contactUs/contactUs';
+import ContactUs from '../../features/contact/page';
 import { Box } from "grommet";
 import ReviewsPage from "../../features/reviews/page";
 import MyInvoicesPage from "../../features/invoices/page";
@@ -147,7 +147,7 @@ function MainBody() {
               />
             }
           />
-          {/* <Route path="/Contact" element={<ContactUs />} /> */}
+          <Route path="/Contact" element={<ContactUs />} />
           <Route path="/Login" element={<Login />} />
           <Route path="/Register" element={<Register />} />
           <Route path="/Reviews" element={<ReviewsPage />} />
