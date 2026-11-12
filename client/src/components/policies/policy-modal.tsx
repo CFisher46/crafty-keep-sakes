@@ -65,7 +65,7 @@ function PolicyModal({ policy, onClose }: PolicyModalProps) {
         pad="medium"
         gap="small"
         background="white"
-        style={{ width: 'min(90vw, 700px)', height: '90vh', maxHeight: '90vh' }}
+        style={{ width: 'min(100vw, max(70vw, 640px))', height: '100vh', maxHeight: '100dvh', overflow: 'auto' }}
       >
         <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '26px', color: ui.ink, flexShrink: 0 }}>
           {policy.title}
@@ -81,7 +81,7 @@ function PolicyModal({ policy, onClose }: PolicyModalProps) {
             <iframe title={`${policy.title} PDF`} src={contentUrl} style={{ border: 0, width: '100%', height: '100%', minHeight: 0 }} />
           )}
         </Box>
-        <Text size="small">
+        <Text size="small" style={{ flexShrink: 0 }}>
           If the PDF is not displayed,{' '}
           <a href={policyUrl} target="_blank" rel="noopener noreferrer">open {policy.title} in a new tab</a>.
         </Text>
