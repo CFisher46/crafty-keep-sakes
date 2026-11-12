@@ -64,26 +64,31 @@ function PolicyModal({ policy, onClose }: PolicyModalProps) {
       <Box
         pad="medium"
         gap="small"
-        background="white"
+        background={ui.page}
         style={{ width: 'min(100vw, max(70vw, 640px))', height: '100vh', maxHeight: '100dvh', overflow: 'auto' }}
       >
-        <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '26px', color: ui.ink, flexShrink: 0 }}>
-          {policy.title}
-        </Text>
-        <Box overflow="auto" style={{ minHeight: 0, flex: '1 1 auto' }}>
+        <Box gap="xxsmall" style={{ flexShrink: 0 }}>
+          <Text size="xsmall" style={{ color: ui.muted, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            Crafty Keepsakes · Policies
+          </Text>
+          <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '26px', fontWeight: 400, color: ui.ink }}>
+            {policy.title}
+          </Text>
+        </Box>
+        <Box overflow="auto" background={ui.sand} border={{ color: ui.line }} style={{ minHeight: 0, flex: '1 1 auto' }}>
           {error ? (
-            <Text role="alert" color="status-critical">
+            <Text role="alert" color="status-critical" margin="small">
               Unable to load this policy. Please close and try again.
             </Text>
           ) : contentUrl === null ? (
-            <Text role="status">Loading policy...</Text>
+            <Text role="status" margin="small" style={{ color: ui.muted }}>Loading policy...</Text>
           ) : (
             <iframe title={`${policy.title} PDF`} src={contentUrl} style={{ border: 0, width: '100%', height: '100%', minHeight: 0 }} />
           )}
         </Box>
-        <Text size="small" style={{ flexShrink: 0 }}>
+        <Text size="small" style={{ color: ui.muted, flexShrink: 0 }}>
           If the PDF is not displayed,{' '}
-          <a href={policyUrl} target="_blank" rel="noopener noreferrer">open {policy.title} in a new tab</a>.
+          <a href={policyUrl} target="_blank" rel="noopener noreferrer" style={{ color: ui.ink, textDecoration: 'underline' }}>open {policy.title} in a new tab</a>.
         </Text>
         <Box alignSelf="end" style={{ flexShrink: 0 }}>
           <ActionButton label="Close" secondary fixed onClick={onClose} />
