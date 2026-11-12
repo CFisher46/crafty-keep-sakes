@@ -13,6 +13,7 @@ import { Product } from '../../../types';
 import { useAppDispatch } from '../../../store/hooks';
 import { useRef, useState } from 'react';
 import { MAX_QUANTITY } from '../../../helpers/quantity';
+import { IMAGE_ACCEPT, validateProductImages } from './imageValidation';
 import {
   createProduct,
   uploadProductImages,
@@ -71,6 +72,7 @@ const CreateNewProduct = () => {
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const [creating, setCreating] = useState(false);
   const [creationError, setCreationError] = useState('');
+  const [imageError, setImageError] = useState('');
   const [imageWarning, setImageWarning] = useState('');
   const createInProgress = useRef(false);
 
@@ -79,6 +81,7 @@ const CreateNewProduct = () => {
     setSelectedImages([]);
     setRawInputValues(getBlankRawValues());
     setQuantityError(false);
+    setImageError('');
     setFileInputResetKey((prev) => prev + 1);
   };
 
@@ -137,6 +140,9 @@ const CreateNewProduct = () => {
   };
 
   const handleCreateProductClick = () => {
+    const validationError = validateProductImages(selectedImages);
+    setImageError(validationError);
+    if (validationError) return;
     const rawQuantity = rawInputValues.quantity.trim();
     const validQuantity = rawQuantity === '' ||
       (/^\d+$/.test(rawQuantity) && Number.isSafeInteger(Number(rawQuantity)) && Number(rawQuantity) <= MAX_QUANTITY);
@@ -176,6 +182,9 @@ const CreateNewProduct = () => {
             key={fileInputResetKey}
             name="images"
             aria-label="Product images"
+            aria-describedby={imageError ? 'product-image-error' : undefined}
+            aria-invalid={Boolean(imageError)}
+            accept={IMAGE_ACCEPT}
             multiple
             onChange={(event) => {
               const files = event.target.files
@@ -183,6 +192,7 @@ const CreateNewProduct = () => {
                 : [];
 
               setSelectedImages(files);
+              setImageError(validateProductImages(files));
 
               setNewProduct({
                 ...newProduct,
@@ -190,6 +200,7 @@ const CreateNewProduct = () => {
               });
             }}
           />
+          {imageError && <Text id="product-image-error" role="alert" color="status-critical">{imageError}</Text>}
         </Box>
 
         <Grid
