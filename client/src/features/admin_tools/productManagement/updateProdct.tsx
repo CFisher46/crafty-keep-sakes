@@ -4,6 +4,7 @@ import { Product } from '../../../types';
 import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../store/hooks';
 import { fetchAllProductsForAdmin, updateProduct, uploadProductImages } from '../../../store/products/productsThunks';
+import { IMAGE_ACCEPT, validateProductImages } from './imageValidation';
 
 const UpdateProduct = () => {
   const dispatch = useAppDispatch();
@@ -13,6 +14,7 @@ const UpdateProduct = () => {
   const [editedProduct, setEditedProduct] = useState<Product | null>(null);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
+  const [imageError, setImageError] = useState('');
 
   const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
   const numericFields = new Set<keyof Product>(['price', 'quantity', 'sale_percent']);
@@ -66,6 +68,9 @@ const UpdateProduct = () => {
 
   const handleSave = async () => {
     if (!editedProduct || !selectedProduct) return;
+    const validationError = validateProductImages(selectedImages);
+    setImageError(validationError);
+    if (validationError) return;
 
     const changedFields: Record<string, unknown> = {};
 
@@ -109,6 +114,7 @@ const UpdateProduct = () => {
       setEditedProduct(null);
       setSelectedProductId('');
       setSelectedImages([]);
+      setImageError('');
       setFileInputResetKey((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to update product:', err);
@@ -159,12 +165,18 @@ const UpdateProduct = () => {
             <FileInput
               key={fileInputResetKey}
               name="product-images"
+              aria-label="Add new product images"
+              aria-invalid={Boolean(imageError)}
+              aria-describedby={imageError ? 'update-product-image-error' : undefined}
+              accept={IMAGE_ACCEPT}
               multiple
               onChange={(event) => {
                 const files = event.target.files ? Array.from(event.target.files) : [];
                 setSelectedImages(files);
+                setImageError(validateProductImages(files));
               }}
             />
+            {imageError && <Text id="update-product-image-error" role="alert" color="status-critical">{imageError}</Text>}
           </Box>
           <Grid columns={['1/2', '1/2']} gap="small">
             {editedProduct &&
@@ -208,6 +220,7 @@ const UpdateProduct = () => {
                 setEditedProduct(null);
                 setSelectedProductId('');
                 setSelectedImages([]);
+                setImageError('');
                 setFileInputResetKey((prev) => prev + 1);
               }} fixed />
           </Box>
