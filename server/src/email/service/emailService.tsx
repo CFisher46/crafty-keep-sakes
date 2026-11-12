@@ -6,6 +6,7 @@ const EMAIL_SENDERS = {
   orders: 'Crafty Keepsakes <orders@craftykeepsakes.uk>',
   notifications: 'Crafty Keepsakes <notifications@craftykeepsakes.uk>',
   support: 'Crafty Keepsakes <support@craftykeepsakes.uk>',
+  contact: process.env.RESEND_CONTACT_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || 'Crafty Keepsakes <support@craftykeepsakes.uk>',
 } as const;
 
 type EmailSender = keyof typeof EMAIL_SENDERS;
@@ -16,6 +17,7 @@ interface EmailOptions {
   subject: string;
   template: ReactElement;
   text: string;
+  replyTo?: string;
 }
 
 export const sendEmail = async ({
@@ -24,6 +26,7 @@ export const sendEmail = async ({
   subject,
   template,
   text,
+  replyTo,
 }: EmailOptions) => {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -38,6 +41,7 @@ export const sendEmail = async ({
     subject: subject,
     react: template,
     text,
+    ...(replyTo ? { replyTo } : {}),
   });
 
   if (error) {
