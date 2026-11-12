@@ -11,7 +11,7 @@ import {
 import ActionButton from '../../landingPage/components/ActionButton';
 import { Product } from '../../../types';
 import { useAppDispatch } from '../../../store/hooks';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { MAX_QUANTITY } from '../../../helpers/quantity';
 import {
   createProduct,
@@ -69,6 +69,10 @@ const CreateNewProduct = () => {
   const [showValidationWarning, setShowValidationWarning] = useState(false);
   const [quantityError, setQuantityError] = useState(false);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
+  const [creating, setCreating] = useState(false);
+  const [creationError, setCreationError] = useState('');
+  const [imageWarning, setImageWarning] = useState('');
+  const createInProgress = useRef(false);
 
   const resetForm = () => {
     setNewProduct(requiredDetails);
@@ -101,31 +105,35 @@ const CreateNewProduct = () => {
   };
 
   const handleCreateProduct = async () => {
-    console.log(`Creating product with data:`, newProduct);
-
+    if (createInProgress.current) return;
+    createInProgress.current = true;
+    setCreating(true);
+    setCreationError('');
+    let createResult: { insertId?: string | number };
     try {
-      const createResult = (await dispatch(
-        createProduct(newProduct as Product)
-      ).unwrap()) as { insertId?: string | number };
-
-      const resolvedProductId = String(
-        newProduct.id || createResult.insertId || ''
-      );
-
-      if (selectedImages.length > 0 && resolvedProductId) {
-        await dispatch(
-          uploadProductImages({
-            productId: resolvedProductId,
-            files: selectedImages,
-          })
-        ).unwrap();
-      }
-
-      console.log('Product created successfully');
-      setShowSuccessModal(true);
+      createResult = await dispatch(createProduct(newProduct)).unwrap() as { insertId?: string | number };
     } catch (error) {
       console.error('Failed to create product:', error);
+      setCreationError('Could not confirm whether the product was created. Check the product list before trying again.');
+      createInProgress.current = false;
+      setCreating(false);
+      return;
     }
+
+    const resolvedProductId = String(createResult?.insertId || '');
+    if (selectedImages.length > 0) {
+      try {
+        if (!resolvedProductId) throw new Error('Product ID missing from create response');
+        await dispatch(uploadProductImages({ productId: resolvedProductId, files: selectedImages })).unwrap();
+      } catch (error) {
+        console.error('Product created but image upload failed:', error);
+        setImageWarning('The product was added, but its images could not be uploaded. Do not create it again. Find it under Products > Update to add images.');
+      }
+    }
+    resetForm();
+    setShowSuccessModal(true);
+    createInProgress.current = false;
+    setCreating(false);
   };
 
   const handleCreateProductClick = () => {
@@ -167,6 +175,7 @@ const CreateNewProduct = () => {
           <FileInput
             key={fileInputResetKey}
             name="images"
+            aria-label="Product images"
             multiple
             onChange={(event) => {
               const files = event.target.files
@@ -221,7 +230,8 @@ const CreateNewProduct = () => {
               </Box>
             ))}
 
-          <ActionButton label="Create Product" onClick={handleCreateProductClick} fixed />
+          {creationError && <Text role="alert" color="status-critical">{creationError}</Text>}
+          <ActionButton label={creating ? "Creating..." : "Create Product"} onClick={handleCreateProductClick} disabled={creating} fixed />
         </Grid>
       </Card>
 
@@ -259,21 +269,20 @@ const CreateNewProduct = () => {
         <Layer
           onEsc={() => {
             setShowSuccessModal(false);
-            resetForm();
+            setImageWarning('');
           }}
           onClickOutside={() => {
             setShowSuccessModal(false);
-            resetForm();
+            setImageWarning('');
           }}
         >
           <Box pad="medium" gap="medium" width="medium">
-            <Text weight="bold">
-              Product added successfully.
-            </Text>
+            <Text weight="bold" role="status">Product added successfully.</Text>
+            {imageWarning && <Text role="alert" color="status-critical">{imageWarning}</Text>}
 
             <ActionButton label="OK" onClick={() => {
                 setShowSuccessModal(false);
-                resetForm();
+                setImageWarning('');
               }} fixed />
           </Box>
         </Layer>
