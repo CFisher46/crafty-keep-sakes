@@ -123,21 +123,23 @@ describe('UserRegister email verification', () => {
     mockUseRealPolicyModal = true;
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: true,
-      text: async () => 'Shared terms text',
+      blob: async () => new Blob(['PDF content'], { type: 'application/pdf' }),
     });
+    URL.createObjectURL = jest.fn(() => 'blob:terms');
+    URL.revokeObjectURL = jest.fn();
     renderWithProviders(<Register />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Terms & Conditions' }));
 
-    expect(await screen.findByText('Shared terms text')).toBeInTheDocument();
+    expect(await screen.findByTitle('Terms & Conditions PDF')).toHaveAttribute('src', 'blob:terms');
     expect(screen.getByRole('dialog', { name: 'Terms & Conditions' })).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringMatching(/\/policies\/terms-and-conditions\.txt$/),
+      expect.stringMatching(/\/policies\/Terms%20and%20Conditions%20of%20Sale\.pdf$/),
       expect.objectContaining({ signal: expect.anything() })
     );
     expect(global.fetch).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole('button', { name: 'Close' }));
-    await waitForElementToBeRemoved(() => screen.queryByText('Shared terms text'));
+    await waitForElementToBeRemoved(() => screen.queryByRole('dialog', { name: 'Terms & Conditions' }));
     expect(screen.getByRole('checkbox', { name: 'I accept the Terms & Conditions' })).not.toBeChecked();
   });
 
