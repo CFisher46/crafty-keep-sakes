@@ -20,6 +20,24 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   because the dev branch is always open any new branches inherit the first 7 commits, so the history looks a bit messy - is there a way to address this?
 
+## URGENT NEXT ACTIONS
+
+# CKS-2-033
+-   [ ] P1. Move Vercel Production over to the railway connection, fully decoupled from the NAS service
+    -   Agreed target: `https://api-prd.craftykeepsakes.uk`; the current Railway database is intended to become production and currently contains test data shared with preview. Isolate staging before introducing real customer data.
+    -   Read-only check on 11 November 2026: Railway `/health` and `/api/v2/products` and the confirmed Vercel production URL `https://crafty-keep-sakes.vercel.app` returned HTTP 200. The Railway API returned CORS headers allowing that Vercel origin.
+    -   Prepared: the Vercel `/api` rewrite points to Railway for the agreed temporary test-data setup. Production must leave `REACT_APP_API_URL` unset and be redeployed; this has not yet been verified. See the [P1 runbook](RAILWAY_MIGRATION.md#current-p1-preparation-11-november-2026).
+    -   Live-release blocker: the rewrite may hide individual client IPs from Cloudflare and the API, so IP-based protections must be reviewed before real customer use.
+    -   [ ] Confirm the production API hostname, current Vercel and Railway settings, and a rollback route without exposing secrets.
+    -   [ ] Prepare and verify the Railway API, production CORS, Cloudflare origin protection, image storage and Square webhook configuration.
+    -   [ ] Configure the production Vercel build to use the agreed Railway-backed API and remove the NAS fallback only when the replacement is ready.
+    -   [ ] Verify production login, registration, products and images, basket, checkout and webhook delivery; then retire remaining NAS integration.
+-   [ ] P2. move dev.craftykeepsakes.uk preview deployment over to the staging database
+-   [ ] P3. duplcate the datase schema and contents from production over to staging
+-   [ ] P4. purge all data from the production tables other than the ADMIN users and roles
+-   [ ] P5. review security and vulnerability checks
+    -   P2 requires a provisioned staging database and API; P3's data-copy timing and scope must be agreed before pointing preview at staging. P4 is destructive and requires a separately verified backup and explicit approval.
+
 ## Features
 
 -   [x] CKS-2-006 : Introduction of  User Notifications (Next Priority)
@@ -54,7 +72,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 -   [ ] CKS-2-021 : Low stock notifications for ADMINS
     -   AS an ADMIN, WHEN a product's stock runs low or out, I WANT to get a notification so that I can restock or make more.
-    -   Notes: Parked. Many products are hand crafted and may be made on an order-by-order basis, so a quantity of 0 is not necessarily a problem. Stock is also not currently reduced at checkout. Needs a per-product "made to order" flag (to exclude those from alerts), stock decrement on checkout, and a de-duplicated alert (once per threshold crossing, not on every order). A previous implementation used a threshold of 5 (and 0 for out of stock) and was removed.
+    -   Notes: Parked. Many products are hand crafted and may be made on an order-by-order basis, so a quantity of 0 is not necessarily a problem. Stock is also not currently reduced at checkout. Needs a per-product "made to order" flag (to exclude those from alerts), stock decrement on checkout, and a de-duplicated alert (once per threshold crossing, not on every order). A previous implementation used a threshold of 5 (and 0 for out of stock) and was removed. [PARKED]
 
 -   [x] CKS-2-027 : Emailing from the portal
     -   AS a CUSTOMER when i register for a user account, I WANT an EMAIL with a a VERIFY link to activate my account
@@ -119,8 +137,6 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] CKS-2-032 : New Product Quantity
     -   AS an ADMIN i need to be able to add a new product and NOT have to specify a quantity since some products are not stocked they are hand crafted.   
     -   Quantity is optional when creating a product and defaults to zero in the existing stock field; this does not add a made-to-order flag.
-
--   [ ] CKS-2-033 : [HIGH] Setup a staging database on railway for dev instead of using the production database and move local to also use the same DB connection
 
 ## Bugs
 
