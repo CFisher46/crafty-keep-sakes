@@ -2,6 +2,7 @@ import express from 'express';
 import request from 'supertest';
 import { createContactRouter } from './contact';
 import { sendEmail } from '../../email/service/emailService';
+import ContactEnquiry from '../../email/templates/ContactEnquiry';
 
 jest.mock('../../email/service/emailService', () => ({ sendEmail: jest.fn() }));
 const mockSend = sendEmail as jest.Mock;
@@ -41,6 +42,14 @@ describe('contact enquiries', () => {
     }));
     expect(mockSend.mock.calls[0][0].text).toContain(valid.enquiry);
     expect(mockSend.mock.calls[0][0].text).toContain(valid.telephone);
+    expect(mockSend.mock.calls[0][0].template.type).toBe(ContactEnquiry);
+    expect(mockSend.mock.calls[0][0].template.props).toEqual({
+      name: valid.name,
+      email: valid.email,
+      telephone: valid.telephone,
+      eventDate: valid.eventDate,
+      enquiry: valid.enquiry,
+    });
   });
 
   it('accepts a telephone-only enquiry without a reply-to address', async () => {

@@ -2,6 +2,7 @@ import { createElement } from 'react';
 import { Router } from 'express';
 import rateLimit from 'express-rate-limit';
 import { sendEmail } from '../../email/service/emailService';
+import ContactEnquiry from '../../email/templates/ContactEnquiry';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_PATTERN = /^[0-9+(). -]+$/;
@@ -85,7 +86,13 @@ export function createContactRouter(): Router {
         from: 'contact',
         email: RECIPIENT,
         subject: 'New Crafty Keep-Sakes enquiry',
-        template: createElement('div', { style: { whiteSpace: 'pre-wrap' } }, text),
+        template: createElement(ContactEnquiry, {
+          name: cleanName,
+          email: cleanEmail,
+          telephone: cleanPhone,
+          eventDate: cleanDate,
+          enquiry: cleanEnquiry,
+        }),
         text,
         ...(cleanEmail ? { replyTo: cleanEmail } : {}),
       });

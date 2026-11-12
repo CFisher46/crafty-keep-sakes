@@ -6,7 +6,7 @@ const EMAIL_SENDERS = {
   orders: 'Crafty Keepsakes <orders@craftykeepsakes.uk>',
   notifications: 'Crafty Keepsakes <notifications@craftykeepsakes.uk>',
   support: 'Crafty Keepsakes <support@craftykeepsakes.uk>',
-  contact: process.env.RESEND_CONTACT_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || 'Crafty Keepsakes <support@craftykeepsakes.uk>',
+  contact: process.env.RESEND_CONTACT_FROM_EMAIL || 'Crafty Keepsakes <enquires@craftykeepsakes.uk>',
 } as const;
 
 type EmailSender = keyof typeof EMAIL_SENDERS;
