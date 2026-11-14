@@ -118,7 +118,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 -   [x] Footer policies and registration terms
     -   AS a CUSTOMER, I WANT to read the Terms & Conditions, Shipping & Delivery, Data Protection and Returns & Refunds policies from the footer.
     -   AS a CUSTOMER, WHEN registering, I WANT to open and accept the Terms & Conditions before submitting.
-    -   Policy links use a reusable, scrollable modal and editable text files in `client/public/policies/`. Registration uses the same terms file and enables acceptance after the modal is opened; opening it does not guarantee it has been read.
+    -   Policy links use a reusable modal and PDF files in `client/public/policies/`, with a new-tab fallback. Registration uses the same terms file and enables acceptance after the modal is opened; opening it does not guarantee it has been read.
 
 -   [ ] CKS-2-029 : contact us form for any anyone that sends from the app to craftykeepsakesprints@gmail.com
     -   AS a CUSTOMER I NEED to be able to submit a form to contact the craftykeepsakes team WITHOUT having to be a logged in user.
@@ -167,7 +167,7 @@ Purpose: Document new/next features and improvements to ensure the requirements 
 
 ## Adhoc TODOs
 
--   [ ] Replace the placeholder text in all four files under `client/public/policies/` with approved policies before publishing. The Terms & Conditions must be replaced before using them for customer registration.
+-   [ ] Confirm the four supplied policy PDFs are approved before publishing and using the Terms & Conditions for customer registration.
 
 -   [x] Need to add in some inline validations for email, telephone number and password character requirements under the createUser form.
     -   Admin create-user form checks email format, optional telephone format and password length/matching inline. Registration checks required names, email format and password length/matching inline before submitting.

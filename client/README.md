@@ -83,7 +83,7 @@ Customers can enter a positive whole-number quantity in product details before a
 
 ### `policies/`
 
-Policy text files live in `public/policies/` and are loaded when opened, so text updates require no component changes (deploy the updated file to publish them). Replace the placeholders with approved policy text before publishing; the Terms & Conditions placeholder must also be replaced before using it for customer registration. The footer and registration form use the same terms file. To add another footer policy, add its text file and an entry to `footerPolicies` in `src/components/policies/policies.ts`.
+Policy PDFs live in `public/policies/` and are loaded when opened. To update a policy, replace its PDF using the same filename and deploy it. The footer and registration form use the same terms PDF. To add another footer policy, add its PDF and an entry to `footerPolicies` in `src/components/policies/policies.ts`. The modal includes a new-tab link for devices that cannot display the PDF inline. Confirm the supplied documents are approved before publishing.
 
 ### `header/`
 

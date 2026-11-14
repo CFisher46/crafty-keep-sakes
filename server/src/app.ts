@@ -17,6 +17,7 @@ import v2ReportsRouter from "./routes/v2/reports";
 import v2PaymentsRouter from "./routes/v2/payments";
 import healthRouter from "./routes/health";
 import { originGuard } from "./ts-common/origin-guard";
+import { createContactRouter } from "./routes/v2/contact";
 
 dotenv.config();
 
@@ -111,6 +112,9 @@ export function createApp() {
   app.use("/api/v2/reports", v2ReportsRouter);
   app.use("/api/payments", v2PaymentsRouter);
   app.use("/api/v2/payments", v2PaymentsRouter);
+  const contactRouter = createContactRouter();
+  app.use("/api/contact", contactRouter);
+  app.use("/api/v2/contact", contactRouter);
 
   app.use(
     "/images",

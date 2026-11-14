@@ -10,24 +10,31 @@ interface PolicyModalProps {
 }
 
 function PolicyModal({ policy, onClose }: PolicyModalProps) {
-  const [content, setContent] = useState<string | null>(null);
+  const [contentUrl, setContentUrl] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const policyUrl = `${process.env.PUBLIC_URL}/policies/${encodeURIComponent(policy.fileName)}`;
 
   useEffect(() => {
     const controller = new AbortController();
-    setContent(null);
+    let objectUrl: string | null = null;
+    setContentUrl(null);
     setError(false);
 
     const loadPolicy = async () => {
       try {
         const response = await fetch(
-          `${process.env.PUBLIC_URL}/policies/${policy.fileName}`,
+          policyUrl,
           { signal: controller.signal }
         );
         if (!response.ok) throw new Error(`Policy request failed: ${response.status}`);
-        const text = await response.text();
-        if (!text.trim()) throw new Error('Policy file is empty');
-        if (!controller.signal.aborted) setContent(text);
+        const pdf = await response.blob();
+        if (pdf.type.split(';')[0].trim().toLowerCase() !== 'application/pdf' || !pdf.size) {
+          throw new Error('Policy file is not a PDF or is empty');
+        }
+        if (!controller.signal.aborted) {
+          objectUrl = URL.createObjectURL(pdf);
+          setContentUrl(objectUrl);
+        }
       } catch (reason) {
         if (!controller.signal.aborted) {
           console.error('Unable to load policy:', reason);
@@ -37,8 +44,11 @@ function PolicyModal({ policy, onClose }: PolicyModalProps) {
     };
 
     loadPolicy();
-    return () => controller.abort();
-  }, [policy.fileName]);
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [policyUrl]);
 
   return (
     <Layer
@@ -54,25 +64,32 @@ function PolicyModal({ policy, onClose }: PolicyModalProps) {
       <Box
         pad="medium"
         gap="small"
-        background="white"
-        style={{ width: 'min(90vw, 700px)', maxHeight: '90vh' }}
+        background={ui.page}
+        style={{ width: 'min(100vw, max(70vw, 640px))', height: '100vh', maxHeight: '100dvh', overflow: 'auto' }}
       >
-        <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '26px', color: ui.ink, flexShrink: 0 }}>
-          {policy.title}
-        </Text>
-        <Box overflow="auto" style={{ minHeight: 0, flex: '1 1 auto' }}>
+        <Box gap="xxsmall" style={{ flexShrink: 0 }}>
+          <Text size="xsmall" style={{ color: ui.muted, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+            Crafty Keepsakes · Policies
+          </Text>
+          <Text as="h2" margin="none" style={{ fontFamily: ui.serif, fontSize: '26px', fontWeight: 400, color: ui.ink }}>
+            {policy.title}
+          </Text>
+        </Box>
+        <Box overflow="auto" background={ui.sand} border={{ color: ui.line }} style={{ minHeight: 0, flex: '1 1 auto' }}>
           {error ? (
-            <Text role="alert" color="status-critical">
+            <Text role="alert" color="status-critical" margin="small">
               Unable to load this policy. Please close and try again.
             </Text>
-          ) : content === null ? (
-            <Text role="status">Loading policy...</Text>
+          ) : contentUrl === null ? (
+            <Text role="status" margin="small" style={{ color: ui.muted }}>Loading policy...</Text>
           ) : (
-            <Text style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: ui.ink }}>
-              {content}
-            </Text>
+            <iframe title={`${policy.title} PDF`} src={contentUrl} style={{ border: 0, width: '100%', height: '100%', minHeight: 0 }} />
           )}
         </Box>
+        <Text size="small" style={{ color: ui.muted, flexShrink: 0 }}>
+          If the PDF is not displayed,{' '}
+          <a href={policyUrl} target="_blank" rel="noopener noreferrer" style={{ color: ui.ink, textDecoration: 'underline' }}>open {policy.title} in a new tab</a>.
+        </Text>
         <Box alignSelf="end" style={{ flexShrink: 0 }}>
           <ActionButton label="Close" secondary fixed onClick={onClose} />
         </Box>
