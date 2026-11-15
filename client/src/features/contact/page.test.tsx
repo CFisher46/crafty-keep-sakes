@@ -34,7 +34,7 @@ describe('ContactPage', () => {
   });
 
   it.each([
-    ['Email address', 'bad-email', 'valid email'],
+    ['Email address (required)', 'bad-email', 'valid email'],
     ['Telephone number', '123letters', 'valid telephone'],
   ])('validates %s', (label, value, message) => {
     render(<ContactPage />);
@@ -52,7 +52,7 @@ describe('ContactPage', () => {
     });
     render(<ContactPage />);
     fillRequired();
-    fireEvent.change(screen.getByLabelText('Email address'), { target: { value: 'jane@example.com' } });
+    fireEvent.change(screen.getByLabelText('Email address (required)'), { target: { value: 'jane@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'Send enquiry' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Too many enquiries');
     expect(screen.getByLabelText('Your enquiry (required)')).toHaveValue('Please contact me.');

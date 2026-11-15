@@ -90,7 +90,7 @@ export default function ContactPage() {
               <TextInput id="contact-name" style={inputStyle} autoComplete="name" maxLength={120} value={form.name} onChange={(e) => update('name', e.target.value)} />
             </Box>
             <Box gap="xsmall">
-              <label htmlFor="contact-email" style={labelStyle}>Email address</label>
+              <label htmlFor="contact-email" style={labelStyle}>Email address (required)</label>
               <TextInput id="contact-email" style={inputStyle} type="email" autoComplete="email" maxLength={254} value={form.email} onChange={(e) => update('email', e.target.value)} />
             </Box>
             <Box gap="xsmall">
