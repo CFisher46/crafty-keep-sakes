@@ -266,35 +266,12 @@ describe('basket thunks', () => {
 
       const deliveryAddress = mockResponse.delivery_address;
       const dispatch = jest.fn();
-      const result = await checkoutBasket(deliveryAddress)(dispatch, jest.fn(), undefined);
+      const result = await checkoutBasket({ deliveryAddress, expectedDeliveryFee: 4 })(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/checkoutBasket/fulfilled');
       const payload = result.payload as { order_id: number; invoice_number: string };
       expect(payload.order_id).toBe(10);
       expect(payload.invoice_number).toBe('INV-001-0001');
-    });
-
-    it('completes checkout without delivery address', async () => {
-      const mockResponse = {
-        message: 'Order created',
-        basket_id: 1,
-        order_id: 10,
-        invoice_id: 90,
-        invoice_number: 'INV-001-0002',
-        total_due: 30,
-      };
-
-      (global.fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const dispatch = jest.fn();
-      const result = await checkoutBasket(undefined)(dispatch, jest.fn(), undefined);
-
-      expect(result.type).toBe('basket/checkoutBasket/fulfilled');
-      const payload = result.payload as { order_id: number };
-      expect(payload.order_id).toBe(10);
     });
 
     it('sends POST request to checkout endpoint with delivery data', async () => {
@@ -320,13 +297,13 @@ describe('basket thunks', () => {
       };
 
       const dispatch = jest.fn();
-      await checkoutBasket(deliveryAddress)(dispatch, jest.fn(), undefined);
+      await checkoutBasket({ deliveryAddress, expectedDeliveryFee: 6 })(dispatch, jest.fn(), undefined);
 
       expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/v2/basket/checkout'),
         expect.objectContaining({
           method: 'POST',
-          body: JSON.stringify({ delivery_address: deliveryAddress }),
+          body: JSON.stringify({ delivery_address: deliveryAddress, expected_delivery_fee: 6 }),
         })
       );
     });
@@ -338,7 +315,10 @@ describe('basket thunks', () => {
       });
 
       const dispatch = jest.fn();
-      const result = await checkoutBasket(undefined)(dispatch, jest.fn(), undefined);
+      const result = await checkoutBasket({
+        deliveryAddress: { address_line1: '', address_line2: '', address_line3: '', town: '', county: '', postcode: '' },
+        expectedDeliveryFee: 4,
+      })(dispatch, jest.fn(), undefined);
 
       expect(result.type).toBe('basket/checkoutBasket/rejected');
       expect(result.payload).toBe('Checkout requires items');

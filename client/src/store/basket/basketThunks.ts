@@ -1,6 +1,6 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import { buildApiUrl } from '../../api/apiPath';
-import type { DeliveryAddress, InvoiceDetails, InvoiceOrder } from '../../types';
+import type { DeliveryAddress, DeliveryTier, InvoiceDetails, InvoiceOrder } from '../../types';
 
 export type BasketItemPayload = {
   id: string;
@@ -19,6 +19,7 @@ export type BasketServerItem = {
   image_path: string | null;
   unit_price: number;
   line_total: number;
+  delivery_tier: DeliveryTier | null;
 };
 
 export const fetchBasket = createAsyncThunk(
@@ -146,17 +147,17 @@ export const checkoutBasket = createAsyncThunk<
     payment_url?: string | null;
     payment_error?: boolean;
   },
-  DeliveryAddress | undefined,
+  { deliveryAddress: DeliveryAddress; expectedDeliveryFee: number },
   { rejectValue: string }
 >(
   'basket/checkoutBasket',
-  async (deliveryAddress, { rejectWithValue }) => {
+  async ({ deliveryAddress, expectedDeliveryFee }, { rejectWithValue }) => {
     try {
       const response = await fetch(buildApiUrl('basket', '/checkout'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(deliveryAddress ? { delivery_address: deliveryAddress } : {}),
+        body: JSON.stringify({ delivery_address: deliveryAddress, expected_delivery_fee: expectedDeliveryFee }),
       });
 
       if (!response.ok) {

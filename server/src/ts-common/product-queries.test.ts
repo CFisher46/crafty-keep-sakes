@@ -1,6 +1,13 @@
-import { GetAllProductsQuery } from './product-queries';
+import { GetAllProductsQuery, GetSpecificProductsQuery } from './product-queries';
 
 describe('GetAllProductsQuery', () => {
+  it('includes the delivery tier in list and detail results', () => {
+    for (const sql of [GetAllProductsQuery(), GetSpecificProductsQuery('1')]) {
+      expect(sql).toContain('p.delivery_tier');
+      expect(sql).toContain('fp.delivery_tier');
+      expect(sql).toContain("'delivery_tier', pwi.delivery_tier");
+    }
+  });
   it('builds a default query with no filters ', () => {
     const sql = GetAllProductsQuery();
 

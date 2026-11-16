@@ -76,6 +76,7 @@ describe('v2 product write routes', () => {
         product_name: 'Laptop',
         is_live: true,
         sale_percent: 10,
+        delivery_tier: 'medium',
       });
 
     expect(response.status).toBe(201);
@@ -87,6 +88,7 @@ describe('v2 product write routes', () => {
     const firstSql = String(mockConnection.query.mock.calls[0][0]);
     const auditSql = String(mockConnection.query.mock.calls[4][0]);
     expect(firstSql).toContain('INSERT INTO products_v2');
+    expect(mockConnection.query.mock.calls[0][1]).toContain('medium');
     expect(auditSql).toContain('INSERT INTO audit_events_v2');
   });
 
@@ -108,6 +110,35 @@ describe('v2 product write routes', () => {
 
     expect(response.status).toBe(400);
     expect(response.body).toEqual({ error: 'Invalid price' });
+  });
+
+  it.each([undefined, null, 'extra-large'])('rejects invalid delivery tier %s on creation', async (tier) => {
+    const response = await request(app)
+      .post('/api/v2/products')
+      .set('Cookie', authCookie('admin'))
+      .send({ product_name: 'Mug', category: 'Mugs', description: 'Mug', price: 10, quantity: 1, on_sale: false, is_live: true, delivery_tier: tier });
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('Invalid delivery_tier');
+    expect(mockConnection.query).not.toHaveBeenCalled();
+  });
+
+  it('updates the delivery tier and rejects invalid values', async () => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 101 }]])
+      .mockResolvedValueOnce([[{ id: 101, delivery_tier: null }]])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ insertId: 901 }]);
+    const updated = await request(app).put('/api/v2/products/101')
+      .set('Cookie', authCookie('admin')).send({ delivery_tier: 'largest' });
+    expect(updated.status).toBe(200);
+    expect(mockConnection.query.mock.calls[2][1]).toEqual(['largest', 101]);
+
+    mockConnection.query.mockClear();
+    const invalid = await request(app).put('/api/v2/products/101')
+      .set('Cookie', authCookie('admin')).send({ delivery_tier: null });
+    expect(invalid.status).toBe(400);
+    expect(invalid.body.error).toBe('Invalid delivery_tier');
+    expect(mockConnection.query).not.toHaveBeenCalled();
   });
 
   it('updates mutable fields in v2 as admin', async () => {
