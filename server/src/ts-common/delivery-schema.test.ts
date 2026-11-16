@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-require-imports -- The schema runner is untyped CommonJS.
 const { ensureProductDeliverySchema } = require('../../scripts/apply-schema');
 
 it('adds a nullable delivery tier once without changing existing products', async () => {

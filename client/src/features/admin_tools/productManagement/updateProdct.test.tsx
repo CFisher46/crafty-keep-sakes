@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { renderWithProviders } from '../../../test-utils/renderWithProviders';
 import UpdateProduct from './updateProdct';
 
@@ -40,14 +40,15 @@ it('assigns a tier to an existing product and shows it when reopened', async () 
     fireEvent.click(await screen.findByPlaceholderText('Select a product...'));
     fireEvent.click(await screen.findByText('1 — Mug (Mugs)'));
     fireEvent.click(screen.getByRole('button', { name: 'Load Product Details' }));
-    fireEvent.change(screen.getByLabelText('Delivery Tier:'), { target: { value: 'largest' } });
+    fireEvent.click(screen.getByLabelText('Delivery Tier:'));
+    fireEvent.click(await screen.findByText('Largest'));
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
     await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
     expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body)).toEqual({ delivery_tier: 'largest' });
     fireEvent.click(await screen.findByPlaceholderText('Select a product...'));
     fireEvent.click(await screen.findByText('1 — Mug (Mugs)'));
     fireEvent.click(screen.getByRole('button', { name: 'Load Product Details' }));
-    expect(screen.getByLabelText('Delivery Tier:')).toHaveValue('largest');
+    expect(within(screen.getByLabelText('Delivery Tier:')).getByDisplayValue('Largest')).toBeInTheDocument();
   } finally {
     scrollTo.mockRestore();
   }

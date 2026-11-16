@@ -195,10 +195,17 @@ const UpdateProduct = () => {
                       {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}:
                     </label>
                     {key === 'delivery_tier' ? (
-                      <select id={`update-product-${key}`} value={String(value ?? '')} onChange={(event) => handleFieldChange('delivery_tier', event.target.value)}>
-                        <option value="" disabled>Not classified</option>
-                        {deliveryTiers.map((tier) => <option key={tier} value={tier}>{tier[0].toUpperCase() + tier.slice(1)}</option>)}
-                      </select>
+                      <Select
+                        id={`update-product-${key}`}
+                        a11yTitle="Delivery tier"
+                        value={String(value ?? '')}
+                        options={deliveryTiers.map((tier) => ({ label: tier[0].toUpperCase() + tier.slice(1), value: tier }))}
+                        labelKey="label"
+                        valueKey={{ key: 'value', reduce: true }}
+                        placeholder="Not classified"
+                        size="small"
+                        onChange={({ value: selectedValue }) => handleFieldChange('delivery_tier', String(selectedValue))}
+                      />
                     ) : key === 'on_sale' || key === 'is_live' ? (
                       <Select
                         id={`update-product-${key}`}

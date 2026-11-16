@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   Grid,
+  Select,
   TextInput,
   Text,
   FileInput,
@@ -224,14 +225,20 @@ const CreateNewProduct = () => {
                 </label>
 
                 {key === 'delivery_tier' ? (
-                  <select
+                  <Select
                     id={`product-${key}`}
+                    a11yTitle="Delivery tier"
                     value={rawInputValues[key] ?? ''}
-                    onChange={(event) => handleInputChange('delivery_tier', event.target.value)}
-                  >
-                    <option value="">Select a delivery tier</option>
-                    {deliveryTiers.map((tier) => <option key={tier} value={tier}>{tier[0].toUpperCase() + tier.slice(1)}</option>)}
-                  </select>
+                    options={[
+                      { label: 'Select a delivery tier', value: '' },
+                      ...deliveryTiers.map((tier) => ({ label: tier[0].toUpperCase() + tier.slice(1), value: tier })),
+                    ]}
+                    labelKey="label"
+                    valueKey={{ key: 'value', reduce: true }}
+                    placeholder="Select a delivery tier"
+                    size="small"
+                    onChange={({ value: selectedValue }) => handleInputChange('delivery_tier', String(selectedValue))}
+                  />
                 ) : <TextInput
                   id={`product-${key}`}
                   value={rawInputValues[key] ?? String(value ?? '')}

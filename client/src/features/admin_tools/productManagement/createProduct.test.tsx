@@ -4,6 +4,7 @@ import CreateNewProduct from './createProduct';
 
 describe('Create product quantity', () => {
   beforeEach(() => {
+    jest.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ insertId: 1 }),
@@ -16,20 +17,23 @@ describe('Create product quantity', () => {
     await waitFor(() => {
       expect(screen.queryByText('Product added successfully.')).not.toBeInTheDocument();
     });
+    jest.restoreAllMocks();
   });
 
-  const fillRequiredFields = () => {
+  const fillRequiredFields = async () => {
     fireEvent.change(screen.getByLabelText('Product Name:'), { target: { value: 'Mug' } });
     fireEvent.change(screen.getByLabelText('Category:'), { target: { value: 'Mugs' } });
     fireEvent.change(screen.getByLabelText('Description:'), { target: { value: 'Handmade' } });
     fireEvent.change(screen.getByLabelText('Price:'), { target: { value: '10' } });
-    fireEvent.change(screen.getByLabelText('Delivery Tier:'), { target: { value: 'small' } });
+    fireEvent.click(screen.getByLabelText('Delivery Tier:'));
+    fireEvent.click(await screen.findByText('Small'));
   };
 
-  it('requires a delivery tier when creating a product', () => {
+  it('requires a delivery tier when creating a product', async () => {
     renderWithProviders(<CreateNewProduct />);
-    fillRequiredFields();
-    fireEvent.change(screen.getByLabelText('Delivery Tier:'), { target: { value: '' } });
+    await fillRequiredFields();
+    fireEvent.click(screen.getByLabelText('Delivery Tier:'));
+    fireEvent.click(await screen.findByText('Select a delivery tier'));
     fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
     expect(screen.getByText(/• Delivery Tier/)).toBeInTheDocument();
     expect(global.fetch).not.toHaveBeenCalled();
@@ -37,7 +41,7 @@ describe('Create product quantity', () => {
 
   it('creates a product with zero as the default when quantity is omitted', async () => {
     renderWithProviders(<CreateNewProduct />);
-    fillRequiredFields();
+    await fillRequiredFields();
     expect(screen.getByLabelText('Quantity (optional):')).toHaveValue('');
     fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
 
@@ -49,9 +53,9 @@ describe('Create product quantity', () => {
     });
   });
 
-  it('rejects invalid quantities when provided', () => {
+  it('rejects invalid quantities when provided', async () => {
     renderWithProviders(<CreateNewProduct />);
-    fillRequiredFields();
+    await fillRequiredFields();
     fireEvent.change(screen.getByLabelText('Quantity (optional):'), { target: { value: '-1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
     expect(screen.getByRole('alert')).toHaveTextContent('Enter a whole number');
@@ -60,7 +64,7 @@ describe('Create product quantity', () => {
 
   it('preserves an explicitly supplied stock quantity', async () => {
     renderWithProviders(<CreateNewProduct />);
-    fillRequiredFields();
+    await fillRequiredFields();
     fireEvent.change(screen.getByLabelText('Quantity (optional):'), { target: { value: '8' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
     expect(await screen.findByText('Product added successfully.')).toBeInTheDocument();
@@ -71,7 +75,7 @@ describe('Create product quantity', () => {
     let resolveRequest!: (response: { ok: boolean; json: () => Promise<{ insertId: number }> }) => void;
     (global.fetch as jest.Mock).mockReturnValue(new Promise((resolve) => { resolveRequest = resolve; }));
     renderWithProviders(<CreateNewProduct />);
-    fillRequiredFields();
+    await fillRequiredFields();
     const button = screen.getByRole('button', { name: 'Create Product' });
     fireEvent.click(button);
     fireEvent.click(button);
@@ -89,7 +93,7 @@ describe('Create product quantity', () => {
     const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       renderWithProviders(<CreateNewProduct />);
-      fillRequiredFields();
+      await fillRequiredFields();
       fireEvent.change(screen.getByLabelText('Product images'), { target: { files: [new File(['image'], 'photo.png', { type: 'image/png' })] } });
       fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
       expect(await screen.findByText('Product added successfully.')).toBeInTheDocument();
@@ -104,7 +108,7 @@ describe('Create product quantity', () => {
 
   it('explains an unsupported file before creating a product and allows correcting it', async () => {
     renderWithProviders(<CreateNewProduct />);
-    fillRequiredFields();
+    await fillRequiredFields();
     const input = screen.getByLabelText('Product images');
     fireEvent.change(input, { target: { files: [new File(['test'], 'test.txt', { type: 'text/plain' })] } });
     expect(screen.getByRole('alert')).toHaveTextContent('Only JPG, PNG, WEBP or GIF images are allowed.');
@@ -124,7 +128,7 @@ describe('Create product quantity', () => {
     const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       renderWithProviders(<CreateNewProduct />);
-      fillRequiredFields();
+      await fillRequiredFields();
       fireEvent.change(screen.getByLabelText('Product images'), {
         target: { files: [new File(['image'], 'photo.png', { type: 'image/png' })] },
       });
@@ -141,7 +145,7 @@ describe('Create product quantity', () => {
     const log = jest.spyOn(console, 'error').mockImplementation(() => undefined);
     try {
       renderWithProviders(<CreateNewProduct />);
-      fillRequiredFields();
+      await fillRequiredFields();
       fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
       expect(await screen.findByRole('alert')).toHaveTextContent('Check the product list before trying again');
       expect(screen.getByLabelText('Product Name:')).toHaveValue('Mug');
