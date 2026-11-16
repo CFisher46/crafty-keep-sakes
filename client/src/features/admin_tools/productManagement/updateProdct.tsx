@@ -7,6 +7,12 @@ import { fetchAllProductsForAdmin, updateProduct, uploadProductImages } from '..
 import { IMAGE_ACCEPT, validateProductImages } from './imageValidation';
 import { deliveryTiers } from '../../../helpers/delivery';
 
+type NumericProductField = 'price' | 'quantity' | 'sale_percent';
+const numericFields: NumericProductField[] = ['price', 'quantity', 'sale_percent'];
+
+const isNumericField = (key: string): key is NumericProductField =>
+  numericFields.some((field) => field === key);
+
 const UpdateProduct = () => {
   const dispatch = useAppDispatch();
   const [productList, setProductList] = useState<Product[]>([]);
@@ -17,9 +23,10 @@ const UpdateProduct = () => {
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const [imageError, setImageError] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [numericDrafts, setNumericDrafts] = useState<Partial<Record<NumericProductField, string>>>({});
+  const [numericError, setNumericError] = useState<NumericProductField | null>(null);
 
   const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
-  const numericFields = new Set<keyof Product>(['price', 'quantity', 'sale_percent']);
 
   const parseBooleanValue = (value: Product[keyof Product] | string): boolean => {
     if (typeof value === 'boolean') return value;
@@ -48,12 +55,20 @@ const UpdateProduct = () => {
       setSelectedProduct(normalizedProduct);
       setEditedProduct({ ...normalizedProduct });
       setSaveError('');
+      setNumericDrafts({});
+      setNumericError(null);
     } else {
       console.error('Product not found:', productId);
     }
   };
 
   const handleFieldChange = (key: keyof Product, value: string) => {
+    if (isNumericField(key)) {
+      setNumericDrafts((prev) => ({ ...prev, [key]: value }));
+      if (numericError === key) setNumericError(null);
+      if (!value.trim() || !Number.isFinite(Number(value))) return;
+    }
+
     setEditedProduct((prev) => {
       if (!prev) return prev;
 
@@ -61,9 +76,8 @@ const UpdateProduct = () => {
 
       if (booleanFields.has(key)) {
         parsedValue = parseBooleanValue(value);
-      } else if (numericFields.has(key)) {
-        const numericValue = Number(value);
-        parsedValue = Number.isFinite(numericValue) ? numericValue : 0;
+      } else if (isNumericField(key)) {
+        parsedValue = Number(value);
       }
 
       return { ...prev, [key]: parsedValue };
@@ -73,6 +87,17 @@ const UpdateProduct = () => {
   const handleSave = async () => {
     if (!editedProduct || !selectedProduct) return;
     setSaveError('');
+    const invalidField = numericFields.find((field) => {
+      const draft = numericDrafts[field];
+      if (draft === undefined) return false;
+      const parsed = Number(draft);
+      return !draft.trim() || !Number.isFinite(parsed) ||
+        (field === 'quantity' && !Number.isInteger(parsed));
+    });
+    if (invalidField) {
+      setNumericError(invalidField);
+      return;
+    }
     const validationError = validateProductImages(selectedImages);
     setImageError(validationError);
     if (validationError) return;
@@ -223,13 +248,20 @@ const UpdateProduct = () => {
                     ) : (
                       <TextInput
                         id={`update-product-${key}`}
-                        value={String(value)}
+                        value={isNumericField(key) ? numericDrafts[key] ?? String(value) : String(value)}
                         size="small"
                         style={{ fontSize: '12px' }}
                         readOnly={key === 'id'}
                         disabled={key === 'id'}
+                        aria-invalid={numericError === key}
+                        aria-describedby={numericError === key ? `update-product-${key}-error` : undefined}
                         onChange={(e) => handleFieldChange(key as keyof Product, e.target.value)}
                       />
+                    )}
+                    {numericError === key && (
+                      <Text id={`update-product-${key}-error`} size="small" color="status-critical" role="alert">
+                        {key === 'quantity' ? 'Enter a whole number.' : 'Enter a valid number.'}
+                      </Text>
                     )}
                   </Box>
                 ))}
