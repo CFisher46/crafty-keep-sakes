@@ -1,4 +1,4 @@
-import { FacebookOption, Instagram, Twitter } from "grommet-icons";
+import { FacebookOption, Instagram } from "grommet-icons";
 import { useState } from "react";
 import { Anchor, Box, Button, Footer, Text } from "grommet";
 import { ui } from "../../helpers/theme";
