@@ -131,6 +131,15 @@ async function ensureAnonymousBlogActivitySchema(connection) {
   }
 }
 
+async function ensureProductDeliverySchema(connection) {
+  const [productColumns] = await connection.query('SHOW COLUMNS FROM products_v2');
+  if (!productColumns.some((column) => column.Field === 'delivery_tier')) {
+    await connection.query(
+      "ALTER TABLE products_v2 ADD COLUMN delivery_tier ENUM('small', 'medium', 'large', 'largest') NULL DEFAULT NULL"
+    );
+  }
+}
+
 async function main() {
   const file = path.resolve(
     __dirname,
@@ -150,6 +159,7 @@ async function main() {
     if (path.basename(file) === 'phase1_schema_v2.sql') {
       await ensureEmailVerificationSchema(connection);
       await ensureAnonymousBlogActivitySchema(connection);
+      await ensureProductDeliverySchema(connection);
     }
     const [tables] = await connection.query('SHOW TABLES');
     const [roles] = await connection.query('SELECT code FROM roles_v2');
@@ -160,7 +170,11 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error(error.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { ensureProductDeliverySchema };

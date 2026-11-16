@@ -79,6 +79,7 @@ function Home() {
       product_name: product.product_name,
       price: product.on_sale ? salePrice(product) : product.price,
       quantity,
+      delivery_tier: product.delivery_tier,
     };
 
     setBasketError(null);

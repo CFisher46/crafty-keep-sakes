@@ -75,7 +75,7 @@ router.put('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
     }
 
     const [existingProductRows] = await connection.query<RowDataPacket[]>(
-      `SELECT id, product_name, description, price, quantity, on_sale, is_live, sale_percent
+      `SELECT id, product_name, description, price, quantity, on_sale, is_live, sale_percent, delivery_tier
        FROM products_v2
        WHERE id = ?
        LIMIT 1`,
@@ -149,6 +149,7 @@ router.put('/:id', verifyAuthToken, requireRole('admin'), async (req, res) => {
             on_sale: previousProduct.on_sale ?? null,
             is_live: previousProduct.is_live ?? null,
             sale_percent: previousProduct.sale_percent ?? null,
+            delivery_tier: previousProduct.delivery_tier ?? null,
           }
         : null,
       newValuesJson: {

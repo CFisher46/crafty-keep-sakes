@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../store/hooks';
 import { fetchAllProductsForAdmin, updateProduct, uploadProductImages } from '../../../store/products/productsThunks';
 import { IMAGE_ACCEPT, validateProductImages } from './imageValidation';
+import { deliveryTiers } from '../../../helpers/delivery';
 
 const UpdateProduct = () => {
   const dispatch = useAppDispatch();
@@ -15,6 +16,7 @@ const UpdateProduct = () => {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const [imageError, setImageError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
   const numericFields = new Set<keyof Product>(['price', 'quantity', 'sale_percent']);
@@ -42,8 +44,10 @@ const UpdateProduct = () => {
   const handlerLoadProductDetails = (productId: string) => {
     const product = productList.find((p) => p.id === productId);
     if (product) {
-      setSelectedProduct(product);
-      setEditedProduct({ ...product });
+      const normalizedProduct = { ...product, delivery_tier: product.delivery_tier ?? null };
+      setSelectedProduct(normalizedProduct);
+      setEditedProduct({ ...normalizedProduct });
+      setSaveError('');
     } else {
       console.error('Product not found:', productId);
     }
@@ -68,6 +72,7 @@ const UpdateProduct = () => {
 
   const handleSave = async () => {
     if (!editedProduct || !selectedProduct) return;
+    setSaveError('');
     const validationError = validateProductImages(selectedImages);
     setImageError(validationError);
     if (validationError) return;
@@ -110,6 +115,7 @@ const UpdateProduct = () => {
         ).unwrap();
       }
 
+      setProductList((current) => current.map((product) => product.id === editedProduct.id ? editedProduct : product));
       setSelectedProduct(null);
       setEditedProduct(null);
       setSelectedProductId('');
@@ -118,6 +124,7 @@ const UpdateProduct = () => {
       setFileInputResetKey((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to update product:', err);
+      setSaveError('Could not complete the update. Changes may have been saved; reload the product before trying again.');
     }
   };
 
@@ -184,11 +191,24 @@ const UpdateProduct = () => {
                 .filter(([key]) => key !== 'images')
                 .map(([key, value]) => (
                   <Box key={key} direction="column" gap="xsmall">
-                    <Text size="small" weight="bold" style={{ textTransform: 'capitalize' }}>
+                    <label htmlFor={`update-product-${key}`} style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'capitalize' }}>
                       {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}:
-                    </Text>
-                    {key === 'on_sale' || key === 'is_live' ? (
+                    </label>
+                    {key === 'delivery_tier' ? (
                       <Select
+                        id={`update-product-${key}`}
+                        a11yTitle="Delivery tier"
+                        value={String(value ?? '')}
+                        options={deliveryTiers.map((tier) => ({ label: tier[0].toUpperCase() + tier.slice(1), value: tier }))}
+                        labelKey="label"
+                        valueKey={{ key: 'value', reduce: true }}
+                        placeholder="Not classified"
+                        size="small"
+                        onChange={({ value: selectedValue }) => handleFieldChange('delivery_tier', String(selectedValue))}
+                      />
+                    ) : key === 'on_sale' || key === 'is_live' ? (
+                      <Select
+                        id={`update-product-${key}`}
                         options={[
                           { label: 'Yes', value: 'yes' },
                           { label: 'No', value: 'no' },
@@ -202,6 +222,7 @@ const UpdateProduct = () => {
                       />
                     ) : (
                       <TextInput
+                        id={`update-product-${key}`}
                         value={String(value)}
                         size="small"
                         style={{ fontSize: '12px' }}
@@ -213,6 +234,7 @@ const UpdateProduct = () => {
                   </Box>
                 ))}
           </Grid>
+          {saveError && <Text role="alert" color="status-critical">{saveError}</Text>}
           <Box direction="row" gap="small" margin={{ top: 'medium' }}>
             <ActionButton label="Save Changes" onClick={handleSave} fixed />
             <ActionButton secondary label="Cancel" onClick={() => {
