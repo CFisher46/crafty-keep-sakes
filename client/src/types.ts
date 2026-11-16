@@ -35,6 +35,8 @@ export type Review = {
 
 export type ReviewInput = Omit<Review, 'id'>;
 
+export type DeliveryTier = 'small' | 'medium' | 'large' | 'largest';
+
 export type Product = {
   id: string;
   category: string;
@@ -45,6 +47,7 @@ export type Product = {
   product_name: string;
   is_live: boolean;
   sale_percent: number;
+  delivery_tier?: DeliveryTier | null;
   created_at?: string | null;
   units_sold?: number;
   images: string;

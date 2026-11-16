@@ -23,7 +23,17 @@ describe('Create product quantity', () => {
     fireEvent.change(screen.getByLabelText('Category:'), { target: { value: 'Mugs' } });
     fireEvent.change(screen.getByLabelText('Description:'), { target: { value: 'Handmade' } });
     fireEvent.change(screen.getByLabelText('Price:'), { target: { value: '10' } });
+    fireEvent.change(screen.getByLabelText('Delivery Tier:'), { target: { value: 'small' } });
   };
+
+  it('requires a delivery tier when creating a product', () => {
+    renderWithProviders(<CreateNewProduct />);
+    fillRequiredFields();
+    fireEvent.change(screen.getByLabelText('Delivery Tier:'), { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create Product' }));
+    expect(screen.getByText(/• Delivery Tier/)).toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
 
   it('creates a product with zero as the default when quantity is omitted', async () => {
     renderWithProviders(<CreateNewProduct />);
@@ -35,6 +45,7 @@ describe('Create product quantity', () => {
     expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body)).toMatchObject({
       product_name: 'Mug',
       quantity: 0,
+      delivery_tier: 'small',
     });
   });
 

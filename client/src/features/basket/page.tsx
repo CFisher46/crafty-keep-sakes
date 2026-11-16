@@ -20,6 +20,7 @@ import { ActionButton } from "../landingPage/components/ActionButton";
 import { notifyNotificationsChanged } from "../notifications/events";
 import QuantityInput from "../../components/quantity-input/quantity-input";
 import { parseQuantity } from "../../helpers/quantity";
+import { calculateDelivery } from "../../helpers/delivery";
 
 const isCompleteDeliveryAddress = (
   address: Partial<DeliveryAddress> | null | undefined
@@ -97,6 +98,10 @@ function Basket() {
     (sum, item) => sum + displayedQuantity(item.id, item.quantity) * item.price,
     0
   );
+  const deliveryFee = calculateDelivery(items.map((item) => ({
+    delivery_tier: item.delivery_tier,
+    quantity: displayedQuantity(item.id, item.quantity),
+  })));
   const displayedTotalItems = items.reduce(
     (sum, item) => sum + displayedQuantity(item.id, item.quantity),
     0
@@ -151,13 +156,14 @@ function Basket() {
   };
 
   const handleCheckout = async () => {
+    if (deliveryFee === null || hasUncommittedQuantity || quantityBusy) return;
     if (!isCompleteDeliveryAddress(deliveryAddress)) {
       setCheckoutAddressError('Enter address line 1, town and postcode to continue.');
       return;
     }
 
     setCheckoutAddressError(null);
-    const resultAction = await dispatch(checkoutBasket(deliveryAddress));
+    const resultAction = await dispatch(checkoutBasket({ deliveryAddress, expectedDeliveryFee: deliveryFee }));
 
     if (checkoutBasket.fulfilled.match(resultAction)) {
       const payload = resultAction.payload as {
@@ -191,12 +197,12 @@ function Basket() {
     }
 
     setInvoiceId(null);
-    setCheckoutMessage('Checkout failed. Please try again.');
+    setCheckoutMessage(typeof resultAction.payload === 'string' ? resultAction.payload : 'Checkout failed. Please try again.');
     setShowCheckoutModal(false);
   };
 
   const handleCheckoutStart = () => {
-    if (hasUncommittedQuantity || quantityBusy) return;
+    if (hasUncommittedQuantity || quantityBusy || deliveryFee === null) return;
     if (!authUser) {
       setCheckoutMessage('Please log in before checking out.');
       return;
@@ -430,17 +436,24 @@ function Basket() {
               Order summary
             </Text>
             <Text style={{ color: ui.muted }}>{displayedTotalItems} {displayedTotalItems === 1 ? 'item' : 'items'}</Text>
+            <Text>Subtotal: £{totalPrice.toFixed(2)}</Text>
+            <Text>Delivery: {deliveryFee === null ? 'Unavailable' : `£${deliveryFee.toFixed(2)}`}</Text>
             <Box border={{ side: 'top', color: ui.line }} pad={{ top: 'medium' }}>
               <Text weight="bold" size="large" style={{ color: ui.ink }}>
-                {`Total Price: £${totalPrice.toFixed(2)}`}
+                {deliveryFee === null ? 'Total Price: Unavailable' : `Total Price: £${(totalPrice + deliveryFee).toFixed(2)}`}
               </Text>
             </Box>
+            {deliveryFee === null && (
+              <Text size="small" role="status">
+                Delivery is unavailable for one or more items. Remove and add them again, or contact us for help.
+              </Text>
+            )}
             {(hasUncommittedQuantity || quantityBusy) && (
               <Text size="small" role="status">
                 {quantityBusy ? 'Updating basket quantity...' : 'Enter a valid quantity and leave the field to update your basket.'}
               </Text>
             )}
-            <ActionButton label="Checkout" onClick={handleCheckoutStart} disabled={totalItems === 0 || hasUncommittedQuantity || quantityBusy} />
+            <ActionButton label="Checkout" onClick={handleCheckoutStart} disabled={totalItems === 0 || hasUncommittedQuantity || quantityBusy || deliveryFee === null} />
           </Box>
         </div>
       )}

@@ -2,6 +2,7 @@ import express from 'express';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
 import { Product } from '../../../../ts-common/product-types';
+import { parseDeliveryTier } from '../../../../ts-common/delivery';
 import { createProductV2Query } from '../../../../ts-common/product-queries';
 import {
   INSERT_PRODUCT_CATEGORY_LINK_QUERY,
@@ -30,6 +31,7 @@ const normalizeProduct = (input: Partial<Product>): Product => ({
   product_name: String(input.product_name ?? '').trim(),
   is_live: toBoolean(input.is_live, 'is_live'),
   sale_percent: toNumber(input.sale_percent ?? 0, 'sale_percent'),
+  delivery_tier: parseDeliveryTier(input.delivery_tier),
   images: String(input.images ?? '').trim(),
 });
 
@@ -94,6 +96,7 @@ router.post('/', verifyAuthToken, requireRole('admin'), async (req, res) => {
         price: product.price,
         quantity: product.quantity,
         is_live: product.is_live,
+        delivery_tier: product.delivery_tier,
       },
     });
 

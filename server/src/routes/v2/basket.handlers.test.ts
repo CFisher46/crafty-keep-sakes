@@ -55,12 +55,14 @@ describe('v2 basket routes', () => {
     mockConnection.query
       .mockResolvedValueOnce([[{ id: 12 }]])
       .mockResolvedValueOnce([[
-        { id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set', image_path: '/images/tea.jpg' },
-        { id: 10, basket_id: 12, product_id: 26, quantity: 1, unit_price_snapshot: '3.00', product_name: 'Cup', image_path: null },
+        { id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set', image_path: '/images/tea.jpg', delivery_tier: 'medium' },
+        { id: 10, basket_id: 12, product_id: 26, quantity: 1, unit_price_snapshot: '3.00', product_name: 'Cup', image_path: null, delivery_tier: null },
       ]]);
     const response = await request(app).get('/api/v2/basket').set('Cookie', authCookie(7, 'customer'));
     expect(response.status).toBe(200);
     expect(response.body.items.map((item: { image_path: string | null }) => item.image_path)).toEqual(['/images/tea.jpg', null]);
+    expect(response.body.items.map((item: { delivery_tier: string | null }) => item.delivery_tier)).toEqual(['medium', null]);
+    expect(String(mockConnection.query.mock.calls[1][0])).toContain('p.delivery_tier');
     expect(String(mockConnection.query.mock.calls[1][0])).toContain('ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.id ASC LIMIT 1');
   });
 
@@ -180,6 +182,7 @@ describe('v2 basket routes', () => {
             quantity: 2,
             unit_price_snapshot: '12.50',
             product_name: 'Tea Set',
+            delivery_tier: 'largest',
           },
         ],
       ])
@@ -189,12 +192,14 @@ describe('v2 basket routes', () => {
       .mockResolvedValueOnce([{ insertId: 90 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 999 }]);
 
     const response = await request(app)
       .post('/api/v2/basket/checkout')
       .set('Cookie', authCookie(7, 'customer'))
       .send({
+        expected_delivery_fee: 20,
         delivery_address: {
           address_line1: '1 Test Street',
           address_line2: 'Bristol',
@@ -214,7 +219,7 @@ describe('v2 basket routes', () => {
       order_id: 40,
       invoice_id: 90,
       invoice_number: expect.stringMatching(/^INV-/),
-      total_due: 25,
+      total_due: 45,
       delivery_address: {
         address_line1: '1 Test Street',
         address_line2: 'Bristol',
@@ -231,6 +236,12 @@ describe('v2 basket routes', () => {
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(true);
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('SHOW COLUMNS FROM invoices_v2'))).toBe(true);
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO invoices_v2'))).toBe(true);
+    const order = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders_v2'));
+    expect(order?.[1]).toEqual([7, 12, 25, 0, 45, 'placed']);
+    const invoice = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO invoices_v2'));
+    expect(invoice?.[1][2]).toBe(45);
+    const delivery = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes("'Delivery'"));
+    expect(delivery?.[1]).toEqual([90, 20, 20]);
     const notification = (db.query as jest.Mock).mock.calls.find(([sql]) =>
       String(sql).includes('INSERT INTO notifications_v2')
     );
@@ -283,6 +294,26 @@ describe('v2 basket routes', () => {
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(false);
   });
 
+  it.each([
+    [null, 4, 400, 'Delivery is unavailable'],
+    ['large', 0, 409, 'Delivery charges have changed'],
+    ['large', 4, 409, 'Delivery charges have changed'],
+    ['large', undefined, 409, 'Delivery charges have changed'],
+  ])('rejects checkout for tier %s and displayed delivery %s', async (tier, expectedFee, status, message) => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 12 }]])
+      .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity: 1, unit_price_snapshot: '12.50', delivery_tier: tier }]]);
+    const response = await request(app)
+      .post('/api/v2/basket/checkout')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({ expected_delivery_fee: expectedFee, delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
+
+    expect(response.status).toBe(status);
+    expect(response.body.error).toContain(message);
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(false);
+  });
+
   it.each([false, true])('notifies admins when payment link creation fails: %s', async (paymentLinkFails) => {
     process.env.PAYMENTS_PROVIDER = 'mock';
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -290,11 +321,12 @@ describe('v2 basket routes', () => {
       mockConnection.query
         .mockResolvedValueOnce([[]])
         .mockResolvedValueOnce([{ insertId: 12 }])
-        .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set' }]])
+        .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set', delivery_tier: 'medium' }]])
         .mockResolvedValueOnce([[{ Field: 'billing_address_line1' }, { Field: 'billing_address_line2' }, { Field: 'billing_address_line3' }, { Field: 'billing_town' }, { Field: 'billing_county' }, { Field: 'billing_postcode' }]])
         .mockResolvedValueOnce([{ insertId: 40 }])
         .mockResolvedValueOnce([{ affectedRows: 1 }])
         .mockResolvedValueOnce([{ insertId: 90 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
         .mockResolvedValueOnce([{ affectedRows: 1 }])
         .mockResolvedValueOnce([{ affectedRows: 1 }])
         .mockResolvedValueOnce([{ insertId: 999 }]);
@@ -312,7 +344,7 @@ describe('v2 basket routes', () => {
       const response = await request(app)
         .post('/api/v2/basket/checkout')
         .set('Cookie', authCookie(7, 'customer'))
-        .send({ delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
+        .send({ expected_delivery_fee: 6, delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
 
       expect(response.status).toBe(201);
       expect(response.body.payment_error).toBe(paymentLinkFails);
@@ -328,6 +360,8 @@ describe('v2 basket routes', () => {
 
       const queries = (db.query as jest.Mock).mock.calls.map(([sql]) => String(sql));
       expect(queries.some((sql) => sql.includes('INSERT INTO payments_v2'))).toBe(true);
+      const payment = (db.query as jest.Mock).mock.calls.find(([sql]) => String(sql).includes('INSERT INTO payments_v2'));
+      expect(payment?.[1][3]).toBe(31);
       expect(mockConnection.commit.mock.invocationCallOrder[0]).toBeLessThan(
         (db.query as jest.Mock).mock.invocationCallOrder[0]
       );
@@ -349,6 +383,55 @@ describe('v2 basket routes', () => {
     }
   });
 
+  it('sends the delivery-inclusive total to Square', async () => {
+    const keys = ['PAYMENTS_PROVIDER', 'SQUARE_ENVIRONMENT', 'SQUARE_SANDBOX_ACCESS_TOKEN', 'SQUARE_SANDBOX_LOCATION_ID', 'SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY', 'SQUARE_WEBHOOK_URL'] as const;
+    const previous = keys.map((key) => process.env[key]);
+    Object.assign(process.env, {
+      PAYMENTS_PROVIDER: 'square',
+      SQUARE_ENVIRONMENT: 'sandbox',
+      SQUARE_SANDBOX_ACCESS_TOKEN: 'test-token',
+      SQUARE_SANDBOX_LOCATION_ID: 'test-location',
+      SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY: 'test-key',
+      SQUARE_WEBHOOK_URL: 'https://example.test/webhook',
+    });
+    const fetchSpy = jest.spyOn(global, 'fetch').mockResolvedValue(new Response(
+      JSON.stringify({ payment_link: { url: 'https://example.test/pay', order_id: 'square-order' } }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    ));
+    try {
+      mockConnection.query
+        .mockResolvedValueOnce([[{ id: 12 }]])
+        .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set', delivery_tier: 'largest' }]])
+        .mockResolvedValueOnce([[{ Field: 'billing_address_line1' }, { Field: 'billing_address_line2' }, { Field: 'billing_address_line3' }, { Field: 'billing_town' }, { Field: 'billing_county' }, { Field: 'billing_postcode' }]])
+        .mockResolvedValueOnce([{ insertId: 40 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ insertId: 90 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockResolvedValueOnce([{ insertId: 999 }]);
+      (db.query as jest.Mock)
+        .mockResolvedValueOnce([[{ user_id: 1 }]])
+        .mockResolvedValueOnce([{ insertId: 2 }])
+        .mockResolvedValueOnce([{ insertId: 3 }]);
+      const response = await request(app)
+        .post('/api/v2/basket/checkout')
+        .set('Cookie', authCookie(7, 'customer'))
+        .send({ expected_delivery_fee: 20, delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
+
+      expect(response.status).toBe(201);
+      expect(response.body.total_due).toBe(45);
+      const body = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body));
+      expect(body.quick_pay.price_money).toEqual({ amount: 4500, currency: 'GBP' });
+    } finally {
+      fetchSpy.mockRestore();
+      keys.forEach((key, index) => {
+        if (previous[index] === undefined) delete process.env[key];
+        else process.env[key] = previous[index];
+      });
+    }
+  });
+
   it('adds missing billing columns before writing the invoice when the schema is older', async () => {
     mockConnection.query
       .mockResolvedValueOnce([[]])
@@ -362,6 +445,7 @@ describe('v2 basket routes', () => {
             quantity: 2,
             unit_price_snapshot: '12.50',
             product_name: 'Tea Set',
+            delivery_tier: 'medium',
           },
         ],
       ])
@@ -371,12 +455,14 @@ describe('v2 basket routes', () => {
       .mockResolvedValueOnce([{ insertId: 90 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ affectedRows: 1 }])
+      .mockResolvedValueOnce([{ affectedRows: 1 }])
       .mockResolvedValueOnce([{ insertId: 999 }]);
 
     const response = await request(app)
       .post('/api/v2/basket/checkout')
       .set('Cookie', authCookie(7, 'customer'))
       .send({
+        expected_delivery_fee: 6,
         delivery_address: {
           address_line1: '61 Salisbury Avenue',
           address_line2: '',
