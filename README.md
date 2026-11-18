@@ -28,7 +28,7 @@ Online shop and business website for hand crafted wedding keepsakes. Customers c
 ### Customers
 
 - **Basket and checkout**: add items, then place an order. This creates an order and an invoice. With `PAYMENTS_PROVIDER` set, the customer is then sent to a hosted payment page and the invoice is marked paid automatically when the vendor's webhook confirms it (see [Payments](#payments)). Without it, no payment is taken online.
-- **Delivery**: the basket shows the delivery charge and includes it in the order, invoice and payment. Small costs £4, medium £6, and large £10. A basket with one largest item costs £10; two or more largest items cost £20 in total. Otherwise the highest tier in the basket sets the charge.
+- **Delivery**: the basket shows the delivery charge and includes it in the order, invoice and payment. Small costs £4, medium £6, and large £10. One largest item costs £10; two or more cost £20. More than 20 items in the same original tier move that group up one tier, counting different products together. A promoted large group counts as one largest shipment, so it costs £10 on its own or £20 with a largest item. More than 50 items across the whole basket cost £20. Promotions do not cascade, and delivery never exceeds £20.
 - **My invoices** (`/invoices`): invoice history with status, tracking and totals. Invoices changed since you last opened them are highlighted, and the five latest updates also appear on the home page.
 - **Profile**: update account and delivery details.
 - **Journal**: comment on posts and like or dislike them.
