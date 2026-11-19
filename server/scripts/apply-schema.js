@@ -140,6 +140,55 @@ async function ensureProductDeliverySchema(connection) {
   }
 }
 
+async function ensureProductReviewSchema(connection) {
+  const [columns] = await connection.query('SHOW COLUMNS FROM product_reviews_v2');
+  const existingColumns = new Map(columns.map((column) => [column.Field, column]));
+  const ratingColumns = [
+    'match_description_rating',
+    'quality_rating',
+    'value_rating',
+  ];
+  const missingRatingColumns = ratingColumns.filter((column) => !existingColumns.has(column));
+
+  for (const column of missingRatingColumns) {
+    await connection.query(
+      `ALTER TABLE product_reviews_v2 ADD COLUMN ${column} TINYINT UNSIGNED NOT NULL DEFAULT 5`
+    );
+  }
+
+  const starCountColumn = existingColumns.get('star_count');
+  if (!starCountColumn) {
+    await connection.query(
+      'ALTER TABLE product_reviews_v2 ADD COLUMN star_count DECIMAL(3,2) NOT NULL DEFAULT 5.00'
+    );
+  } else if (!String(starCountColumn.Type).toLowerCase().startsWith('decimal(3,2)')) {
+    await connection.query(
+      'ALTER TABLE product_reviews_v2 MODIFY star_count DECIMAL(3,2) NOT NULL DEFAULT 5.00'
+    );
+  }
+
+  if (missingRatingColumns.length > 0 && existingColumns.has('star_count')) {
+    // Preserve legacy ratings by using the existing overall score for each new criterion.
+    const assignments = missingRatingColumns
+      .map((column) => `${column} = LEAST(5, GREATEST(1, star_count))`)
+      .join(', ');
+    await connection.query(`UPDATE product_reviews_v2 SET ${assignments}`);
+  }
+
+  // Preserve old feedback; only narrow the column when existing rows fit.
+  const commentColumn = existingColumns.get('comment');
+  if (commentColumn && !String(commentColumn.Type).toLowerCase().startsWith('varchar(250)')) {
+    const [[result]] = await connection.query(
+      'SELECT EXISTS (SELECT 1 FROM product_reviews_v2 WHERE CHAR_LENGTH(comment) > 250) AS has_long_comment'
+    );
+    if (Number(result.has_long_comment) === 0) {
+      await connection.query(
+        'ALTER TABLE product_reviews_v2 MODIFY comment VARCHAR(250) NOT NULL'
+      );
+    }
+  }
+}
+
 async function main() {
   const file = path.resolve(
     __dirname,
@@ -160,6 +209,7 @@ async function main() {
       await ensureEmailVerificationSchema(connection);
       await ensureAnonymousBlogActivitySchema(connection);
       await ensureProductDeliverySchema(connection);
+      await ensureProductReviewSchema(connection);
     }
     const [tables] = await connection.query('SHOW TABLES');
     const [roles] = await connection.query('SELECT code FROM roles_v2');
@@ -177,4 +227,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { ensureProductDeliverySchema };
+module.exports = { ensureProductDeliverySchema, ensureProductReviewSchema };

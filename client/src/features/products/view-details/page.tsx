@@ -6,6 +6,7 @@ import { ui } from '../../../helpers/theme';
 import ActionButton from '../../landingPage/components/ActionButton';
 import QuantityInput from '../../../components/quantity-input/quantity-input';
 import { parseQuantity } from '../../../helpers/quantity';
+import ProductReviews from './product-reviews';
 
 function ProductModal({
   title,
@@ -180,6 +181,7 @@ function ProductModal({
           )}
         </Box>
       </Box>
+      <ProductReviews key={String(product.id)} productId={String(product.id)} />
     </Box>
   );
 }
