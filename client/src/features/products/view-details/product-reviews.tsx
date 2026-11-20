@@ -233,8 +233,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
   const reviewsContentId = `product-reviews-content-${productId}`;
 
   const toggleReviews = () => {
-    if (reviewsExpanded) setReviewFormOpen(false);
-    setReviewsExpanded(!reviewsExpanded);
+    setReviewsExpanded((expanded) => !expanded);
   };
 
   return (
@@ -408,7 +407,9 @@ export default function ProductReviews({ productId }: { productId: string }) {
             }}
           />
         )}
+      </Box>
 
+      <>
         {eligibilityError && (
           <Text role="alert" color="status-critical">
             {eligibilityError}
@@ -546,7 +547,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
             </Box>
           </Layer>
         )}
-      </Box>
+      </>
     </Box>
   );
 }

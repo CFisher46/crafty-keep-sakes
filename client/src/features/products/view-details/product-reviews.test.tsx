@@ -59,9 +59,8 @@ describe('ProductReviews', () => {
 
     render(<ProductReviews productId="3" />);
 
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Show product reviews' })
-    );
+    const expandReviews = screen.getByRole('button', { name: 'Show product reviews' });
+    expect(expandReviews).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(
       await screen.findByRole('button', { name: 'Write a review' })
     );
@@ -82,6 +81,8 @@ describe('ProductReviews', () => {
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Thank you for sharing your review.'
     );
+    expect(expandReviews).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(expandReviews);
     expect(await screen.findByText('Beautifully made')).toBeInTheDocument();
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(4));
     expect(mockFetch.mock.calls[2][1]).toMatchObject({
@@ -176,6 +177,7 @@ describe('ProductReviews', () => {
     render(<ProductReviews productId="3" />);
 
     await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('button', { name: 'Write a review' })).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole('button', { name: 'Show product reviews' })
     );
