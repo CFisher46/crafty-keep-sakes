@@ -13,6 +13,7 @@ Express + TypeScript REST API for the Crafty Keepsakes e-commerce platform. Conn
 | `npm start` | Runs the compiled production build from `dist/index.js`. |
 | `npm run lint` | Lints all TypeScript source files under `src/` using ESLint. |
 | `npm test` | Runs the Jest test suite (passes with no tests found). |
+| `npm run db:apply-schema` | Applies the v2 schema, including the product reviews table, to the configured database. |
 | `npm run user:generate-insert` | Generates a ready-to-run SQL INSERT statement for a new user in `users_v2` + `user_roles_v2` + `customer_profiles_v2`. |
 
 ---
@@ -259,3 +260,12 @@ Utility scripts for key management and data maintenance. Run with `npm run <scri
 | `DELETE` | `/api/users/:id` | Delete a user by ID. |
 | `GET` | `/api/audit` | Return all audit log entries. |
 | `POST` | `/api/audit` | Create a new audit log entry. |
+| `GET` | `/api/reviews/products/:productId/reviews` | List public reviews for a product. |
+| `GET` | `/api/reviews/products/:productId/eligibility` | Check whether the signed-in customer can review a product. |
+| `POST` | `/api/reviews/products/:productId/reviews` | Submit 1–5 ratings for description match, quality, and value, plus up to 250 characters of feedback, after a qualifying paid purchase. |
+| `GET` | `/api/reviews/products/admin/reviews` | List product reviews for moderation (admin only). |
+| `DELETE` | `/api/reviews/products/admin/reviews/:reviewId` | Delete a product review and record an audit event (admin only). A still-eligible customer may submit a new review. |
+
+Product reviews are eligible for three calendar months from the order's `placed_at` timestamp, provided the invoice is paid. Overall-only legacy reviews retain their overall score and show unavailable category ratings. If an earlier schema upgrade already copied overall scores into category columns, those copied scores cannot be distinguished from genuine category ratings automatically.
+
+The optional MySQL integration test uses session-local temporary tables and a fixed database clock. To run it against a disposable MySQL test database, set `PRODUCT_REVIEW_TEST_MYSQL_URL` to its connection URL and run `npm test -- --runInBand src/routes/v2/product-reviews.mysql.test.ts` from `server/`. The database account needs permission to create temporary tables; no permanent tables are modified.
