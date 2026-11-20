@@ -120,7 +120,7 @@ describe('basketSlice', () => {
     it('maps server items into basket items', () => {
       const payload = {
         items: [
-          { product_id: 5, product_name: 'Tea Set', image_path: 'https://files.example/tea.jpg', quantity: 2, unit_price: 12.5 },
+          { product_id: 5, product_name: 'Tea Set', image_path: 'https://files.example/tea.jpg', quantity: 2, unit_price: 12.5, delivery_tier: 'medium' as const },
         ],
         total_items: 2,
       };
@@ -134,6 +134,7 @@ describe('basketSlice', () => {
         product_name: 'Tea Set',
         price: 12.5,
         quantity: 2,
+        delivery_tier: 'medium',
       });
       expect(state.totalItems).toBe(2);
     });

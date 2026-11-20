@@ -2,7 +2,71 @@
 
 Steps and findings for moving the API and MySQL database from the NAS to Railway.
 
-## Current P1 preparation: 11 November 2026
+## Custom-domain cutover preparation: 15 November 2026
+
+The new website address will be `https://craftykeepsakes.uk`. The client's
+`craftykeepsakestorbay.co.uk` address will send visitors there.
+
+**Before starting:** get the client's approval, save the current DNS and
+forwarding settings, and keep the old website running in case you need to undo
+the change. DNS is the set of records that tells browsers where to find a domain.
+Also have someone review the production route's rate limits: the existing route
+can hide visitors' IP addresses from the API, so those limits may not work
+as intended for individual customers.
+
+1. **Add the addresses in Vercel.** Open the production project, then
+   **Settings > Domains**. Add `craftykeepsakes.uk` as the production website.
+   Add these three addresses and set each to redirect to `craftykeepsakes.uk`:
+   - `www.craftykeepsakes.uk`
+   - `craftykeepsakestorbay.co.uk`
+   - `www.craftykeepsakestorbay.co.uk`
+
+   Vercel will show the DNS records needed for each address. Use the values it
+   provides rather than copying records from another guide.
+
+2. **Prepare Railway.** In the production API service, add
+   `https://craftykeepsakes.uk` to `CORS_ORIGIN`, which lists website addresses
+   allowed to use the API. Keep existing addresses needed during the change;
+   separate them with commas, with no spaces or trailing slashes. Deploy the
+   change before sending visitors to the new address.
+
+3. **Switch the domains when approved.** Find which provider manages DNS for
+   each domain, then enter the records shown in Vercel. Don't change nameservers
+   or remove unrelated records, including email and verification records (such
+   as MX and TXT records). Wait until Vercel shows the domains are configured
+   and HTTPS is ready. Test HTTP and HTTPS for all three redirects, including a
+   page address with a path and query string.
+
+4. **Update website links in Railway.** Once the new website is reachable, set
+   `CLIENT_URL` and `FRONTEND_URL` to `https://craftykeepsakes.uk`. Add the same
+   address to `VERIFICATION_FRONTEND_ORIGINS`, keeping any other trusted
+   addresses still needed. Deploy the changes. These settings control where
+   Square returns customers and where verification emails send them.
+
+5. **Check production and staging remain separate.** In Vercel, check the
+   Production and Preview values of `REACT_APP_API_URL` before changing them.
+   Production can leave this empty to use the existing route to the Railway
+   production API. Preview must point to the separate staging API: if it is
+   empty, it will use production instead. Redeploy Vercel after changing this
+   setting, then check the Preview site's browser network requests to confirm
+   they go to staging. Also confirm staging uses its own database and
+   `SQUARE_ENVIRONMENT=sandbox`.
+
+   Don't rely on unverified forwarded IP addresses when reviewing rate limits.
+
+6. **Test and keep a way back.** Check login, registration and verification
+   emails, products and images, basket and checkout. Make a small real payment,
+   check the customer returns to the new site and the invoice shows as paid, then
+   refund it. Changing the website address doesn't require changing
+   `SQUARE_WEBHOOK_URL`; it must still exactly match the Square subscription.
+   Keep the old Vercel address and hosting until everything is approved. If
+   needed, restore the saved DNS and Railway/Vercel settings; DNS and redirects
+   can take time to update.
+
+The historical plans below may describe older hosts or shared test data; verify
+current dashboard settings rather than treating those notes as deployment state.
+
+## Historical P1 preparation: 11 November 2026
 
 The agreed test-data configuration keeps the Vercel production address
 `https://crafty-keep-sakes.vercel.app` and uses a same-origin `/api` rewrite to

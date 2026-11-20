@@ -36,6 +36,7 @@ const sampleProduct = {
   product_name: 'Tea Mug',
   is_live: true,
   sale_percent: 0,
+  delivery_tier: 'medium',
   images: [],
 };
 
@@ -168,6 +169,7 @@ describe('Shop (products page)', () => {
 
     expect(store.getState().basket.items).toHaveLength(1);
     expect(store.getState().basket.items[0].product_name).toBe('Tea Mug');
+    expect(store.getState().basket.items[0].delivery_tier).toBe('medium');
     expect(store.getState().basket.totalItems).toBe(1);
   });
 

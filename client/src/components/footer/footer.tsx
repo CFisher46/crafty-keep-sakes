@@ -1,4 +1,4 @@
-import { FacebookOption, Instagram, Twitter } from "grommet-icons";
+import { FacebookOption, Instagram } from "grommet-icons";
 import { useState } from "react";
 import { Anchor, Box, Button, Footer, Text } from "grommet";
 import { ui } from "../../helpers/theme";
@@ -50,18 +50,13 @@ const Media = () => (
   <Box direction="row" gap="small" justify="center">
     <Anchor
       a11yTitle="Follow us on Instagram"
-      href="https://www.instagram.com/"
+      href="https://www.instagram.com/craftykeepsakestorbay"
       icon={<Instagram color={ui.ink} size="18px" />}
     />
     <Anchor
       a11yTitle="Find us on Facebook"
-      href="https://www.facebook.com/"
+      href="https://www.facebook.com/Craftykeepsakestorbay"
       icon={<FacebookOption color={ui.ink} size="18px" />}
-    />
-    <Anchor
-      a11yTitle="Follow us on Twitter"
-      href="https://twitter.com/"
-      icon={<Twitter color={ui.ink} size="18px" />}
     />
   </Box>
 );

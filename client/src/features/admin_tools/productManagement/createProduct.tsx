@@ -3,6 +3,7 @@ import {
   Box,
   Card,
   Grid,
+  Select,
   TextInput,
   Text,
   FileInput,
@@ -14,6 +15,7 @@ import { useAppDispatch } from '../../../store/hooks';
 import { useRef, useState } from 'react';
 import { MAX_QUANTITY } from '../../../helpers/quantity';
 import { IMAGE_ACCEPT, validateProductImages } from './imageValidation';
+import { deliveryTiers } from '../../../helpers/delivery';
 import {
   createProduct,
   uploadProductImages,
@@ -32,6 +34,7 @@ const CreateNewProduct = () => {
     product_name: '',
     is_live: false,
     sale_percent: 0,
+    delivery_tier: null,
     images: '',
   };
 
@@ -41,6 +44,7 @@ const CreateNewProduct = () => {
     'category',
     'description',
     'price',
+    'delivery_tier',
   ] as const;
 
   const parseBoolean = (value: string): boolean => {
@@ -220,9 +224,24 @@ const CreateNewProduct = () => {
                   {getFieldLabel(key)}{key === 'quantity' ? ' (optional)' : ''}:
                 </label>
 
-                <TextInput
+                {key === 'delivery_tier' ? (
+                  <Select
+                    id={`product-${key}`}
+                    a11yTitle="Delivery tier"
+                    value={rawInputValues[key] ?? ''}
+                    options={[
+                      { label: 'Select a delivery tier', value: '' },
+                      ...deliveryTiers.map((tier) => ({ label: tier[0].toUpperCase() + tier.slice(1), value: tier })),
+                    ]}
+                    labelKey="label"
+                    valueKey={{ key: 'value', reduce: true }}
+                    placeholder="Select a delivery tier"
+                    size="small"
+                    onChange={({ value: selectedValue }) => handleInputChange('delivery_tier', String(selectedValue))}
+                  />
+                ) : <TextInput
                   id={`product-${key}`}
-                  value={rawInputValues[key] ?? String(value)}
+                  value={rawInputValues[key] ?? String(value ?? '')}
                   placeholder={String(value)}
                   size="small"
                   style={{ fontSize: '12px' }}
@@ -232,7 +251,7 @@ const CreateNewProduct = () => {
                       event.target.value
                     )
                   }
-                />
+                />}
                 {key === 'quantity' && quantityError && (
                   <Text size="small" color="status-critical" role="alert">
                     Enter a whole number between 0 and 2147483647, or leave quantity blank.

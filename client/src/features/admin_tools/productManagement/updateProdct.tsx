@@ -5,6 +5,13 @@ import { useEffect, useState } from 'react';
 import { useAppDispatch } from '../../../store/hooks';
 import { fetchAllProductsForAdmin, updateProduct, uploadProductImages } from '../../../store/products/productsThunks';
 import { IMAGE_ACCEPT, validateProductImages } from './imageValidation';
+import { deliveryTiers } from '../../../helpers/delivery';
+
+type NumericProductField = 'price' | 'quantity' | 'sale_percent';
+const numericFields: NumericProductField[] = ['price', 'quantity', 'sale_percent'];
+
+const isNumericField = (key: string): key is NumericProductField =>
+  numericFields.some((field) => field === key);
 
 const UpdateProduct = () => {
   const dispatch = useAppDispatch();
@@ -15,9 +22,11 @@ const UpdateProduct = () => {
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [fileInputResetKey, setFileInputResetKey] = useState(0);
   const [imageError, setImageError] = useState('');
+  const [saveError, setSaveError] = useState('');
+  const [numericDrafts, setNumericDrafts] = useState<Partial<Record<NumericProductField, string>>>({});
+  const [numericError, setNumericError] = useState<NumericProductField | null>(null);
 
   const booleanFields = new Set<keyof Product>(['on_sale', 'is_live']);
-  const numericFields = new Set<keyof Product>(['price', 'quantity', 'sale_percent']);
 
   const parseBooleanValue = (value: Product[keyof Product] | string): boolean => {
     if (typeof value === 'boolean') return value;
@@ -42,14 +51,24 @@ const UpdateProduct = () => {
   const handlerLoadProductDetails = (productId: string) => {
     const product = productList.find((p) => p.id === productId);
     if (product) {
-      setSelectedProduct(product);
-      setEditedProduct({ ...product });
+      const normalizedProduct = { ...product, delivery_tier: product.delivery_tier ?? null };
+      setSelectedProduct(normalizedProduct);
+      setEditedProduct({ ...normalizedProduct });
+      setSaveError('');
+      setNumericDrafts({});
+      setNumericError(null);
     } else {
       console.error('Product not found:', productId);
     }
   };
 
   const handleFieldChange = (key: keyof Product, value: string) => {
+    if (isNumericField(key)) {
+      setNumericDrafts((prev) => ({ ...prev, [key]: value }));
+      if (numericError === key) setNumericError(null);
+      if (!value.trim() || !Number.isFinite(Number(value))) return;
+    }
+
     setEditedProduct((prev) => {
       if (!prev) return prev;
 
@@ -57,9 +76,8 @@ const UpdateProduct = () => {
 
       if (booleanFields.has(key)) {
         parsedValue = parseBooleanValue(value);
-      } else if (numericFields.has(key)) {
-        const numericValue = Number(value);
-        parsedValue = Number.isFinite(numericValue) ? numericValue : 0;
+      } else if (isNumericField(key)) {
+        parsedValue = Number(value);
       }
 
       return { ...prev, [key]: parsedValue };
@@ -68,6 +86,18 @@ const UpdateProduct = () => {
 
   const handleSave = async () => {
     if (!editedProduct || !selectedProduct) return;
+    setSaveError('');
+    const invalidField = numericFields.find((field) => {
+      const draft = numericDrafts[field];
+      if (draft === undefined) return false;
+      const parsed = Number(draft);
+      return !draft.trim() || !Number.isFinite(parsed) ||
+        (field === 'quantity' && !Number.isInteger(parsed));
+    });
+    if (invalidField) {
+      setNumericError(invalidField);
+      return;
+    }
     const validationError = validateProductImages(selectedImages);
     setImageError(validationError);
     if (validationError) return;
@@ -110,6 +140,7 @@ const UpdateProduct = () => {
         ).unwrap();
       }
 
+      setProductList((current) => current.map((product) => product.id === editedProduct.id ? editedProduct : product));
       setSelectedProduct(null);
       setEditedProduct(null);
       setSelectedProductId('');
@@ -118,6 +149,7 @@ const UpdateProduct = () => {
       setFileInputResetKey((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to update product:', err);
+      setSaveError('Could not complete the update. Changes may have been saved; reload the product before trying again.');
     }
   };
 
@@ -184,11 +216,24 @@ const UpdateProduct = () => {
                 .filter(([key]) => key !== 'images')
                 .map(([key, value]) => (
                   <Box key={key} direction="column" gap="xsmall">
-                    <Text size="small" weight="bold" style={{ textTransform: 'capitalize' }}>
+                    <label htmlFor={`update-product-${key}`} style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'capitalize' }}>
                       {key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}:
-                    </Text>
-                    {key === 'on_sale' || key === 'is_live' ? (
+                    </label>
+                    {key === 'delivery_tier' ? (
                       <Select
+                        id={`update-product-${key}`}
+                        a11yTitle="Delivery tier"
+                        value={String(value ?? '')}
+                        options={deliveryTiers.map((tier) => ({ label: tier[0].toUpperCase() + tier.slice(1), value: tier }))}
+                        labelKey="label"
+                        valueKey={{ key: 'value', reduce: true }}
+                        placeholder="Not classified"
+                        size="small"
+                        onChange={({ value: selectedValue }) => handleFieldChange('delivery_tier', String(selectedValue))}
+                      />
+                    ) : key === 'on_sale' || key === 'is_live' ? (
+                      <Select
+                        id={`update-product-${key}`}
                         options={[
                           { label: 'Yes', value: 'yes' },
                           { label: 'No', value: 'no' },
@@ -202,17 +247,26 @@ const UpdateProduct = () => {
                       />
                     ) : (
                       <TextInput
-                        value={String(value)}
+                        id={`update-product-${key}`}
+                        value={isNumericField(key) ? numericDrafts[key] ?? String(value) : String(value)}
                         size="small"
                         style={{ fontSize: '12px' }}
                         readOnly={key === 'id'}
                         disabled={key === 'id'}
+                        aria-invalid={numericError === key}
+                        aria-describedby={numericError === key ? `update-product-${key}-error` : undefined}
                         onChange={(e) => handleFieldChange(key as keyof Product, e.target.value)}
                       />
+                    )}
+                    {numericError === key && (
+                      <Text id={`update-product-${key}-error`} size="small" color="status-critical" role="alert">
+                        {key === 'quantity' ? 'Enter a whole number.' : 'Enter a valid number.'}
+                      </Text>
                     )}
                   </Box>
                 ))}
           </Grid>
+          {saveError && <Text role="alert" color="status-critical">{saveError}</Text>}
           <Box direction="row" gap="small" margin={{ top: 'medium' }}>
             <ActionButton label="Save Changes" onClick={handleSave} fixed />
             <ActionButton secondary label="Cancel" onClick={() => {

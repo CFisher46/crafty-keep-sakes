@@ -28,6 +28,7 @@ Online shop and business website for hand crafted wedding keepsakes. Customers c
 ### Customers
 
 - **Basket and checkout**: add items, then place an order. This creates an order and an invoice. With `PAYMENTS_PROVIDER` set, the customer is then sent to a hosted payment page and the invoice is marked paid automatically when the vendor's webhook confirms it (see [Payments](#payments)). Without it, no payment is taken online.
+- **Delivery**: the basket shows the delivery charge and includes it in the order, invoice and payment. Small costs £4, medium £6, and large £10. A basket with one largest item costs £10; two or more largest items cost £20 in total. Otherwise the highest tier in the basket sets the charge.
 - **My invoices** (`/invoices`): invoice history with status, tracking and totals. Invoices changed since you last opened them are highlighted, and the five latest updates also appear on the home page.
 - **Profile**: update account and delivery details.
 - **Journal**: comment on posts and like or dislike them.
@@ -62,6 +63,22 @@ all sessions for that account, as do password, status and role changes. Authenti
 returns 503 if the account lookup fails. The `token_version` schema update must be
 applied before deploying this server; existing sessions must sign in again.
 See [the security audit](dev_docs/SECURITY_AUDIT.md) for deployment verification.
+
+### Delivery setup
+
+When adding a product, select its delivery tier. After deploying this feature, existing
+products have no tier: use **Admin Tools > Products > Update** to assign one to each
+product. Customers cannot check out with an unclassified item. Older guest baskets
+may need those items removed and added again.
+
+The Railway pre-deploy schema step adds the nullable delivery tier automatically.
+For other databases, run `npm run db:apply-schema` from `server` before starting the
+new API. Deploy the updated API and website together: checkout now requires the
+displayed delivery fee, and rejects it if the server calculates a different amount.
+During the gap between deployments, customers using the older website must refresh
+to the new version before checking out.
+The website's delivery calculation is a preview; the API recalculates it at checkout.
+If the delivery rules change, update and test both calculations together.
 
 ## Tech stack
 
@@ -177,7 +194,7 @@ The API is moving from a NAS to Railway. The full plan, status and cutover steps
 - **Contact enquiries:** The public Contact Us form sends to `craftykeepsakesprints@gmail.com` using Resend. The default sender is `enquires@craftykeepsakes.uk`; `RESEND_CONTACT_FROM_EMAIL` overrides it. Ensure the sender's domain is verified in Resend, and check any existing override in each environment. When supplied, the visitor's email is the reply-to address. A hidden bot-trap and five requests per IP per hour provide basic protection, not a guarantee against spam. Rate limits are per API process and can be shared by visitors behind the production Vercel proxy; review trusted client-IP and distributed rate limiting before real customer use.
 - **Verification links:** `FRONTEND_URL` is the backend's default link destination (local default: `http://localhost:3000`). On a shared backend, set `VERIFICATION_FRONTEND_ORIGINS` to a comma-separated list of trusted frontend origins, such as `https://dev.craftykeepsakes.uk,https://craftykeepsakes.uk`. Registration and resend use the request's `Origin` only when it exactly matches this list; otherwise they use `FRONTEND_URL`. Add those frontend origins to `CORS_ORIGIN` as well. Restart or redeploy the backend after changing variables. Origins can be supplied by non-browser clients, so only allow frontend deployments trusted to handle verification tokens.
 - **Local development:** `npm run dev` uses `server/.env`. `npm run dev:railway` loads `server/.env.railway` (copy `server/.env.railway.example`) to test against Railway. The server refuses a non-local `DB_HOST` outside production unless `ALLOW_REMOTE_DB=1`.
-- **Vercel test-data cutover:** The repository config prepares a same-origin `/api` rewrite to `api-prd.craftykeepsakes.uk`. For Production at `https://crafty-keep-sakes.vercel.app`, unset `REACT_APP_API_URL` and redeploy; setting it to Railway directly would break the `SameSite=Strict` login cookie across these sites. Preview at `dev.craftykeepsakes.uk` can retain its direct Railway URL. Both currently use the same test-data database.
+- **Vercel routing:** The repository config has a same-origin `/api` rewrite to `api-prd.craftykeepsakes.uk`. A build without `REACT_APP_API_URL` uses that production API, including Preview builds. Set and verify Preview's API URL separately so it uses staging. See the [custom-domain cutover preparation](dev_docs/RAILWAY_MIGRATION.md#custom-domain-cutover-preparation-15-november-2026).
 - **Rate-limit limitation:** Through the rewrite, Cloudflare and the API may see Vercel proxy IPs instead of customer IPs; IP-based controls cannot be relied on per customer. This is a temporary test-data setup, not an approved live-production security configuration. Verify the actual request path, authentication, payment redirects, email links and webhook delivery after deployment.
 - **Release flow:** build on a feature branch, merge it into `dev` to test on `dev.craftykeepsakes.uk`, then merge the feature branch into `main` by PR. Do not merge `dev` into `main`, and merge `main` back into `dev` afterwards.
 - **PR approval:** Obtain explicit approval before merging any PR or switching work to a different PR or branch. Keep related follow-up changes, such as styling, in the existing PR where appropriate, and agree any change of scope or separate PR before proceeding.

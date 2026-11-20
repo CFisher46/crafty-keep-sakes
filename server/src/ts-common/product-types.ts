@@ -1,4 +1,5 @@
 import { SortOpts, FilterOpts } from './types';
+import { DeliveryTier } from './delivery';
 
 export type Product = {
   id: string;
@@ -10,6 +11,7 @@ export type Product = {
   product_name: string;
   is_live: boolean;
   sale_percent: number;
+  delivery_tier: DeliveryTier;
   images: string;
 };
 

@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS products_v2 (
   is_live TINYINT(1) NOT NULL DEFAULT 0,
   on_sale TINYINT(1) NOT NULL DEFAULT 0,
   sale_percent DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  delivery_tier ENUM('small', 'medium', 'large', 'largest') NULL DEFAULT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   deleted_at DATETIME NULL,
@@ -365,4 +366,23 @@ CREATE TABLE IF NOT EXISTS reviews_v2 (
   submit_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   star_count INT NOT NULL DEFAULT 1,
   PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS product_reviews_v2 (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  product_id BIGINT UNSIGNED NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  order_id BIGINT UNSIGNED NULL,
+  star_count DECIMAL(3,2) NULL DEFAULT NULL,
+  match_description_rating TINYINT UNSIGNED NULL DEFAULT NULL,
+  quality_rating TINYINT UNSIGNED NULL DEFAULT NULL,
+  value_rating TINYINT UNSIGNED NULL DEFAULT NULL,
+  comment VARCHAR(250) NOT NULL,
+  submitted_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_product_reviews_v2_user_product (user_id, product_id),
+  KEY idx_product_reviews_v2_product_submitted (product_id, submitted_at),
+  CONSTRAINT fk_product_reviews_v2_product FOREIGN KEY (product_id) REFERENCES products_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_product_reviews_v2_user FOREIGN KEY (user_id) REFERENCES users_v2(id) ON DELETE CASCADE,
+  CONSTRAINT fk_product_reviews_v2_order FOREIGN KEY (order_id) REFERENCES orders_v2(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

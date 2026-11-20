@@ -19,6 +19,7 @@ const basketItem = {
   product_name: 'Mug',
   price: 10,
   quantity: 2,
+  delivery_tier: 'small',
 };
 
 describe('Basket page', () => {
@@ -89,7 +90,32 @@ describe('Basket page', () => {
     expect(screen.getByText('Mug')).toBeInTheDocument();
     expect(screen.getByText('£10.00')).toBeInTheDocument();
     expect(screen.getByText('£20.00')).toBeInTheDocument();
-    expect(screen.getByText('Total Price: £20.00')).toBeInTheDocument();
+    expect(screen.getByText('Subtotal: £20.00')).toBeInTheDocument();
+    expect(screen.getByText('Delivery: £4.00')).toBeInTheDocument();
+    expect(screen.getByText('Total Price: £24.00')).toBeInTheDocument();
+  });
+
+  it('updates delivery when the quantity of a largest item changes', () => {
+    const store = buildStore({
+      basket: { items: [{ ...basketItem, quantity: 1, delivery_tier: 'largest' }], totalItems: 1 },
+      auth: { isLoggedIn: false, user: null },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    expect(screen.getByText('Delivery: £10.00')).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Increase quantity'));
+    expect(screen.getByText('Delivery: £20.00')).toBeInTheDocument();
+    expect(screen.getByText('Total Price: £40.00')).toBeInTheDocument();
+  });
+
+  it('blocks checkout and explains when an item has no tier', () => {
+    const store = buildStore({
+      basket: { items: [{ ...basketItem, delivery_tier: null }], totalItems: 2 },
+      auth: { isLoggedIn: false, user: null },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    expect(screen.getByText('Delivery: Unavailable')).toBeInTheDocument();
+    expect(screen.getByText(/Delivery is unavailable for one or more items/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Checkout' })).toBeDisabled();
   });
 
   it('increments item quantity locally for guest users', () => {
@@ -136,7 +162,7 @@ describe('Basket page', () => {
     const input = screen.getByLabelText('Quantity for Mug');
     expect(input).toHaveStyle({ textAlign: 'center' });
     fireEvent.change(input, { target: { value: '12' } });
-    expect(screen.getByText('Total Price: £120.00')).toBeInTheDocument();
+    expect(screen.getByText('Total Price: £124.00')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Checkout' })).toBeDisabled();
     fireEvent.blur(input);
     expect(store.getState().basket.items[0].quantity).toBe(12);
@@ -163,7 +189,7 @@ describe('Basket page', () => {
       }
       return Promise.resolve({
         ok: true,
-        json: async () => ({ items: [{ product_id: 1, product_name: 'Mug', quantity: 2, unit_price: 10 }], total_items: 2 }),
+        json: async () => ({ items: [{ product_id: 1, product_name: 'Mug', quantity: 2, unit_price: 10, delivery_tier: 'small' }], total_items: 2 }),
       });
     });
     const store = buildStore({
@@ -181,7 +207,7 @@ describe('Basket page', () => {
       expect.stringContaining('/basket/items/1'),
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ quantity: 12 }) })
     );
-    expect(screen.getByText('Total Price: £120.00')).toBeInTheDocument();
+    expect(screen.getByText('Total Price: £124.00')).toBeInTheDocument();
   });
 
   it('reports a server quantity update failure and restores the previous quantity', async () => {
@@ -433,10 +459,10 @@ describe('Basket page', () => {
     });
   });
 
-  it('shows a failure message when checkout fails', async () => {
+  it('shows a delivery price change and keeps the basket when checkout fails', async () => {
     (global.fetch as jest.Mock).mockResolvedValue({
       ok: false,
-      json: async () => ({ error: 'Checkout requires items' }),
+      json: async () => ({ error: 'Delivery charges have changed. Please refresh your basket and review the total before checking out.' }),
     });
 
     const store = buildStore({
@@ -463,7 +489,8 @@ describe('Basket page', () => {
     screen.getAllByText('Confirm checkout').forEach((el) => fireEvent.click(el));
 
     await waitFor(() => {
-      expect(screen.getByText('Checkout failed. Please try again.')).toBeInTheDocument();
+      expect(screen.getByText(/Delivery charges have changed/)).toBeInTheDocument();
     });
+    expect(store.getState().basket.items).toHaveLength(1);
   });
 });

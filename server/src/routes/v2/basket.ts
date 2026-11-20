@@ -6,6 +6,7 @@ import { insertAuditEvent } from './audit-events';
 import { notify } from '../../notifications/service';
 import { isPaymentsEnabled } from '../../payments';
 import { createPaymentForInvoice } from '../../payments/service';
+import { calculateDelivery } from '../../ts-common/delivery';
 
 const router = express.Router();
 
@@ -17,6 +18,7 @@ type BasketItemRecord = RowDataPacket & {
   unit_price_snapshot: string | number;
   product_name?: string;
   image_path?: string | null;
+  delivery_tier?: string | null;
 };
 
 type AuthenticatedUser = {
@@ -178,7 +180,7 @@ const readBasketItems = async (
 ): Promise<BasketItemRecord[]> => {
   const [rows] = await connection.query<RowDataPacket[]>(
     `SELECT bi.id, bi.basket_id, bi.product_id, bi.quantity, bi.unit_price_snapshot,
-            p.product_name,
+            p.product_name, p.delivery_tier,
             (SELECT pi.image_path FROM product_images_v2 pi
              WHERE pi.product_id = bi.product_id
              ORDER BY pi.is_primary DESC, pi.sort_order ASC, pi.id ASC LIMIT 1) AS image_path
@@ -199,6 +201,7 @@ const mapBasketItem = (item: BasketItemRecord) => ({
   quantity: Number(item.quantity),
   product_name: item.product_name ?? `Product ${item.product_id}`,
   image_path: item.image_path ?? null,
+  delivery_tier: item.delivery_tier ?? null,
   unit_price: Number(item.unit_price_snapshot),
   line_total: toCurrency(Number(item.quantity) * Number(item.unit_price_snapshot)),
 });
@@ -808,6 +811,14 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       throw new Error('Delivery address is incomplete');
     }
 
+    const deliveryFee = calculateDelivery(items);
+    if (deliveryFee === null) {
+      throw new Error('Delivery unavailable');
+    }
+    if (req.body?.expected_delivery_fee !== deliveryFee) {
+      throw new Error('Delivery price changed');
+    }
+
     await ensureInvoiceBillingColumns(connection);
 
     const subtotal = items.reduce(
@@ -815,7 +826,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       0
     );
     const taxTotal = toCurrency(subtotal * 0); //set Tax to Zero
-    const grandTotal = toCurrency(subtotal + taxTotal);
+    const grandTotal = toCurrency(subtotal + taxTotal + deliveryFee);
     // With payments on, the order stays pending until the payment is confirmed
     const paymentsEnabled = isPaymentsEnabled();
 
@@ -882,6 +893,12 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
     }
 
     await connection.query(
+      `INSERT INTO invoice_items_v2 (invoice_id, order_item_id, description, quantity, unit_price, line_total)
+       VALUES (?, NULL, 'Delivery', 1, ?, ?)`,
+      [invoiceId, deliveryFee, deliveryFee]
+    );
+
+    await connection.query(
       `UPDATE baskets_v2 SET status = 'checked_out', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
       [basketId]
     );
@@ -911,6 +928,7 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
         invoice_id: invoiceId,
         invoice_number: invoiceNumber,
         total_due: grandTotal,
+        delivery_fee: deliveryFee,
         order_status: paymentsEnabled ? 'pending' : 'placed',
         delivery_address: resolvedDeliveryAddress,
       },
@@ -968,6 +986,16 @@ router.post('/checkout', verifyAuthToken, async (req, res) => {
       res.status(400).json({
         error: 'A delivery address with address line 1, town, and postcode is required',
       });
+      return;
+    }
+
+    if (err instanceof Error && err.message === 'Delivery unavailable') {
+      res.status(400).json({ error: 'Delivery is unavailable for one or more items. Please contact us for help.' });
+      return;
+    }
+
+    if (err instanceof Error && err.message === 'Delivery price changed') {
+      res.status(409).json({ error: 'Delivery charges have changed. Please refresh your basket and review the total before checking out.' });
       return;
     }
 

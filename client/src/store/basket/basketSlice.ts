@@ -1,4 +1,5 @@
 import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import type { DeliveryTier } from '../../types';
 
 export interface BasketItem {
   id: string;
@@ -6,6 +7,7 @@ export interface BasketItem {
   product_name: string;
   price: number;
   quantity: number;
+  delivery_tier?: DeliveryTier | null;
 }
 
 export interface BasketState {
@@ -37,6 +39,9 @@ const basketSlice = createSlice({
       );
       if (existingItem) {
         existingItem.quantity += action.payload.quantity;
+        if (action.payload.delivery_tier !== undefined) {
+          existingItem.delivery_tier = action.payload.delivery_tier;
+        }
 
         if (existingItem.quantity <= 0) {
           state.items = state.items.filter(
@@ -71,7 +76,7 @@ const basketSlice = createSlice({
     },
     hydrateBasketFromServer: (
       state,
-      action: PayloadAction<{ items?: Array<{ product_id?: number; id?: number; product_name?: string; image_path?: string | null; quantity?: number; unit_price?: number | string; unit_price_snapshot?: number | string; }>; total_items?: number }>
+      action: PayloadAction<{ items?: Array<{ product_id?: number; id?: number; product_name?: string; image_path?: string | null; quantity?: number; unit_price?: number | string; unit_price_snapshot?: number | string; delivery_tier?: DeliveryTier | null; }>; total_items?: number }>
     ) => {
       const items = action.payload.items ?? [];
 
@@ -81,6 +86,7 @@ const basketSlice = createSlice({
         product_name: item.product_name ?? 'Product',
         price: Number(item.unit_price ?? item.unit_price_snapshot ?? 0),
         quantity: Number(item.quantity ?? 0),
+        delivery_tier: item.delivery_tier ?? null,
       }));
       state.totalItems = action.payload.total_items ?? state.items.reduce((sum, item) => sum + item.quantity, 0);
       saveBasketToLocalStorage(state);

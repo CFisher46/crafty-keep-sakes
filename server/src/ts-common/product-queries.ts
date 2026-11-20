@@ -85,6 +85,7 @@ export function GetAllProductsQuery(
             p.product_name,
             p.is_live,
             p.sale_percent,
+            p.delivery_tier,
             p.created_at,
             (
               SELECT COALESCE(SUM(oi.quantity), 0)
@@ -95,7 +96,7 @@ export function GetAllProductsQuery(
         FROM ${productsTable} p
         LEFT JOIN product_categories_v2 pc ON pc.product_id = p.id
         LEFT JOIN categories_v2 c ON c.id = pc.category_id
-        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.created_at
+        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.delivery_tier, p.created_at
       `;
 
   const whereClauses: string[] = [];
@@ -154,6 +155,7 @@ export function GetAllProductsQuery(
             fp.product_name,
             fp.is_live,
             fp.sale_percent,
+            fp.delivery_tier,
             fp.created_at,
             fp.units_sold
         FROM BaseProducts fp
@@ -194,6 +196,7 @@ export function GetAllProductsQuery(
                   'product_name', pwi.product_name,
                   'is_live', pwi.is_live,
                   'sale_percent', pwi.sale_percent,
+                  'delivery_tier', pwi.delivery_tier,
                   'created_at', pwi.created_at,
                   'units_sold', pwi.units_sold,
                   'images', CAST(COALESCE(pwi.images, JSON_ARRAY()) AS CHAR)
@@ -228,11 +231,12 @@ export function GetSpecificProductsQuery(
             p.product_name,
             p.is_live,
             p.sale_percent,
+            p.delivery_tier,
             p.sku
         FROM ${productsTable} p
         LEFT JOIN product_categories_v2 pc ON pc.product_id = p.id
         LEFT JOIN categories_v2 c ON c.id = pc.category_id
-        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.sku
+        GROUP BY p.id, p.description, p.price, p.quantity, p.on_sale, p.product_name, p.is_live, p.sale_percent, p.delivery_tier, p.sku
       `;
 
   const lookupPredicate = `CAST(fp.id AS CHAR) = '${escapedId}' OR fp.sku = '${escapedId}'`;
@@ -251,7 +255,8 @@ export function GetSpecificProductsQuery(
             fp.on_sale,
             fp.product_name,
             fp.is_live,
-            fp.sale_percent
+            fp.sale_percent,
+            fp.delivery_tier
         FROM BaseProducts fp
         WHERE ${lookupPredicate}
     ),
@@ -289,6 +294,7 @@ export function GetSpecificProductsQuery(
                   'product_name', pwi.product_name,
                   'is_live', pwi.is_live,
                   'sale_percent', pwi.sale_percent,
+                  'delivery_tier', pwi.delivery_tier,
                   'images', CAST(COALESCE(pwi.images, JSON_ARRAY()) AS CHAR)
                 )
               ) AS CHAR
@@ -382,8 +388,8 @@ export function createProductV2Query(product: Product, sku: string) {
   return {
     sql: `
       INSERT INTO products_v2
-        (sku, product_name, description, price, quantity, is_live, on_sale, sale_percent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        (sku, product_name, description, price, quantity, is_live, on_sale, sale_percent, delivery_tier)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
     values: [
       sku,
@@ -394,6 +400,7 @@ export function createProductV2Query(product: Product, sku: string) {
       product.is_live ? 1 : 0,
       product.on_sale ? 1 : 0,
       product.sale_percent,
+      product.delivery_tier,
     ],
   };
 }

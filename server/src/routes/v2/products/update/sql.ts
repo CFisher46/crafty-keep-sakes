@@ -1,4 +1,5 @@
 import { Product } from '../../../../ts-common/product-types';
+import { parseDeliveryTier } from '../../../../ts-common/delivery';
 
 type MutableProductField =
   | 'product_name'
@@ -7,7 +8,8 @@ type MutableProductField =
   | 'quantity'
   | 'on_sale'
   | 'is_live'
-  | 'sale_percent';
+  | 'sale_percent'
+  | 'delivery_tier';
 
 export function buildProductV2UpdateQuery(
   updates: Partial<Product>,
@@ -54,6 +56,11 @@ export function buildProductV2UpdateQuery(
   if (updates.sale_percent !== undefined) {
     fields.push('sale_percent');
     values.push(toNumber(updates.sale_percent, 'sale_percent'));
+  }
+
+  if (updates.delivery_tier !== undefined) {
+    fields.push('delivery_tier');
+    values.push(parseDeliveryTier(updates.delivery_tier));
   }
 
   return { fields, values };
