@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { Box, Button, Layer, Text, TextArea } from 'grommet';
 import { buildApiUrl } from '../../../api/apiPath';
 import { ui } from '../../../helpers/theme';
+import ActionButton from '../../landingPage/components/ActionButton';
 
 type ProductReview = {
   id: number;
@@ -417,9 +418,10 @@ export default function ProductReviews({ productId }: { productId: string }) {
 
         {eligibility?.eligible && (
           <Box direction="row" justify="end" pad={{ top: 'small' }}>
-            <Button
+            <ActionButton
               label="Write a review"
               onClick={() => setReviewFormOpen(true)}
+              fixed
             />
           </Box>
         )}
@@ -528,10 +530,12 @@ export default function ProductReviews({ productId }: { productId: string }) {
                       {submitError}
                     </Text>
                   )}
-                  <Button
+                  <ActionButton
                     type="submit"
                     label={submitting ? 'Submitting…' : 'Submit review'}
+                    onClick={() => undefined}
                     disabled={submitting || !comment.trim()}
+                    fixed
                   />
                 </Box>
               </form>
