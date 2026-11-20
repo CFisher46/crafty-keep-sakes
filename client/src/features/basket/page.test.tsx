@@ -107,6 +107,28 @@ describe('Basket page', () => {
     expect(screen.getByText('Total Price: £40.00')).toBeInTheDocument();
   });
 
+  it('updates the displayed fee at the mixed-basket 50-item threshold', () => {
+    const store = buildStore({
+      basket: {
+        items: [
+          { ...basketItem, quantity: 20 },
+          { ...basketItem, id: '2', product_name: 'Plate', quantity: 30, delivery_tier: 'medium' },
+        ],
+        totalItems: 50,
+      },
+      auth: { isLoggedIn: false, user: null },
+    });
+    render(<Provider store={store}><Basket /></Provider>);
+    expect(screen.getByText('Delivery: £10.00')).toBeInTheDocument();
+    const input = screen.getByLabelText('Quantity for Mug');
+    fireEvent.change(input, { target: { value: '21' } });
+    expect(screen.getByText('Delivery: £20.00')).toBeInTheDocument();
+    expect(screen.getByText('Total Price: £530.00')).toBeInTheDocument();
+    fireEvent.blur(input);
+    expect(store.getState().basket.items[0].quantity).toBe(21);
+    expect(screen.getByText('Delivery: £20.00')).toBeInTheDocument();
+  });
+
   it('blocks checkout and explains when an item has no tier', () => {
     const store = buildStore({
       basket: { items: [{ ...basketItem, delivery_tier: null }], totalItems: 2 },
