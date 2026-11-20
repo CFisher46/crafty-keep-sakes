@@ -1,11 +1,18 @@
 import express from 'express';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../../../ts-common/database';
-import { getRequestUser, verifyAuthToken } from '../../../../ts-common/middleware';
-import { toDateOnly } from '../shared/helpers';
+import { getRequestUser, requireRole, verifyAuthToken } from '../../../../ts-common/middleware';
+import { insertAuditEvent } from '../../audit-events';
+import { getActor, toDateOnly } from '../shared/helpers';
 
 const router = express.Router();
 const MAX_COMMENT_LENGTH = 250;
+const qualifyingPurchase = `o.user_id = ?
+         AND oi.product_id = ?
+         AND o.order_status IN ('placed', 'fulfilled')
+         AND i.invoice_status = 'paid'
+         AND o.placed_at <= CURRENT_TIMESTAMP
+         AND DATE_ADD(o.placed_at, INTERVAL 3 MONTH) >= CURRENT_TIMESTAMP`;
 
 const parseId = (value: unknown): string | null =>
   typeof value === 'string' && /^[1-9]\d{0,19}$/.test(value) ? value : null;
@@ -24,17 +31,79 @@ const hasRecentPaidPurchase = async (userId: string, productId: string): Promise
        FROM orders_v2 o
        JOIN order_items_v2 oi ON oi.order_id = o.id
        JOIN invoices_v2 i ON i.order_id = o.id
-       WHERE o.user_id = ?
-         AND oi.product_id = ?
-         AND o.order_status IN ('placed', 'fulfilled')
-         AND i.invoice_status = 'paid'
-         AND o.placed_at <= CURRENT_TIMESTAMP
-         AND DATE_ADD(o.placed_at, INTERVAL 3 MONTH) >= CURRENT_TIMESTAMP
+       WHERE ${qualifyingPurchase}
      ) AS has_recent_purchase`,
     [userId, productId]
   );
   return Number(rows[0]?.has_recent_purchase) === 1;
 };
+
+router.get('/admin/reviews', verifyAuthToken, requireRole('admin'), async (_req, res) => {
+  try {
+    const [rows] = await db.query<RowDataPacket[]>(
+      `SELECT r.id, r.product_id, p.product_name, r.comment, r.submitted_at
+       FROM product_reviews_v2 r
+       JOIN products_v2 p ON p.id = r.product_id
+       ORDER BY r.submitted_at DESC, r.id DESC`
+    );
+    res.json({
+      data: rows.map((row) => ({
+        id: String(row.id),
+        product_id: String(row.product_id),
+        product_name: String(row.product_name),
+        comment: String(row.comment),
+        submit_date: toDateOnly(row.submitted_at as Date | string),
+      })),
+    });
+  } catch (err) {
+    console.error('List Product Reviews For Admin Error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.delete('/admin/reviews/:reviewId', verifyAuthToken, requireRole('admin'), async (req, res) => {
+  const reviewId = parseId(req.params.reviewId);
+  if (!reviewId) {
+    res.status(400).json({ error: 'Invalid review id' });
+    return;
+  }
+
+  try {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [rows] = await connection.query<RowDataPacket[]>(
+        'SELECT * FROM product_reviews_v2 WHERE id = ? FOR UPDATE',
+        [reviewId]
+      );
+      if (!rows[0]) {
+        await connection.rollback();
+        res.status(404).json({ error: 'Review not found' });
+        return;
+      }
+      await connection.query('DELETE FROM product_reviews_v2 WHERE id = ?', [reviewId]);
+      await insertAuditEvent(connection, {
+        ...getActor(req),
+        actionType: 'DELETE',
+        resourceType: 'product_reviews_v2',
+        resourceId: reviewId,
+        sourceEndpoint: `DELETE /api/v2/reviews/products/admin/reviews/${reviewId}`,
+        oldValuesJson: rows[0],
+        newValuesJson: null,
+      });
+      await connection.commit();
+      res.json({ message: 'Product review deleted', id: reviewId });
+    } catch (err) {
+      await connection.rollback();
+      throw err;
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error('Delete Product Review Error:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
 
 router.get('/:productId/reviews', async (req, res) => {
   const productId = parseId(req.params.productId);
@@ -49,7 +118,7 @@ router.get('/:productId/reviews', async (req, res) => {
               match_description_rating,
               quality_rating,
               value_rating,
-              ROUND((match_description_rating + quality_rating + value_rating) / 3, 2) AS star_count,
+              COALESCE(ROUND((match_description_rating + quality_rating + value_rating) / 3, 2), star_count) AS star_count,
               comment,
               submitted_at
        FROM product_reviews_v2
@@ -58,16 +127,20 @@ router.get('/:productId/reviews', async (req, res) => {
       [productId]
     );
     res.json({
-      data: rows.map((row) => ({
-        id: Number(row.id),
-        reviewer_name: 'Verified purchaser',
-        star_count: Number(row.star_count),
-        match_description_rating: Number(row.match_description_rating),
-        quality_rating: Number(row.quality_rating),
-        value_rating: Number(row.value_rating),
-        comment: String(row.comment),
-        submit_date: toDateOnly(row.submitted_at as Date | string),
-      })),
+      data: rows.map((row) => {
+        const hasCategoryRatings =
+          row.match_description_rating != null && row.quality_rating != null && row.value_rating != null;
+        return {
+          id: Number(row.id),
+          reviewer_name: 'Verified purchaser',
+          star_count: Number(row.star_count),
+          match_description_rating: hasCategoryRatings ? Number(row.match_description_rating) : null,
+          quality_rating: hasCategoryRatings ? Number(row.quality_rating) : null,
+          value_rating: hasCategoryRatings ? Number(row.value_rating) : null,
+          comment: String(row.comment),
+          submit_date: toDateOnly(row.submitted_at as Date | string),
+        };
+      }),
     });
   } catch (err) {
     console.error('List Product Reviews Error:', err);
@@ -137,43 +210,25 @@ router.post('/:productId/reviews', verifyAuthToken, async (req, res) => {
   }
 
   try {
-    const starCount = Number(
-      (
-        (ratings.match_description_rating + ratings.quality_rating + ratings.value_rating) /
-        3
-      ).toFixed(2)
-    );
     const [result] = await db.query<ResultSetHeader>(
       `INSERT INTO product_reviews_v2 (
-         product_id, user_id, order_id, star_count,
+         product_id, user_id, order_id,
          match_description_rating, quality_rating, value_rating, comment
        )
-       SELECT ?, ?, o.id, ?, ?, ?, ?, ?
+       SELECT ?, ?, o.id, ?, ?, ?, ?
        FROM orders_v2 o
        JOIN order_items_v2 oi ON oi.order_id = o.id
        JOIN invoices_v2 i ON i.order_id = o.id
-       WHERE o.user_id = ?
-         AND oi.product_id = ?
-         AND o.order_status IN ('placed', 'fulfilled')
-         AND i.invoice_status = 'paid'
-         AND o.placed_at <= CURRENT_TIMESTAMP
-         AND DATE_ADD(o.placed_at, INTERVAL 3 MONTH) >= CURRENT_TIMESTAMP
-         AND NOT EXISTS (
-           SELECT 1 FROM product_reviews_v2
-           WHERE user_id = ? AND product_id = ?
-         )
+       WHERE ${qualifyingPurchase}
        ORDER BY o.placed_at DESC
        LIMIT 1`,
       [
         productId,
         userId,
-        starCount,
         ratings.match_description_rating,
         ratings.quality_rating,
         ratings.value_rating,
         comment,
-        userId,
-        productId,
         userId,
         productId,
       ]

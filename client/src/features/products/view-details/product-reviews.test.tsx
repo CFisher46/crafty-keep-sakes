@@ -70,9 +70,13 @@ describe('ProductReviews', () => {
       target: { value: 'Beautifully made' },
     });
     expect(screen.getByText('16 / 250')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Submit review' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Rate Matches Description 5 out of 5' }));
     fireEvent.click(
       screen.getByRole('button', { name: 'Rate Quality 3 out of 5' })
     );
+    expect(screen.getByRole('button', { name: 'Submit review' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Rate Value 5 out of 5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit review' }));
 
     expect(await screen.findByRole('status')).toHaveTextContent(
@@ -90,6 +94,41 @@ describe('ProductReviews', () => {
         comment: 'Beautifully made',
       }),
     });
+  });
+
+  it('uses legacy overall ratings without inventing category averages', async () => {
+    mockFetch
+      .mockResolvedValueOnce(response({ data: [
+        { id: 1, reviewer_name: 'Verified purchaser', star_count: 3, match_description_rating: null, quality_rating: null, value_rating: null, comment: 'Legacy', submit_date: '2026-06-05' },
+        { id: 2, reviewer_name: 'Verified purchaser', star_count: 5, match_description_rating: 5, quality_rating: 5, value_rating: 5, comment: 'New', submit_date: '2026-06-05' },
+      ] }))
+      .mockResolvedValueOnce(response({}, 401));
+    render(<ProductReviews productId="3" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show product reviews' }));
+    await screen.findByText('Legacy');
+    expect(screen.getByLabelText('4.0 average rating out of 5')).toBeInTheDocument();
+    expect(screen.getByText('Matches Description: Unavailable · Quality: Unavailable · Value: Unavailable')).toBeInTheDocument();
+    expect(screen.getAllByText('5.0')).toHaveLength(3);
+  });
+
+  it('keeps the form open and reports a failed submission without refreshing reviews', async () => {
+    mockFetch
+      .mockResolvedValueOnce(response({ data: [] }))
+      .mockResolvedValueOnce(response({ eligible: true, has_review: false, has_recent_purchase: true }))
+      .mockResolvedValueOnce(response({ error: 'Review rejected' }, 403));
+    render(<ProductReviews productId="3" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show product reviews' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Write a review' }));
+    fireEvent.change(screen.getByLabelText('Your review'), { target: { value: 'Review' } });
+    for (const label of ['Matches Description', 'Quality', 'Value']) {
+      fireEvent.click(screen.getByRole('button', { name: `Rate ${label} 4 out of 5` }));
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Submit review' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Review rejected');
+    expect(screen.getByLabelText('Your review')).toHaveValue('Review');
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByLabelText('Your review')).not.toBeInTheDocument());
   });
 
   it('keeps long review lists compact until expanded', async () => {

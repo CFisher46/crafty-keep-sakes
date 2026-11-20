@@ -11,15 +11,17 @@ import DeleteExisitingUser from './userManagement/deleteUser';
 import CreateNewProduct from './productManagement/createProduct';
 import UpdateProduct from './productManagement/updateProdct';
 import ReviewManagement from './reviewManagement/reviewManagement';
+import ProductReviewManagement from './reviewManagement/productReviewManagement';
 import { ui } from '../../helpers/theme';
 
-type Area = 'Users' | 'Products' | 'Reviews' | 'Audit log';
+type Area = 'Users' | 'Products' | 'Reviews' | 'Product reviews' | 'Audit log';
 type Action = 'Add' | 'Update' | 'Delete';
 
 const areaActions: Record<Area, Action[]> = {
   Users: ['Add', 'Update', 'Delete'],
   Products: ['Add', 'Update'],
   Reviews: ['Add', 'Update', 'Delete'],
+  'Product reviews': ['Delete'],
   'Audit log': [],
 };
 
@@ -215,6 +217,7 @@ function AdminTools() {
     if (area === 'Products') {
       return action === 'Add' ? <CreateNewProduct /> : <UpdateProduct />;
     }
+    if (area === 'Product reviews') return <ProductReviewManagement />;
     return <ReviewManagement action={action} />;
   };
 

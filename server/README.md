@@ -263,3 +263,9 @@ Utility scripts for key management and data maintenance. Run with `npm run <scri
 | `GET` | `/api/reviews/products/:productId/reviews` | List public reviews for a product. |
 | `GET` | `/api/reviews/products/:productId/eligibility` | Check whether the signed-in customer can review a product. |
 | `POST` | `/api/reviews/products/:productId/reviews` | Submit 1–5 ratings for description match, quality, and value, plus up to 250 characters of feedback, after a qualifying paid purchase. |
+| `GET` | `/api/reviews/products/admin/reviews` | List product reviews for moderation (admin only). |
+| `DELETE` | `/api/reviews/products/admin/reviews/:reviewId` | Delete a product review and record an audit event (admin only). A still-eligible customer may submit a new review. |
+
+Product reviews are eligible for three calendar months from the order's `placed_at` timestamp, provided the invoice is paid. Overall-only legacy reviews retain their overall score and show unavailable category ratings. If an earlier schema upgrade already copied overall scores into category columns, those copied scores cannot be distinguished from genuine category ratings automatically.
+
+The optional MySQL integration test uses session-local temporary tables and a fixed database clock. To run it against a disposable MySQL test database, set `PRODUCT_REVIEW_TEST_MYSQL_URL` to its connection URL and run `npm test -- --runInBand src/routes/v2/product-reviews.mysql.test.ts` from `server/`. The database account needs permission to create temporary tables; no permanent tables are modified.

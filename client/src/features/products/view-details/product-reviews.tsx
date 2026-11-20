@@ -8,9 +8,9 @@ type ProductReview = {
   id: number;
   reviewer_name: string;
   star_count: number;
-  match_description_rating: number;
-  quality_rating: number;
-  value_rating: number;
+  match_description_rating: number | null;
+  quality_rating: number | null;
+  value_rating: number | null;
   comment: string;
   submit_date: string;
 };
@@ -61,7 +61,10 @@ const fetchProductReviews = async (
     );
   }
   const body = await response.json();
-  return Array.isArray(body?.data) ? body.data : [];
+  if (!Array.isArray(body?.data)) {
+    throw new Error('Could not load product reviews');
+  }
+  return body.data;
 };
 
 const formatDate = (value: string) => {
@@ -81,9 +84,9 @@ export default function ProductReviews({ productId }: { productId: string }) {
   const [eligibility, setEligibility] = useState<Eligibility | null>(null);
   const [eligibilityError, setEligibilityError] = useState<string | null>(null);
   const [ratings, setRatings] = useState<ReviewRatings>({
-    match_description_rating: 5,
-    quality_rating: 5,
-    value_rating: 5,
+    match_description_rating: null,
+    quality_rating: null,
+    value_rating: null,
   });
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -101,9 +104,9 @@ export default function ProductReviews({ productId }: { productId: string }) {
     setEligibility(null);
     setEligibilityError(null);
     setRatings({
-      match_description_rating: 5,
-      quality_rating: 5,
-      value_rating: 5,
+      match_description_rating: null,
+      quality_rating: null,
+      value_rating: null,
     });
     setComment('');
     setSubmitError(null);
@@ -157,6 +160,10 @@ export default function ProductReviews({ productId }: { productId: string }) {
 
   const submitReview = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (Object.values(ratings).some((rating) => rating === null)) {
+      setSubmitError('Please select a rating for each category.');
+      return;
+    }
     setSubmitting(true);
     setSubmitError(null);
     setSubmitMessage(null);
@@ -185,6 +192,14 @@ export default function ProductReviews({ productId }: { productId: string }) {
       });
       setSubmitMessage('Thank you for sharing your review.');
       setReviewFormOpen(false);
+      try {
+        setReviews(await fetchProductReviews(productId));
+        setReviewsError(null);
+      } catch (error) {
+        setReviewsError(
+          error instanceof Error ? error.message : 'Could not load product reviews'
+        );
+      }
     } catch (error) {
       setSubmitError(
         error instanceof Error ? error.message : 'Could not submit your review'
@@ -192,39 +207,27 @@ export default function ProductReviews({ productId }: { productId: string }) {
     } finally {
       setSubmitting(false);
     }
-
-    try {
-      setReviews(await fetchProductReviews(productId));
-      setReviewsError(null);
-    } catch (error) {
-      setReviewsError(
-        error instanceof Error
-          ? error.message
-          : 'Could not load product reviews'
-      );
-    }
   };
 
-  const averageFor = (key: keyof ReviewRatings) =>
-    reviews.length > 0
-      ? (
-          reviews.reduce((total, review) => total + review[key], 0) /
-          reviews.length
-        ).toFixed(1)
+  const averageFor = (key: keyof ReviewRatings) => {
+    const values = reviews.map((review) => review[key]).filter((value): value is number => value !== null);
+    return values.length > 0
+      ? (values.reduce((total, value) => total + value, 0) / values.length).toFixed(1)
       : null;
+  };
   const averageRating =
-    averageFor('match_description_rating') === null
+    reviews.length === 0
       ? null
       : (
-          reviews.reduce(
-            (total, review) =>
-              total +
-              review.match_description_rating +
-              review.quality_rating +
-              review.value_rating,
-            0
-          ) /
-          (reviews.length * RATING_FIELDS.length)
+          reviews.reduce((total, review) => {
+            const { match_description_rating, quality_rating, value_rating } = review;
+            return total + (
+              match_description_rating !== null && quality_rating !== null && value_rating !== null
+                ? (match_description_rating + quality_rating + value_rating) / 3
+                : review.star_count
+            );
+          }, 0) /
+          reviews.length
         ).toFixed(1);
   const visibleReviews = showAllReviews ? reviews : reviews.slice(0, 2);
   const reviewsContentId = `product-reviews-content-${productId}`;
@@ -324,7 +327,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
                   {label}
                 </Text>
                 <Text size="xsmall" weight="bold" color={ui.ink}>
-                  {averageFor(key)}
+                  {averageFor(key) ?? 'Unavailable'}
                 </Text>
               </Box>
             ))}
@@ -344,7 +347,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
           style={{
             display: 'grid',
             gap: '12px',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))',
           }}
         >
           {visibleReviews.map((review) => {
@@ -368,12 +371,13 @@ export default function ProductReviews({ productId }: { productId: string }) {
                 </Text>
                 <Text size="small" color={ui.muted}>
                   {RATING_FIELDS.map(
-                    ({ key, label }) => `${label}: ${review[key]}/5`
+                    ({ key, label }) => `${label}: ${review[key] === null ? 'Unavailable' : `${review[key]}/5`}`
                   ).join(' · ')}
                 </Text>
                 <Text
                   style={{
                     whiteSpace: 'pre-line',
+                    overflowWrap: 'anywhere',
                     lineHeight: 1.5,
                     color: ui.ink,
                   }}
@@ -460,7 +464,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
                       display: 'grid',
                       gap: '12px',
                       gridTemplateColumns:
-                        'repeat(auto-fit, minmax(190px, 1fr))',
+                        'repeat(auto-fit, minmax(min(190px, 100%), 1fr))',
                     }}
                   >
                     {RATING_FIELDS.map(({ key, label }) => (
@@ -493,7 +497,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
                               }
                               style={{
                                 color:
-                                  value <= ratings[key] ? ui.accent : ui.line,
+                                  value <= (ratings[key] ?? 0) ? ui.accent : ui.line,
                                 fontSize: '20px',
                                 padding: '2px',
                                 lineHeight: 1,
@@ -504,7 +508,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
                           ))}
                         </Box>
                         <Text size="xsmall" color={ui.muted}>
-                          {ratings[key]} / 5
+                          {ratings[key] === null ? 'Select a rating' : `${ratings[key]} / 5`}
                         </Text>
                       </Box>
                     ))}
@@ -534,7 +538,7 @@ export default function ProductReviews({ productId }: { productId: string }) {
                     type="submit"
                     label={submitting ? 'Submitting…' : 'Submit review'}
                     onClick={() => undefined}
-                    disabled={submitting || !comment.trim()}
+                    disabled={submitting || !comment.trim() || Object.values(ratings).some((rating) => rating === null)}
                     fixed
                   />
                 </Box>

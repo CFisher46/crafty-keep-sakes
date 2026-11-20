@@ -344,16 +344,75 @@ describe('reviews v2 routes', () => {
       expect(mockedDbQuery.mock.calls[0][1]).toEqual([
         '3',
         '7',
-        4.67,
         5,
         4,
         5,
         'Lovely work',
         '7',
         '3',
-        '7',
-        '3',
       ]);
+    });
+
+    it('preserves a legacy overall score without manufacturing category scores', async () => {
+      mockedDbQuery.mockResolvedValueOnce([[
+        { id: 9, star_count: 3, match_description_rating: 5, quality_rating: null, value_rating: null, comment: 'Legacy', submitted_at: '2026-06-05' },
+      ]]);
+      const response = await request(app).get('/api/v2/reviews/products/3/reviews');
+      expect(response.status).toBe(200);
+      expect(response.body.data[0]).toMatchObject({
+        star_count: 3,
+        match_description_rating: null,
+        quality_rating: null,
+        value_rating: null,
+      });
+    });
+
+    it('limits product review moderation to admins', async () => {
+      const list = await request(app).get('/api/v2/reviews/products/admin/reviews').set('Cookie', authCookie(7, 'customer'));
+      const remove = await request(app).delete('/api/v2/reviews/products/admin/reviews/8').set('Cookie', authCookie(7, 'customer'));
+      expect(list.status).toBe(403);
+      expect(remove.status).toBe(403);
+      expect(mockedDbQuery).not.toHaveBeenCalled();
+      expect(mockConnection.query).not.toHaveBeenCalled();
+    });
+
+    it('lists product reviews for admins', async () => {
+      mockedDbQuery.mockResolvedValueOnce([[
+        { id: 8, product_id: 3, product_name: 'Keepsake', comment: 'Review', submitted_at: '2026-06-05' },
+      ]]);
+      const response = await request(app)
+        .get('/api/v2/reviews/products/admin/reviews')
+        .set('Cookie', authCookie(1, 'admin'));
+      expect(response.status).toBe(200);
+      expect(response.body.data).toEqual([
+        { id: '8', product_id: '3', product_name: 'Keepsake', comment: 'Review', submit_date: '2026-06-05' },
+      ]);
+    });
+
+    it('deletes a product review and audits the deletion atomically', async () => {
+      mockConnection.query
+        .mockResolvedValueOnce([[{ id: 8, product_id: 3, comment: 'Review' }]])
+        .mockResolvedValue([{ affectedRows: 1 }]);
+      const response = await request(app)
+        .delete('/api/v2/reviews/products/admin/reviews/8')
+        .set('Cookie', authCookie(1, 'admin'));
+      expect(response.status).toBe(200);
+      expect(mockConnection.query.mock.calls[1][0]).toContain('DELETE FROM product_reviews_v2');
+      expect(JSON.stringify(mockConnection.query.mock.calls[2])).toContain('product_reviews_v2');
+      expect(mockConnection.commit).toHaveBeenCalled();
+    });
+
+    it('rolls back product review deletion if auditing fails', async () => {
+      mockConnection.query
+        .mockResolvedValueOnce([[{ id: 8, product_id: 3, comment: 'Review' }]])
+        .mockResolvedValueOnce([{ affectedRows: 1 }])
+        .mockRejectedValueOnce(new Error('audit failed'));
+      const response = await request(app)
+        .delete('/api/v2/reviews/products/admin/reviews/8')
+        .set('Cookie', authCookie(1, 'admin'));
+      expect(response.status).toBe(500);
+      expect(mockConnection.rollback).toHaveBeenCalled();
+      expect(mockConnection.commit).not.toHaveBeenCalled();
     });
 
     it('rejects a review when the purchase is outside the eligibility window', async () => {

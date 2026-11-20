@@ -148,31 +148,25 @@ async function ensureProductReviewSchema(connection) {
     'quality_rating',
     'value_rating',
   ];
-  const missingRatingColumns = ratingColumns.filter((column) => !existingColumns.has(column));
-
-  for (const column of missingRatingColumns) {
-    await connection.query(
-      `ALTER TABLE product_reviews_v2 ADD COLUMN ${column} TINYINT UNSIGNED NOT NULL DEFAULT 5`
-    );
+  const changes = [];
+  for (const column of ratingColumns) {
+    const existing = existingColumns.get(column);
+    if (!existing) {
+      changes.push(`ADD COLUMN ${column} TINYINT UNSIGNED NULL DEFAULT NULL`);
+    } else if (existing.Null !== 'YES' || existing.Default !== null) {
+      changes.push(`MODIFY ${column} TINYINT UNSIGNED NULL DEFAULT NULL`);
+    }
   }
-
   const starCountColumn = existingColumns.get('star_count');
   if (!starCountColumn) {
-    await connection.query(
-      'ALTER TABLE product_reviews_v2 ADD COLUMN star_count DECIMAL(3,2) NOT NULL DEFAULT 5.00'
-    );
-  } else if (!String(starCountColumn.Type).toLowerCase().startsWith('decimal(3,2)')) {
-    await connection.query(
-      'ALTER TABLE product_reviews_v2 MODIFY star_count DECIMAL(3,2) NOT NULL DEFAULT 5.00'
-    );
+    changes.push('ADD COLUMN star_count DECIMAL(3,2) NULL DEFAULT NULL');
+  } else if (!String(starCountColumn.Type).toLowerCase().startsWith('decimal(3,2)') ||
+      starCountColumn.Null !== 'YES' || starCountColumn.Default !== null) {
+    changes.push('MODIFY star_count DECIMAL(3,2) NULL DEFAULT NULL');
   }
 
-  if (missingRatingColumns.length > 0 && existingColumns.has('star_count')) {
-    // Preserve legacy ratings by using the existing overall score for each new criterion.
-    const assignments = missingRatingColumns
-      .map((column) => `${column} = LEAST(5, GREATEST(1, star_count))`)
-      .join(', ');
-    await connection.query(`UPDATE product_reviews_v2 SET ${assignments}`);
+  if (changes.length > 0) {
+    await connection.query(`ALTER TABLE product_reviews_v2 ${changes.join(', ')}`);
   }
 
   // Preserve old feedback; only narrow the column when existing rows fit.
