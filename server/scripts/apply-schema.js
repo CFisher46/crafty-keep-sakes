@@ -140,6 +140,49 @@ async function ensureProductDeliverySchema(connection) {
   }
 }
 
+async function ensureProductReviewSchema(connection) {
+  const [columns] = await connection.query('SHOW COLUMNS FROM product_reviews_v2');
+  const existingColumns = new Map(columns.map((column) => [column.Field, column]));
+  const ratingColumns = [
+    'match_description_rating',
+    'quality_rating',
+    'value_rating',
+  ];
+  const changes = [];
+  for (const column of ratingColumns) {
+    const existing = existingColumns.get(column);
+    if (!existing) {
+      changes.push(`ADD COLUMN ${column} TINYINT UNSIGNED NULL DEFAULT NULL`);
+    } else if (existing.Null !== 'YES' || existing.Default !== null) {
+      changes.push(`MODIFY ${column} TINYINT UNSIGNED NULL DEFAULT NULL`);
+    }
+  }
+  const starCountColumn = existingColumns.get('star_count');
+  if (!starCountColumn) {
+    changes.push('ADD COLUMN star_count DECIMAL(3,2) NULL DEFAULT NULL');
+  } else if (!String(starCountColumn.Type).toLowerCase().startsWith('decimal(3,2)') ||
+      starCountColumn.Null !== 'YES' || starCountColumn.Default !== null) {
+    changes.push('MODIFY star_count DECIMAL(3,2) NULL DEFAULT NULL');
+  }
+
+  if (changes.length > 0) {
+    await connection.query(`ALTER TABLE product_reviews_v2 ${changes.join(', ')}`);
+  }
+
+  // Preserve old feedback; only narrow the column when existing rows fit.
+  const commentColumn = existingColumns.get('comment');
+  if (commentColumn && !String(commentColumn.Type).toLowerCase().startsWith('varchar(250)')) {
+    const [[result]] = await connection.query(
+      'SELECT EXISTS (SELECT 1 FROM product_reviews_v2 WHERE CHAR_LENGTH(comment) > 250) AS has_long_comment'
+    );
+    if (Number(result.has_long_comment) === 0) {
+      await connection.query(
+        'ALTER TABLE product_reviews_v2 MODIFY comment VARCHAR(250) NOT NULL'
+      );
+    }
+  }
+}
+
 async function main() {
   const file = path.resolve(
     __dirname,
@@ -160,6 +203,7 @@ async function main() {
       await ensureEmailVerificationSchema(connection);
       await ensureAnonymousBlogActivitySchema(connection);
       await ensureProductDeliverySchema(connection);
+      await ensureProductReviewSchema(connection);
     }
     const [tables] = await connection.query('SHOW TABLES');
     const [roles] = await connection.query('SELECT code FROM roles_v2');
@@ -177,4 +221,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { ensureProductDeliverySchema };
+module.exports = { ensureProductDeliverySchema, ensureProductReviewSchema };
