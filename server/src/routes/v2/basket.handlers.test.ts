@@ -314,6 +314,21 @@ describe('v2 basket routes', () => {
     expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(false);
   });
 
+  it.each([[21, 4], [51, 6]])('rejects an outdated delivery fee after quantity reaches %s', async (quantity, expectedFee) => {
+    mockConnection.query
+      .mockResolvedValueOnce([[{ id: 12 }]])
+      .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity, unit_price_snapshot: '12.50', delivery_tier: 'small' }]]);
+    const response = await request(app)
+      .post('/api/v2/basket/checkout')
+      .set('Cookie', authCookie(7, 'customer'))
+      .send({ expected_delivery_fee: expectedFee, delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error).toContain('Delivery charges have changed');
+    expect(mockConnection.rollback).toHaveBeenCalledTimes(1);
+    expect(mockConnection.query.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders_v2'))).toBe(false);
+  });
+
   it.each([false, true])('notifies admins when payment link creation fails: %s', async (paymentLinkFails) => {
     process.env.PAYMENTS_PROVIDER = 'mock';
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
@@ -383,7 +398,10 @@ describe('v2 basket routes', () => {
     }
   });
 
-  it('sends the delivery-inclusive total to Square', async () => {
+  it.each([
+    [2, 'largest', 45, 4500],
+    [51, 'small', 657.5, 65750],
+  ])('sends the delivery-inclusive total to Square for %s %s items', async (quantity, tier, total, pence) => {
     const keys = ['PAYMENTS_PROVIDER', 'SQUARE_ENVIRONMENT', 'SQUARE_SANDBOX_ACCESS_TOKEN', 'SQUARE_SANDBOX_LOCATION_ID', 'SQUARE_SANDBOX_WEBHOOK_SIGNATURE_KEY', 'SQUARE_WEBHOOK_URL'] as const;
     const previous = keys.map((key) => process.env[key]);
     Object.assign(process.env, {
@@ -401,7 +419,7 @@ describe('v2 basket routes', () => {
     try {
       mockConnection.query
         .mockResolvedValueOnce([[{ id: 12 }]])
-        .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity: 2, unit_price_snapshot: '12.50', product_name: 'Tea Set', delivery_tier: 'largest' }]])
+        .mockResolvedValueOnce([[{ id: 9, basket_id: 12, product_id: 25, quantity, unit_price_snapshot: '12.50', product_name: 'Tea Set', delivery_tier: tier }]])
         .mockResolvedValueOnce([[{ Field: 'billing_address_line1' }, { Field: 'billing_address_line2' }, { Field: 'billing_address_line3' }, { Field: 'billing_town' }, { Field: 'billing_county' }, { Field: 'billing_postcode' }]])
         .mockResolvedValueOnce([{ insertId: 40 }])
         .mockResolvedValueOnce([{ affectedRows: 1 }])
@@ -420,9 +438,13 @@ describe('v2 basket routes', () => {
         .send({ expected_delivery_fee: 20, delivery_address: { address_line1: '1 Test Street', town: 'Bristol', postcode: 'BS1 1AA' } });
 
       expect(response.status).toBe(201);
-      expect(response.body.total_due).toBe(45);
+      expect(response.body.total_due).toBe(total);
+      const invoice = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO invoices_v2'));
+      expect(invoice?.[1][2]).toBe(total);
+      const delivery = mockConnection.query.mock.calls.find(([sql]) => String(sql).includes("'Delivery'"));
+      expect(delivery?.[1]).toEqual([90, 20, 20]);
       const body = JSON.parse(String(fetchSpy.mock.calls[0][1]?.body));
-      expect(body.quick_pay.price_money).toEqual({ amount: 4500, currency: 'GBP' });
+      expect(body.quick_pay.price_money).toEqual({ amount: pence, currency: 'GBP' });
     } finally {
       fetchSpy.mockRestore();
       keys.forEach((key, index) => {

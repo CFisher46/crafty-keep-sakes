@@ -15,4 +15,22 @@ describe('delivery charges', () => {
   ])('calculates delivery for %j', (items, expected) => {
     expect(calculateDelivery(items)).toBe(expected);
   });
+
+  it.each([
+    [[{ delivery_tier: 'small', quantity: 20 }], 4],
+    [[{ delivery_tier: 'small', quantity: 10 }, { delivery_tier: 'small', quantity: 11 }], 6],
+    [[{ delivery_tier: 'medium', quantity: 20 }], 6],
+    [[{ delivery_tier: 'medium', quantity: 21 }], 10],
+    [[{ delivery_tier: 'small', quantity: 21 }, { delivery_tier: 'medium', quantity: 20 }], 6],
+    [[{ delivery_tier: 'large', quantity: 21 }], 10],
+    [[{ delivery_tier: 'large', quantity: 20 }, { delivery_tier: 'largest', quantity: 1 }], 10],
+    [[{ delivery_tier: 'large', quantity: 21 }, { delivery_tier: 'largest', quantity: 1 }], 20],
+    [[{ delivery_tier: 'small', quantity: 20 }, { delivery_tier: 'medium', quantity: 20 }, { delivery_tier: 'large', quantity: 10 }], 10],
+    [[{ delivery_tier: 'small', quantity: 20 }, { delivery_tier: 'medium', quantity: 20 }, { delivery_tier: 'large', quantity: 11 }], 20],
+    [[{ delivery_tier: 'small', quantity: 50 }], 6],
+    [[{ delivery_tier: 'small', quantity: 51 }], 20],
+    [[{ delivery_tier: 'small', quantity: 51 }, { delivery_tier: null, quantity: 1 }], null],
+  ])('applies quantity thresholds to %j', (items, expected) => {
+    expect(calculateDelivery(items)).toBe(expected);
+  });
 });
